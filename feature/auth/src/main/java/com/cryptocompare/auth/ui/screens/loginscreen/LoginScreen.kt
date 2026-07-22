@@ -75,14 +75,14 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
 
             Text(
-                text = "Crypto Compare",
+                text = stringResource(R.string.auth_app_name),
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Bold,
             )
 
             Text(
-                text = "Track crypto prices in real-time",
+                text = stringResource(R.string.auth_tagline),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             )

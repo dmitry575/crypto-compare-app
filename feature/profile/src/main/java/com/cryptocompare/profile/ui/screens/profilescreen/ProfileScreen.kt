@@ -25,18 +25,19 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cryptocompare.profile.R
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileActionRow
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileComingSoonRow
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileConfirmDialog
+import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileGroup
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileHeader
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileSectionTitle
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ThemeSelector
@@ -44,6 +45,7 @@ import com.cryptocompare.profile.viewmodel.profileviewmodel.ProfileViewModel
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.bgPrimary
 import com.cryptocompare.ui.theme.cryptoError
+import com.cryptocompare.ui.theme.divider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,8 +99,7 @@ fun ProfileScreen(
                 title = {
                     Text(
                         text = stringResource(R.string.profile_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.headlineMedium,
                     )
                 },
                 navigationIcon = {
@@ -109,6 +110,10 @@ fun ProfileScreen(
                         )
                     }
                 },
+                colors =
+                    TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.bgPrimary,
+                    ),
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -134,52 +139,72 @@ fun ProfileScreen(
                 )
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.xs)) {
+            Column(
+                modifier = Modifier.padding(horizontal = Dimensions.Padding.screenHorizontal),
+                verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
+            ) {
+                ProfileSectionTitle(text = stringResource(R.string.profile_appearance_section))
+
+                ProfileGroup {
+                    Column(
+                        modifier = Modifier.padding(Dimensions.Padding.cardMedium),
+                        verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.profile_theme),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        ThemeSelector(
+                            selected = uiState.themePreference,
+                            onSelect = viewModel::onThemePreferenceChange,
+                        )
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.divider)
+
+                    ProfileComingSoonRow(
+                        text = stringResource(R.string.profile_base_currency),
+                        icon = Icons.Outlined.CurrencyExchange,
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier.padding(horizontal = Dimensions.Padding.screenHorizontal),
+                verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
+            ) {
                 ProfileSectionTitle(text = stringResource(R.string.profile_account_section))
 
-                if (uiState.user?.hasPasswordProvider == true) {
+                ProfileGroup {
+                    if (uiState.user?.hasPasswordProvider == true) {
+                        ProfileActionRow(
+                            text = stringResource(R.string.profile_change_password),
+                            icon = Icons.Outlined.Lock,
+                            onClick = onChangePasswordClick,
+                            enabled = !uiState.isLoading,
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.divider)
+                    }
+
                     ProfileActionRow(
-                        text = stringResource(R.string.profile_change_password),
-                        icon = Icons.Outlined.Lock,
-                        onClick = onChangePasswordClick,
+                        text = stringResource(R.string.profile_sign_out),
+                        icon = Icons.AutoMirrored.Filled.Logout,
+                        onClick = viewModel::onSignOutClick,
                         enabled = !uiState.isLoading,
                     )
                 }
 
-                ProfileActionRow(
-                    text = stringResource(R.string.profile_sign_out),
-                    icon = Icons.AutoMirrored.Filled.Logout,
-                    onClick = viewModel::onSignOutClick,
-                    enabled = !uiState.isLoading,
-                )
-
-                ProfileActionRow(
-                    text = stringResource(R.string.profile_delete_account),
-                    icon = Icons.Filled.DeleteForever,
-                    onClick = viewModel::onDeleteAccountClick,
-                    enabled = !uiState.isLoading,
-                    tint = MaterialTheme.colorScheme.cryptoError,
-                )
-            }
-
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = Dimensions.Padding.screenHorizontal),
-            )
-
-            Column(verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.xs)) {
-                ProfileSectionTitle(text = stringResource(R.string.profile_settings_section))
-
-                ProfileSectionTitle(text = stringResource(R.string.profile_theme))
-
-                ThemeSelector(
-                    selected = uiState.themePreference,
-                    onSelect = viewModel::onThemePreferenceChange,
-                )
-
-                ProfileComingSoonRow(
-                    text = stringResource(R.string.profile_base_currency),
-                    icon = Icons.Outlined.CurrencyExchange,
-                )
+                // разрушающее действие отдельной группой: рядом с «Выйти» его
+                // слишком легко нажать по инерции
+                ProfileGroup {
+                    ProfileActionRow(
+                        text = stringResource(R.string.profile_delete_account),
+                        icon = Icons.Filled.DeleteForever,
+                        onClick = viewModel::onDeleteAccountClick,
+                        enabled = !uiState.isLoading,
+                        tint = MaterialTheme.colorScheme.cryptoError,
+                    )
+                }
             }
         }
     }
