@@ -1,10 +1,14 @@
 package com.cryptocompare.profile
 
 import com.cryptocompare.domain.repository.AuthRepository
+import com.cryptocompare.domain.repository.ThemeRepository
 import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
 import com.cryptocompare.domain.usecase.profile.DeleteAccountUseCase
 import com.cryptocompare.domain.usecase.profile.SignOutUseCase
+import com.cryptocompare.domain.usecase.settings.ObserveThemePreferenceUseCase
+import com.cryptocompare.domain.usecase.settings.SetThemePreferenceUseCase
 import com.cryptocompare.model.auth.AuthUser
+import com.cryptocompare.model.settings.ThemePreference
 import com.cryptocompare.profile.viewmodel.profileviewmodel.ProfileViewModel
 import com.cryptocompare.testing.MainDispatcherRule
 import io.mockk.clearMocks
@@ -13,6 +17,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -32,11 +37,15 @@ class ProfileViewModelTest {
     private val getCurrentUserUseCase = GetCurrentUserUseCase(authRepository)
     private val signOutUseCase = SignOutUseCase(authRepository)
     private val deleteAccountUseCase = DeleteAccountUseCase(authRepository)
+    private val themeRepository: ThemeRepository = mockk(relaxed = true)
+    private val setThemePreferenceUseCase = SetThemePreferenceUseCase(themeRepository)
+    private val observeThemePreferenceUseCase = ObserveThemePreferenceUseCase(themeRepository)
 
     @Before
     fun setUp() {
-        clearMocks(authRepository)
+        clearMocks(authRepository, themeRepository)
         every { authRepository.currentUser } returns TEST_USER
+        every { themeRepository.observeThemePreference() } returns flowOf(ThemePreference.SYSTEM)
     }
 
     @Test
@@ -127,11 +136,35 @@ class ProfileViewModelTest {
             coVerify(exactly = 0) { authRepository.deleteAccount() }
         }
 
+    @Test
+    fun `stored theme preference reaches the ui state`() =
+        runTest {
+            every { themeRepository.observeThemePreference() } returns flowOf(ThemePreference.DARK)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals(ThemePreference.DARK, viewModel.uiState.value.themePreference)
+        }
+
+    @Test
+    fun `choosing a theme is persisted`() =
+        runTest {
+            val viewModel = createViewModel()
+
+            viewModel.onThemePreferenceChange(ThemePreference.LIGHT)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { themeRepository.setThemePreference(ThemePreference.LIGHT) }
+        }
+
     private fun createViewModel(): ProfileViewModel =
         ProfileViewModel(
             getCurrentUserUseCase = getCurrentUserUseCase,
             signOutUseCase = signOutUseCase,
             deleteAccountUseCase = deleteAccountUseCase,
+            setThemePreferenceUseCase = setThemePreferenceUseCase,
+            observeThemePreferenceUseCase = observeThemePreferenceUseCase,
         )
 
     private companion object {

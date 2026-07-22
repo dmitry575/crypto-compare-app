@@ -1,6 +1,5 @@
 package com.cryptocompare.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -13,42 +12,42 @@ import androidx.compose.ui.graphics.Color
 val ColorScheme.cryptoSuccess: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) Success else SuccessLight
+    get() = if (LocalIsDarkTheme.current) Success else SuccessLight
 
 val ColorScheme.cryptoSuccessDark: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) SuccessDark else Success
+    get() = if (LocalIsDarkTheme.current) SuccessDark else Success
 
 val ColorScheme.cryptoError: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) Error else ErrorLight
+    get() = if (LocalIsDarkTheme.current) Error else ErrorLight
 
 val ColorScheme.cryptoErrorDark: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) ErrorDark else Error
+    get() = if (LocalIsDarkTheme.current) ErrorDark else Error
 
 val ColorScheme.cryptoWarning: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) Warning else WarningLight
+    get() = if (LocalIsDarkTheme.current) Warning else WarningLight
 
 val ColorScheme.cryptoWarningDark: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) WarningDark else Warning
+    get() = if (LocalIsDarkTheme.current) WarningDark else Warning
 
 val ColorScheme.cryptoInfo: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) Info else InfoLight
+    get() = if (LocalIsDarkTheme.current) Info else InfoLight
 
 val ColorScheme.cryptoInfoDark: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) InfoDark else Info
+    get() = if (LocalIsDarkTheme.current) InfoDark else Info
 
 // ============================================
 // TEXT COLORS
@@ -57,27 +56,27 @@ val ColorScheme.cryptoInfoDark: Color
 val ColorScheme.textPrimary: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) TextPrimaryDark else TextPrimaryLight
+    get() = if (LocalIsDarkTheme.current) TextPrimaryDark else TextPrimaryLight
 
 val ColorScheme.textSecondary: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) TextSecondaryDark else TextSecondaryLight
+    get() = if (LocalIsDarkTheme.current) TextSecondaryDark else TextSecondaryLight
 
 val ColorScheme.textTertiary: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) TextTertiaryDark else TextTertiaryLight
+    get() = if (LocalIsDarkTheme.current) TextTertiaryDark else TextTertiaryLight
 
 val ColorScheme.textDisabled: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) TextDisabledDark else TextDisabledLight
+    get() = if (LocalIsDarkTheme.current) TextDisabledDark else TextDisabledLight
 
 val ColorScheme.textPlaceholder: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) TextPlaceholderDark else TextPlaceholderLight
+    get() = if (LocalIsDarkTheme.current) TextPlaceholderDark else TextPlaceholderLight
 
 // ============================================
 // BACKGROUND COLORS
@@ -86,22 +85,22 @@ val ColorScheme.textPlaceholder: Color
 val ColorScheme.bgPrimary: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) BgPrimaryDark else BgPrimaryLight
+    get() = if (LocalIsDarkTheme.current) BgPrimaryDark else BgPrimaryLight
 
 val ColorScheme.bgSecondary: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) BgSecondaryDark else BgSecondaryLight
+    get() = if (LocalIsDarkTheme.current) BgSecondaryDark else BgSecondaryLight
 
 val ColorScheme.bgTertiary: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) BgTertiaryDark else BgTertiaryLight
+    get() = if (LocalIsDarkTheme.current) BgTertiaryDark else BgTertiaryLight
 
 val ColorScheme.bgCard: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) BgCardDark else BgCardLight
+    get() = if (LocalIsDarkTheme.current) BgCardDark else BgCardLight
 
 // ============================================
 // INPUT COLORS
@@ -110,17 +109,17 @@ val ColorScheme.bgCard: Color
 val ColorScheme.inputBackground: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) InputBackgroundDark else InputBackgroundLight
+    get() = if (LocalIsDarkTheme.current) InputBackgroundDark else InputBackgroundLight
 
 val ColorScheme.inputBorder: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) InputBorderDark else InputBorderLight
+    get() = if (LocalIsDarkTheme.current) InputBorderDark else InputBorderLight
 
 val ColorScheme.inputBorderFocused: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) InputBorderFocusedDark else InputBorderFocusedLight
+    get() = if (LocalIsDarkTheme.current) InputBorderFocusedDark else InputBorderFocusedLight
 
 // ============================================
 // BORDER & DIVIDER COLORS
@@ -129,17 +128,17 @@ val ColorScheme.inputBorderFocused: Color
 val ColorScheme.borderPrimary: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) BorderPrimaryDark else BorderPrimaryLight
+    get() = if (LocalIsDarkTheme.current) BorderPrimaryDark else BorderPrimaryLight
 
 val ColorScheme.borderSecondary: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) BorderSecondaryDark else BorderSecondaryLight
+    get() = if (LocalIsDarkTheme.current) BorderSecondaryDark else BorderSecondaryLight
 
 val ColorScheme.divider: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) DividerDark else DividerLight
+    get() = if (LocalIsDarkTheme.current) DividerDark else DividerLight
 
 // ============================================
 // CHART COLORS
@@ -161,12 +160,12 @@ val ColorScheme.chartGrid: Color
 val ColorScheme.cardElevated: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) CardElevatedDark else CardElevatedLight
+    get() = if (LocalIsDarkTheme.current) CardElevatedDark else CardElevatedLight
 
 val ColorScheme.cardGlass: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) CardGlassDark else CardGlassLight
+    get() = if (LocalIsDarkTheme.current) CardGlassDark else CardGlassLight
 
 // ============================================
 // BOTTOM NAVIGATION COLORS
@@ -175,17 +174,17 @@ val ColorScheme.cardGlass: Color
 val ColorScheme.bottomNavBackground: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) BottomNavBackgroundDark else BottomNavBackgroundLight
+    get() = if (LocalIsDarkTheme.current) BottomNavBackgroundDark else BottomNavBackgroundLight
 
 val ColorScheme.bottomNavSelected: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) BottomNavSelectedDark else BottomNavSelectedLight
+    get() = if (LocalIsDarkTheme.current) BottomNavSelectedDark else BottomNavSelectedLight
 
 val ColorScheme.bottomNavUnselected: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) BottomNavUnselectedDark else BottomNavUnselectedLight
+    get() = if (LocalIsDarkTheme.current) BottomNavUnselectedDark else BottomNavUnselectedLight
 
 // ============================================
 // TOP BAR COLORS
@@ -194,7 +193,7 @@ val ColorScheme.bottomNavUnselected: Color
 val ColorScheme.topBarBackground: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) TopBarBackgroundDark else TopBarBackgroundLight
+    get() = if (LocalIsDarkTheme.current) TopBarBackgroundDark else TopBarBackgroundLight
 
 // ============================================
 // ICON COLORS
@@ -203,12 +202,12 @@ val ColorScheme.topBarBackground: Color
 val ColorScheme.iconPrimary: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) IconPrimaryDark else IconPrimaryLight
+    get() = if (LocalIsDarkTheme.current) IconPrimaryDark else IconPrimaryLight
 
 val ColorScheme.iconSecondary: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) IconSecondaryDark else IconSecondaryLight
+    get() = if (LocalIsDarkTheme.current) IconSecondaryDark else IconSecondaryLight
 
 // ============================================
 // BADGE COLORS
@@ -258,12 +257,12 @@ val ColorScheme.statusPending: Color
 val ColorScheme.shimmerBase: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) ShimmerBaseColorDark else ShimmerBaseColorLight
+    get() = if (LocalIsDarkTheme.current) ShimmerBaseColorDark else ShimmerBaseColorLight
 
 val ColorScheme.shimmerHighlight: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) ShimmerHighlightColorDark else ShimmerHighlightColorLight
+    get() = if (LocalIsDarkTheme.current) ShimmerHighlightColorDark else ShimmerHighlightColorLight
 
 // ============================================
 // OVERLAY & SCRIM COLORS
@@ -272,12 +271,12 @@ val ColorScheme.shimmerHighlight: Color
 val ColorScheme.overlay: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) OverlayDark else OverlayLight
+    get() = if (LocalIsDarkTheme.current) OverlayDark else OverlayLight
 
 val ColorScheme.scrimColor: Color
     @Composable
     @ReadOnlyComposable
-    get() = if (isSystemInDarkTheme()) ScrimDark else ScrimLight
+    get() = if (LocalIsDarkTheme.current) ScrimDark else ScrimLight
 
 // ============================================
 // SPECIAL EFFECT COLORS
@@ -335,7 +334,7 @@ object CryptoGradients {
     @Composable
     @ReadOnlyComposable
     fun background(): List<Color> =
-        if (isSystemInDarkTheme()) {
+        if (LocalIsDarkTheme.current) {
             backgroundDark
         } else {
             backgroundLight

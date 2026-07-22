@@ -9,6 +9,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -155,9 +156,13 @@ fun CryptoCompareTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = CryptoTypography,
-        content = content,
-    )
+    // LocalIsDarkTheme питает расширения-цвета из ThemeExtensions.kt: без него
+    // они читали бы системную настройку в обход параметра darkTheme
+    CompositionLocalProvider(LocalIsDarkTheme provides darkTheme) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = CryptoTypography,
+            content = content,
+        )
+    }
 }

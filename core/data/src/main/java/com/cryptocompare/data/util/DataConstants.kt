@@ -2,6 +2,11 @@ package com.cryptocompare.data.util
 
 /** Константы слоя данных: миграции и разбор ответов API. */
 object DataConstants {
+    object Preferences {
+        const val FILE_NAME = "settings"
+        const val THEME_KEY = "theme_preference"
+    }
+
     object Migrations {
         const val ASSETS_DIR = "migrations"
         const val FILE_NAME_PATTERN = "migration_(\\d+)_(\\d+)\\.sql"

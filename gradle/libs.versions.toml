@@ -33,6 +33,7 @@ playServicesAuth = "21.6.0"
 foundation = "1.11.4"
 uiUnit = "1.11.4"
 room = "2.8.4"
+datastore = "1.2.1"
 paging = "3.5.0"
 work = "2.11.2"
 androidxHilt = "1.4.0"
@@ -99,6 +100,7 @@ androidx-paging-compose = { group = "androidx.paging", name = "paging-compose", 
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
+androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "testRunner" }
 androidx-compiler = { group = "androidx.databinding", name = "compiler", version.ref = "compiler" }
 androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
