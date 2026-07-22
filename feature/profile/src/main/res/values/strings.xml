@@ -1,0 +1,43 @@
+<resources>
+    <!-- Profile screen -->
+    <string name="profile_title">Profile</string>
+    <string name="profile_back">Back</string>
+    <string name="profile_avatar">Profile photo</string>
+    <string name="profile_no_email">No email</string>
+
+    <!-- Account actions -->
+    <string name="profile_account_section">Account</string>
+    <string name="profile_change_password">Change password</string>
+    <string name="profile_sign_out">Sign out</string>
+    <string name="profile_delete_account">Delete account</string>
+
+    <!-- Confirmation dialogs -->
+    <string name="profile_sign_out_dialog_title">Sign out?</string>
+    <string name="profile_sign_out_dialog_text">You will need to sign in again to see your favorites.</string>
+    <string name="profile_sign_out_dialog_confirm">Sign out</string>
+    <string name="profile_delete_dialog_title">Delete account?</string>
+    <string name="profile_delete_dialog_text">This action cannot be undone. Your account and all saved favorites will be deleted permanently.</string>
+    <string name="profile_delete_dialog_confirm">Delete</string>
+    <string name="profile_dialog_cancel">Cancel</string>
+
+    <!-- Settings section, implemented later -->
+    <string name="profile_settings_section">Settings</string>
+    <string name="profile_theme">Theme</string>
+    <string name="profile_base_currency">Base currency</string>
+    <string name="profile_coming_soon">Soon</string>
+
+    <!-- Change password screen -->
+    <string name="change_password_title">Change password</string>
+    <string name="change_password_current">Current password</string>
+    <string name="change_password_new">New password</string>
+    <string name="change_password_confirm">Confirm new password</string>
+    <string name="change_password_submit">Update password</string>
+    <string name="change_password_submitting">Updating…</string>
+    <string name="change_password_success">Password updated</string>
+
+    <!-- Change password validation -->
+    <string name="change_password_error_current_empty">Enter your current password</string>
+    <string name="change_password_error_weak">New password must be stronger</string>
+    <string name="change_password_error_mismatch">Passwords don\'t match</string>
+    <string name="change_password_error_same">New password matches the current one</string>
+</resources>

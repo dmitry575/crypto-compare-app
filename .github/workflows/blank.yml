@@ -1,0 +1,170 @@
+name: CI-CD
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+jobs:
+  linter:
+    name: CI / Ktlint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Create google-services.json
+        shell: bash
+        run: |
+          mkdir -p app
+          echo "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" | base64 --decode > app/google-services.json
+          test -f app/google-services.json
+
+      - name: Run ktlint
+        env:
+          ORG_GRADLE_PROJECT_RELEASE_BASE_URL: ${{ secrets.RELEASE_BASE_URL }}
+          ORG_GRADLE_PROJECT_RELEASE_WS_BASE_URL: ${{ secrets.RELEASE_WS_BASE_URL }}
+        run: ./gradlew --no-daemon ktlintCheck
+
+  tests:
+    name: CI / Unit tests
+    runs-on: ubuntu-latest
+    needs: linter
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Create google-services.json
+        shell: bash
+        run: |
+          mkdir -p app
+          echo "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" | base64 --decode > app/google-services.json
+          test -f app/google-services.json
+
+      - name: Run unit tests
+        env:
+          ORG_GRADLE_PROJECT_RELEASE_BASE_URL: ${{ secrets.RELEASE_BASE_URL }}
+          ORG_GRADLE_PROJECT_RELEASE_WS_BASE_URL: ${{ secrets.RELEASE_WS_BASE_URL }}
+        run: ./gradlew --no-daemon test
+
+  build_apk:
+    name: CD / Build signed APK
+    runs-on: ubuntu-latest
+    needs: [linter, tests]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    env:
+      ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/keystore/release.jks
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      ORG_GRADLE_PROJECT_RELEASE_BASE_URL: ${{ secrets.RELEASE_BASE_URL }}
+      ORG_GRADLE_PROJECT_RELEASE_WS_BASE_URL: ${{ secrets.RELEASE_WS_BASE_URL }}
+      # без ключа сборка не падает (core/network берёт его через .orNull.orEmpty()),
+      # но свечной график в релизном APK покажет пустое состояние
+      ORG_GRADLE_PROJECT_CRYPTOCOMPARE_API_KEY: ${{ secrets.CRYPTOCOMPARE_API_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Create google-services.json
+        shell: bash
+        run: |
+          mkdir -p app
+          echo "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" | base64 --decode > app/google-services.json
+          test -f app/google-services.json
+
+      - name: Restore keystore
+        shell: bash
+        run: |
+          mkdir -p keystore
+          echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 --decode > keystore/release.jks
+          test -f keystore/release.jks
+
+      - name: Build signed release APK
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Check APK exists
+        run: ls -la app/build/outputs/apk/release/
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: app/build/outputs/apk/release/app-release.apk
+
+  send_to_telegram:
+    name: CD / Send signed APK to Telegram
+    runs-on: ubuntu-latest
+    needs: build_apk
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+
+    steps:
+      - name: Download APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-apk
+          path: artifacts
+
+      - name: Check downloaded artifact
+        run: ls -la artifacts
+
+      - name: Send APK to Telegram group
+        shell: bash
+        run: |
+          APK_PATH="artifacts/app-release.apk"
+          CAPTION="✅ Signed APK build
+
+          Repository: ${GITHUB_REPOSITORY}
+          Branch: ${GITHUB_REF_NAME}
+          Commit: ${GITHUB_SHA}
+          Author: ${GITHUB_ACTOR}"
+
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument" \
+            -F chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -F document=@"${APK_PATH}" \
+            -F caption="${CAPTION}"

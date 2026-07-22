@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">providers</string>
+
+    <!-- Main screen -->
+    <string name="pairs_title">Symbols</string>
+    <string name="pairs_search_label">Search:</string>
+    <string name="pairs_only_favorites">Only favorites</string>
+    <string name="pairs_column_name">Name</string>
+    <string name="pairs_column_max">Max</string>
+    <string name="pairs_column_min">Min</string>
+    <string name="pairs_open_profile">Profile</string>
+    <string name="pairs_error_retry">Retry</string>
+    <string name="pairs_add_to_favorites">Add to favorites</string>
+    <string name="pairs_remove_from_favorites">Remove from favorites</string>
+
+    <!-- Detail screen -->
+    <string name="pair_detail_back">Back</string>
+    <string name="pair_detail_lowest_ask">Lowest ask</string>
+    <string name="pair_detail_highest_bid">Highest bid</string>
+    <string name="pair_detail_buy_price">Buy price</string>
+    <string name="pair_detail_sell_price">Sell price</string>
+    <string name="pair_detail_spread">Spread</string>
+    <string name="pair_detail_no_chart_data">No chart data</string>
+
+    <!-- Chart timeframes -->
+    <string name="timeframe_m15">15m</string>
+    <string name="timeframe_h1">1H</string>
+    <string name="timeframe_h4">4H</string>
+    <string name="timeframe_d1">1D</string>
+    <string name="timeframe_w1">1W</string>
+    <string name="pair_detail_no_exchanges">No exchange data available\nfor %1$s</string>
+    <plurals name="pair_detail_exchange_count">
+        <item quantity="one">%d exchange</item>
+        <item quantity="other">%d exchanges</item>
+    </plurals>
+</resources>

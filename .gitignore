@@ -1,0 +1,24 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+**/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+.idea
+app/google-services.json
+
+# рабочие файлы Claude Code: worktrees — это копии всего проекта
+.claude/
+
+# хранилища подписи: потеря ключа = невозможность обновить приложение,
+# утечка = возможность подписать чужой APK вашим именем
+*.jks
+*.keystore
+keystore/
+
+
+

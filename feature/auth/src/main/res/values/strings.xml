@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">auth</string>
+
+    <!--
+        Пустая заготовка, а не реальный id. Настоящее значение подставляет плагин
+        google-services из app/google-services.json: ресурсы модуля app при сборке
+        перекрывают одноимённые из библиотеки. Объявление нужно только для того,
+        чтобы feature:auth компилировался — своих ресурсов модуля app он не видит.
+        Не вписывать сюда id руками: при смене Firebase-проекта он разъедется с
+        конфигом, а вход через Google сломается молча.
+    -->
+    <string name="default_web_client_id" translatable="false"></string>
+
+    <string name="google_sign_in_failed">Google Sign-In failed</string>
+    <string name="google_sign_in_token_missing">Google token not found</string>
+
+    <!-- Login screen -->
+    <string name="login_forgot_password">Forgot Password?</string>
+
+    <!-- Forgot password screen -->
+    <string name="forgot_password_title">Reset password</string>
+    <string name="forgot_password_subtitle">Enter your email and we\'ll send you a link to set a new password.</string>
+    <string name="forgot_password_email">Email</string>
+    <string name="forgot_password_submit">Send link</string>
+    <string name="forgot_password_sending">Sending…</string>
+    <string name="forgot_password_success">Email sent, check your inbox</string>
+    <string name="forgot_password_success_hint">The link works once and expires shortly. Check spam if it is missing.</string>
+    <string name="forgot_password_back_to_login">Back to sign in</string>
+</resources>
