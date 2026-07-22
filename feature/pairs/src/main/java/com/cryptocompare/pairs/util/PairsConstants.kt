@@ -16,12 +16,16 @@ object PairsConstants {
         const val SEARCH_DEBOUNCE_MS = 300L
         const val PRICE_FLUSH_INTERVAL_MS = 500L
 
-        /** Колонка цен шире колонки тикера: мелкие цены длиннее названий. */
-        const val PRICE_COLUMN_WEIGHT = 1.5f
-        const val TICKER_COLUMN_WEIGHT = 1f
+        /** Сколько символов базовой валюты влезает в значок пары. */
+        const val BADGE_MAX_CHARS = 4
 
-        val skeletonTickerHeight: Dp = 20.dp
-        val skeletonPriceHeight: Dp = 18.dp
+        // размеры заглушек повторяют реальные строки, иначе список дёргается
+        val skeletonTickerWidth: Dp = 96.dp
+        val skeletonTickerHeight: Dp = 16.dp
+        val skeletonSubtitleWidth: Dp = 56.dp
+        val skeletonSubtitleHeight: Dp = 12.dp
+        val skeletonPriceWidth: Dp = 72.dp
+        val skeletonPriceHeight: Dp = 16.dp
     }
 
     object Chart {

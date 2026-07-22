@@ -36,7 +36,7 @@ fun <T> AppSegmentedControl(
     options: List<T>,
     selected: T,
     onSelect: (T) -> Unit,
-    label: (T) -> String,
+    label: @Composable (T) -> String,
     modifier: Modifier = Modifier,
 ) {
     Row(
