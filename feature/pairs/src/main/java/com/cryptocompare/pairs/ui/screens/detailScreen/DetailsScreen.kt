@@ -23,13 +23,13 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,12 +37,14 @@ import com.cryptocompare.pairs.R
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.CandlestickChart
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.ExchangeInfoCard
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.ExchangeSelector
-import com.cryptocompare.pairs.ui.screens.detailScreen.components.PriceSummaryRow
+import com.cryptocompare.pairs.ui.screens.detailScreen.components.SpreadBar
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.TimeframeSelector
 import com.cryptocompare.pairs.viewmodel.detailViewModel.DetailsViewModel
 import com.cryptocompare.ui.theme.Dimensions
+import com.cryptocompare.ui.theme.OverlineType
 import com.cryptocompare.ui.theme.bgPrimary
 import com.cryptocompare.ui.theme.textSecondary
+import com.cryptocompare.ui.theme.textTertiary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,11 +65,14 @@ fun DetailsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = state.ticker,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
+                        text = state.ticker.uppercase(),
+                        style = MaterialTheme.typography.headlineMedium,
                     )
                 },
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.bgPrimary,
+                    ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -127,25 +132,14 @@ fun DetailsScreen(
                             .padding(vertical = Dimensions.Padding.screenVertical),
                     verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.lg),
                 ) {
-                    // Сводка по ценам
-                    PriceSummaryRow(
-                        minPrice = state.exchanges.mapNotNull { it.priceSell ?: it.priceBuy }.minOrNull() ?: 0.0,
-                        maxPrice = state.exchanges.mapNotNull { it.priceBuy ?: it.priceSell }.maxOrNull() ?: 0.0,
-                        exchangeCount = state.exchanges.size,
+                    // Разброс между биржами — главный элемент экрана
+                    SpreadBar(
+                        exchanges = state.exchanges,
                         modifier = contentPadding,
                     )
 
-                    // Выбор биржи (если больше одной)
-                    if (state.exchanges.size > 1) {
-                        ExchangeSelector(
-                            exchanges = state.exchanges,
-                            selectedIndex = state.selectedExchangeIndex,
-                            onExchangeSelected = viewModel::onExchangeSelected,
-                            modifier = contentPadding,
-                        )
-                    }
-
-                    // Масштаб графика: переключение не трогает выбор биржи
+                    // Масштаб графика: он стоит вплотную над графиком, потому что
+                    // управляет именно им
                     TimeframeSelector(
                         selected = state.timeframe,
                         onTimeframeSelected = viewModel::onTimeframeSelected,
@@ -176,6 +170,37 @@ fun DetailsScreen(
                                     timeframe = state.timeframe,
                                     modifier = Modifier.fillMaxSize(),
                                 )
+                        }
+                    }
+
+                    if (state.candles.isNotEmpty()) {
+                        Text(
+                            text = stringResource(R.string.pair_detail_chart_source),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.textTertiary,
+                            modifier = contentPadding,
+                        )
+                    }
+
+                    // Выбор биржи стоит под графиком, а не над ним: график строится
+                    // по агрегату и на биржу не реагирует, а близость сверху обещала
+                    // связь, которой нет — на UX-тесте это прочли именно так.
+                    // Здесь селектор рядом с карточкой, которой он и управляет.
+                    if (state.exchanges.size > 1) {
+                        Column(
+                            modifier = contentPadding,
+                            verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.pair_detail_exchange_section),
+                                style = OverlineType,
+                                color = MaterialTheme.colorScheme.textTertiary,
+                            )
+                            ExchangeSelector(
+                                exchanges = state.exchanges,
+                                selectedIndex = state.selectedExchangeIndex,
+                                onExchangeSelected = viewModel::onExchangeSelected,
+                            )
                         }
                     }
 

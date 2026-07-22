@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -72,14 +75,14 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
 
             Text(
-                text = "Crypto Compare",
+                text = stringResource(R.string.auth_app_name),
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Bold,
             )
 
             Text(
-                text = "Track crypto prices in real-time",
+                text = stringResource(R.string.auth_tagline),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             )
@@ -90,7 +93,7 @@ fun LoginScreen(
                 value = uiState.email,
                 onValueChange = viewModel::onEmailChange,
                 placeholder = "Email",
-                leadingIcon = "📧",
+                leadingIcon = Icons.Outlined.MailOutline,
                 keyboardType = KeyboardType.Email,
                 isError = uiState.errorMessage != null && uiState.email.isBlank(),
             )
@@ -101,7 +104,7 @@ fun LoginScreen(
                 value = uiState.password,
                 onValueChange = viewModel::onPasswordChange,
                 placeholder = "Password",
-                leadingIcon = "🔒",
+                leadingIcon = Icons.Outlined.Lock,
                 keyboardType = KeyboardType.Password,
                 isPassword = true,
                 isError = uiState.errorMessage != null && uiState.password.isBlank(),

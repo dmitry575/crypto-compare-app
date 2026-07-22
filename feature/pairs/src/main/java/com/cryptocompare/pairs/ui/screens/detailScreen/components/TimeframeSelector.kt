@@ -1,12 +1,15 @@
 package com.cryptocompare.pairs.ui.screens.detailScreen.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,6 +18,8 @@ import androidx.compose.ui.res.stringResource
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.pairs.R
 import com.cryptocompare.ui.theme.Dimensions
+import com.cryptocompare.ui.theme.borderPrimary
+import com.cryptocompare.ui.theme.textSecondary
 
 @Composable
 fun TimeframeSelector(
@@ -30,15 +35,42 @@ fun TimeframeSelector(
         horizontalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
     ) {
         ChartTimeframe.entries.forEach { timeframe ->
-            FilterChip(
-                selected = timeframe == selected,
-                onClick = { onTimeframeSelected(timeframe) },
-                label = { Text(stringResource(timeframe.labelRes())) },
-                colors =
-                    FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
+            val isSelected = timeframe == selected
+            val shape = RoundedCornerShape(Dimensions.Radius.full)
+
+            Text(
+                text = stringResource(timeframe.labelRes()),
+                style = MaterialTheme.typography.labelMedium,
+                color =
+                    if (isSelected) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.textSecondary
+                    },
+                modifier =
+                    Modifier
+                        .background(
+                            color =
+                                if (isSelected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.background
+                                },
+                            shape = shape,
+                        ).border(
+                            width = Dimensions.Border.thin,
+                            color =
+                                if (isSelected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.borderPrimary
+                                },
+                            shape = shape,
+                        ).clickable { onTimeframeSelected(timeframe) }
+                        .padding(
+                            horizontal = Dimensions.Padding.chipHorizontal,
+                            vertical = Dimensions.Padding.chipVertical,
+                        ),
             )
         }
     }

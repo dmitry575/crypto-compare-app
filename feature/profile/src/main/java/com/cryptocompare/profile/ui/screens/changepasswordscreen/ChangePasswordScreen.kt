@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -30,7 +31,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cryptocompare.profile.R
 import com.cryptocompare.profile.util.ChangePasswordError
-import com.cryptocompare.profile.util.ProfileConstants
 import com.cryptocompare.profile.viewmodel.changepasswordviewmodel.ChangePasswordViewModel
 import com.cryptocompare.ui.components.AppPrimaryButton
 import com.cryptocompare.ui.components.AppTextField
@@ -106,7 +106,7 @@ fun ChangePasswordScreen(
                 value = uiState.currentPassword,
                 onValueChange = viewModel::onCurrentPasswordChange,
                 placeholder = stringResource(R.string.change_password_current),
-                leadingIcon = ProfileConstants.ChangePassword.FIELD_ICON,
+                leadingIcon = Icons.Outlined.Lock,
                 keyboardType = KeyboardType.Password,
                 isPassword = true,
                 isError = uiState.validationError == ChangePasswordError.CURRENT_PASSWORD_EMPTY,
@@ -116,7 +116,7 @@ fun ChangePasswordScreen(
                 value = uiState.newPassword,
                 onValueChange = viewModel::onNewPasswordChange,
                 placeholder = stringResource(R.string.change_password_new),
-                leadingIcon = ProfileConstants.ChangePassword.FIELD_ICON,
+                leadingIcon = Icons.Outlined.Lock,
                 keyboardType = KeyboardType.Password,
                 isPassword = true,
                 isError = uiState.validationError == ChangePasswordError.NEW_PASSWORD_TOO_WEAK,
@@ -132,7 +132,7 @@ fun ChangePasswordScreen(
                 value = uiState.confirmPassword,
                 onValueChange = viewModel::onConfirmPasswordChange,
                 placeholder = stringResource(R.string.change_password_confirm),
-                leadingIcon = ProfileConstants.ChangePassword.FIELD_ICON,
+                leadingIcon = Icons.Outlined.Lock,
                 keyboardType = KeyboardType.Password,
                 isPassword = true,
                 isError = uiState.validationError == ChangePasswordError.PASSWORDS_DO_NOT_MATCH,

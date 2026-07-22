@@ -22,3 +22,6 @@ keystore/
 
 
 
+
+# Kotlin build artifacts
+.kotlin/

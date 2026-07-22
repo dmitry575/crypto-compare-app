@@ -5,9 +5,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -15,25 +13,24 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
@@ -41,13 +38,17 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.cryptocompare.helpers.toUserMessage
 import com.cryptocompare.pairs.R
+import com.cryptocompare.pairs.ui.screens.mainScreen.components.EmptyState
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.ErrorState
-import com.cryptocompare.pairs.ui.screens.mainScreen.components.ListHeader
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairRow
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairRowSkeleton
+import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairsSearchField
 import com.cryptocompare.pairs.viewmodel.mainViewModel.MainViewModel
+import com.cryptocompare.ui.components.AppSegmentedControl
 import com.cryptocompare.ui.theme.Dimensions
+import com.cryptocompare.ui.theme.bgCard
 import com.cryptocompare.ui.theme.bgPrimary
+import com.cryptocompare.ui.theme.divider
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlin.math.ceil
@@ -122,10 +123,13 @@ fun MainScreen(
                 title = {
                     Text(
                         text = stringResource(R.string.pairs_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.headlineMedium,
                     )
                 },
+                colors =
+                    TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.bgPrimary,
+                    ),
                 actions = {
                     IconButton(onClick = onProfileClick) {
                         Icon(
@@ -153,33 +157,26 @@ fun MainScreen(
                     },
             verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.md),
         ) {
-            OutlinedTextField(
-                value = uiState.value.searchQuery,
-                onValueChange = viewModel::onSearchQueryChange,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                label = { Text(stringResource(R.string.pairs_search_label)) },
+            PairsSearchField(
+                query = uiState.value.searchQuery,
+                onQueryChange = viewModel::onSearchQueryChange,
             )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = stringResource(R.string.pairs_only_favorites),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Switch(
-                    checked = uiState.value.onlyFavourite,
-                    onCheckedChange = viewModel::onOnlyFavouriteChange,
-                )
-            }
+            // фильтр, а не настройка: тумблер с подписью читался как переключатель
+            // режима приложения, хотя выбирают, что показывать
+            AppSegmentedControl(
+                options = listOf(false, true),
+                selected = uiState.value.onlyFavourite,
+                onSelect = viewModel::onOnlyFavouriteChange,
+                label = { onlyFavourite ->
+                    stringResource(
+                        if (onlyFavourite) R.string.pairs_filter_favorites else R.string.pairs_filter_all,
+                    )
+                },
+            )
 
             when {
                 isLoading -> {
-                    ListHeader()
-
                     // скелетонов ровно столько, сколько влезает: высота строки фиксированная,
                     // иначе на маленьком экране строки сплющиваются
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -191,8 +188,11 @@ fun MainScreen(
                                 .coerceAtLeast(1)
 
                         LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(rowSpacing),
-                            modifier = Modifier.fillMaxSize(),
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .clip(MaterialTheme.shapes.medium)
+                                    .background(MaterialTheme.colorScheme.bgCard),
                         ) {
                             items(skeletonCount) {
                                 PairRowSkeleton(rowHeight = rowHeight)
@@ -208,13 +208,27 @@ fun MainScreen(
                     )
                 }
 
-                else -> {
-                    ListHeader()
+                pairItems.itemCount == 0 -> {
+                    EmptyState(
+                        message =
+                            if (uiState.value.onlyFavourite) {
+                                stringResource(R.string.pairs_empty_favorites)
+                            } else {
+                                stringResource(R.string.pairs_empty_search, uiState.value.searchQuery)
+                            },
+                    )
+                }
 
+                else -> {
+                    // один блок с разделителями вместо ряда отдельных карточек:
+                    // рамка вокруг каждой строки дробила список на 40 прямоугольников
                     LazyColumn(
                         state = lazyList,
-                        verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
-                        modifier = Modifier.fillMaxSize(),
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .clip(MaterialTheme.shapes.medium)
+                                .background(MaterialTheme.colorScheme.bgCard),
                     ) {
                         items(
                             count = pairItems.itemCount,
@@ -222,6 +236,15 @@ fun MainScreen(
                         ) { index ->
                             val pair = pairItems[index]
                             if (pair != null) {
+                                if (index > 0) {
+                                    HorizontalDivider(
+                                        modifier =
+                                            Modifier.padding(
+                                                start = Dimensions.Padding.listItemHorizontal,
+                                            ),
+                                        color = MaterialTheme.colorScheme.divider,
+                                    )
+                                }
                                 PairRow(
                                     pair = pair,
                                     rowHeight = Dimensions.Height.listItemSmall,

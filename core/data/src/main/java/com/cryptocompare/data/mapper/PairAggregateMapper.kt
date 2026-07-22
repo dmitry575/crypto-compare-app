@@ -16,4 +16,5 @@ fun PairAggregateRow.toPairUiItem(): PairUiItem =
                 .orEmpty(),
         minPrice = minPrice,
         maxPrice = maxPrice,
+        spreadPercent = spreadPercent,
     )

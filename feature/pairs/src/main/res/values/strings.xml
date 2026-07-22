@@ -3,11 +3,13 @@
 
     <!-- Main screen -->
     <string name="pairs_title">Symbols</string>
-    <string name="pairs_search_label">Search:</string>
-    <string name="pairs_only_favorites">Only favorites</string>
-    <string name="pairs_column_name">Name</string>
-    <string name="pairs_column_max">Max</string>
-    <string name="pairs_column_min">Min</string>
+    <string name="pairs_search_placeholder">Search pair</string>
+    <string name="pairs_filter_all">All</string>
+    <string name="pairs_filter_favorites">Favorites</string>
+    <string name="pairs_clear_search">Clear search</string>
+    <string name="pairs_spread">Spread between exchanges</string>
+    <string name="pairs_empty_favorites">No favorites yet. Tap the star on a pair to keep it here.</string>
+    <string name="pairs_empty_search">Nothing matches \u201c%1$s\u201d</string>
     <string name="pairs_open_profile">Profile</string>
     <string name="pairs_error_retry">Retry</string>
     <string name="pairs_add_to_favorites">Add to favorites</string>
@@ -15,12 +17,18 @@
 
     <!-- Detail screen -->
     <string name="pair_detail_back">Back</string>
-    <string name="pair_detail_lowest_ask">Lowest ask</string>
-    <string name="pair_detail_highest_bid">Highest bid</string>
+    <string name="pair_detail_spread_title">Spread between exchanges</string>
+    <string name="pair_detail_spread_title_single">Bid-ask spread</string>
+    <string name="pair_detail_buy_on">Buy on %1$s</string>
+    <string name="pair_detail_sell_on">Sell on %1$s</string>
+    <string name="pair_detail_spread_difference">Difference %1$s</string>
+    <string name="pair_detail_unknown_exchange">unknown</string>
     <string name="pair_detail_buy_price">Buy price</string>
     <string name="pair_detail_sell_price">Sell price</string>
     <string name="pair_detail_spread">Spread</string>
     <string name="pair_detail_no_chart_data">No chart data</string>
+    <string name="pair_detail_chart_source">Aggregate across all exchanges</string>
+    <string name="pair_detail_exchange_section">Exchange</string>
 
     <!-- Chart timeframes -->
     <string name="timeframe_m15">15m</string>

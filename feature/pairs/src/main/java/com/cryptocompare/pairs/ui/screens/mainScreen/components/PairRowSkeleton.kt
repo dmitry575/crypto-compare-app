@@ -1,86 +1,81 @@
 package com.cryptocompare.pairs.ui.screens.mainScreen.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.ui.theme.Dimensions
-import com.cryptocompare.ui.theme.borderPrimary
 import com.cryptocompare.ui.theme.shimmerBase
 
+/** Заглушка строки каталога: повторяет раскладку [PairRow], чтобы список не прыгал. */
 @Composable
 fun PairRowSkeleton(
     modifier: Modifier = Modifier,
     rowHeight: Dp? = null,
 ) {
-    val rowModifier =
-        if (rowHeight != null) {
-            modifier.height(rowHeight)
-        } else {
-            modifier
-        }
+    val rowModifier = if (rowHeight != null) modifier.height(rowHeight) else modifier
+    val shimmer = MaterialTheme.colorScheme.shimmerBase
+    val shape = RoundedCornerShape(Dimensions.Radius.sm)
 
-    Surface(
+    Row(
         modifier =
             rowModifier
                 .fillMaxWidth()
-                .border(
-                    width = Dimensions.Border.card,
-                    color = MaterialTheme.colorScheme.borderPrimary,
-                    shape = MaterialTheme.shapes.medium,
+                .padding(
+                    horizontal = Dimensions.Padding.listItemHorizontal,
+                    vertical = Dimensions.Padding.listItemVertical,
                 ),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surface,
+        horizontalArrangement = Arrangement.spacedBy(Dimensions.Gap.md),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
+        Box(
             modifier =
                 Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = Dimensions.Padding.listItemHorizontal,
-                        vertical = Dimensions.Padding.listItemVertical,
-                    ),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+                    .size(Dimensions.Crypto.pairBadge)
+                    .background(shimmer, shape),
+        )
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(Dimensions.Spacing.xxs),
         ) {
             Box(
                 modifier =
                     Modifier
-                        .weight(PairsConstants.MainScreen.TICKER_COLUMN_WEIGHT)
+                        .width(PairsConstants.MainScreen.skeletonTickerWidth)
                         .height(PairsConstants.MainScreen.skeletonTickerHeight)
-                        .background(MaterialTheme.colorScheme.shimmerBase, MaterialTheme.shapes.small),
+                        .background(shimmer, shape),
             )
-
-            Row(
-                modifier = Modifier.weight(PairsConstants.MainScreen.PRICE_COLUMN_WEIGHT),
-                horizontalArrangement = Arrangement.spacedBy(Dimensions.Gap.md),
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .height(PairsConstants.MainScreen.skeletonPriceHeight)
-                            .background(MaterialTheme.colorScheme.shimmerBase, MaterialTheme.shapes.small),
-                )
-                Box(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .height(PairsConstants.MainScreen.skeletonPriceHeight)
-                            .background(MaterialTheme.colorScheme.shimmerBase, MaterialTheme.shapes.small),
-                )
-            }
+            Box(
+                modifier =
+                    Modifier
+                        .width(PairsConstants.MainScreen.skeletonSubtitleWidth)
+                        .height(PairsConstants.MainScreen.skeletonSubtitleHeight)
+                        .background(shimmer, shape),
+            )
         }
+
+        Box(
+            modifier =
+                Modifier
+                    .width(PairsConstants.MainScreen.skeletonPriceWidth)
+                    .height(PairsConstants.MainScreen.skeletonPriceHeight)
+                    .background(shimmer, shape),
+        )
+
+        Box(modifier = Modifier.size(Dimensions.TouchTarget.min))
     }
 }
