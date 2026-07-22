@@ -15,9 +15,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cryptocompare.auth.R
 import com.cryptocompare.auth.ui.components.AuthLogo
 import com.cryptocompare.auth.viewmodel.splashviewmodel.SplashViewModel
 import com.cryptocompare.ui.theme.Dimensions
@@ -27,19 +29,30 @@ import com.cryptocompare.ui.theme.bgPrimary
 fun SplashScreen(
     onNavigateHome: () -> Unit,
     onNavigateLogin: () -> Unit,
+    onNavigateOnboarding: () -> Unit,
     viewModel: SplashViewModel = hiltViewModel(),
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
 
-    LaunchedEffect(uiState.isCheckAuth, uiState.isAuthenticated, uiState.errorMessage) {
+    LaunchedEffect(
+        uiState.isCheckAuth,
+        uiState.isAuthenticated,
+        uiState.errorMessage,
+        uiState.shouldShowOnboarding,
+    ) {
         val authState = uiState.isAuthenticated
-        if (!uiState.isCheckAuth && uiState.errorMessage == null && authState != null) {
-            if (authState) {
-                onNavigateHome()
-            } else {
-                onNavigateLogin()
-            }
+        if (uiState.isCheckAuth || authState == null) return@LaunchedEffect
+
+        // онбординг идёт первым и при ошибке проверки входа тоже: он про продукт,
+        // а не про авторизацию, и сеть ему не нужна
+        if (uiState.shouldShowOnboarding) {
+            onNavigateOnboarding()
+            return@LaunchedEffect
         }
+
+        if (uiState.errorMessage != null) return@LaunchedEffect
+
+        if (authState) onNavigateHome() else onNavigateLogin()
     }
 
     Column(
@@ -54,7 +67,7 @@ fun SplashScreen(
         AuthLogo()
         Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
         Text(
-            text = "Crypto Compare",
+            text = stringResource(R.string.auth_app_name),
             style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.onBackground,
             fontWeight = FontWeight.Bold,

@@ -5,6 +5,7 @@ object DataConstants {
     object Preferences {
         const val FILE_NAME = "settings"
         const val THEME_KEY = "theme_preference"
+        const val ONBOARDING_SEEN_KEY = "onboarding_seen"
     }
 
     object Migrations {

@@ -6,6 +6,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import com.cryptocompare.auth.ui.screens.forgotpasswordscreen.ForgotPasswordScreen
 import com.cryptocompare.auth.ui.screens.loginscreen.LoginScreen
+import com.cryptocompare.auth.ui.screens.onboardingscreen.OnboardingScreen
 import com.cryptocompare.auth.ui.screens.registerscreen.RegisterScreen
 import com.cryptocompare.auth.ui.screens.splashscreen.SplashScreen
 import com.cryptocompare.helpers.navigateAndClearStack
@@ -48,6 +49,25 @@ fun NavGraphBuilder.authNavigation(
                 onNavigateHome = onAuthenticated,
                 onNavigateLogin = {
                     navController.navigateAndClearStack(AuthScreens.LoginScreen.route, AuthScreens.SplashScreen.route)
+                },
+                onNavigateOnboarding = {
+                    navController.navigateAndClearStack(
+                        AuthScreens.OnboardingScreen.route,
+                        AuthScreens.SplashScreen.route,
+                    )
+                },
+            )
+        }
+
+        composable(AuthScreens.OnboardingScreen.route) {
+            // после онбординга возвращаемся на сплеш: он уже знает про вход
+            // и разведёт на каталог или логин, а флаг к этому моменту записан
+            OnboardingScreen(
+                onDone = {
+                    navController.navigateAndClearStack(
+                        AuthScreens.SplashScreen.route,
+                        AuthScreens.OnboardingScreen.route,
+                    )
                 },
             )
         }

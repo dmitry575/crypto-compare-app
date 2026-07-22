@@ -1,5 +1,8 @@
 package com.cryptocompare.auth.util
 
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+
 /** Константы фичи auth. */
 object AuthConstants {
     /**
@@ -20,5 +23,11 @@ object AuthConstants {
         const val BAR_WIDTH_RATIO = 0.34f
         const val GAP_RATIO = 0.32f
         const val SHORT_BAR_RATIO = 0.62f
+    }
+
+    /** Онбординг: размеры индикатора страниц. */
+    object Onboarding {
+        val dotSize: Dp = 8.dp
+        val dotWidthActive: Dp = 24.dp
     }
 }
