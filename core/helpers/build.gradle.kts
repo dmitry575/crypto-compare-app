@@ -46,6 +46,9 @@ kotlin {
     }
 }
 dependencies {
+    // расширения над доменными моделями (isDark) — api, чтобы тип получателя
+    // был виден потребителям core:helpers
+    api(project(":core:model"))
     implementation(libs.hilt.navigation.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

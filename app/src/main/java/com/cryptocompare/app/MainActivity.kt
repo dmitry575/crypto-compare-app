@@ -10,7 +10,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.cryptocompare.app.navigation.AppNavigation
 import com.cryptocompare.app.viewmodel.ThemeViewModel
-import com.cryptocompare.model.settings.ThemePreference
+import com.cryptocompare.helpers.isDark
 import com.cryptocompare.ui.theme.CryptoCompareTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -30,10 +30,3 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-private fun ThemePreference.isDark(systemInDarkTheme: Boolean): Boolean =
-    when (this) {
-        ThemePreference.SYSTEM -> systemInDarkTheme
-        ThemePreference.LIGHT -> false
-        ThemePreference.DARK -> true
-    }
