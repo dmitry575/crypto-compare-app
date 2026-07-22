@@ -23,13 +23,13 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,7 +37,7 @@ import com.cryptocompare.pairs.R
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.CandlestickChart
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.ExchangeInfoCard
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.ExchangeSelector
-import com.cryptocompare.pairs.ui.screens.detailScreen.components.PriceSummaryRow
+import com.cryptocompare.pairs.ui.screens.detailScreen.components.SpreadBar
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.TimeframeSelector
 import com.cryptocompare.pairs.viewmodel.detailViewModel.DetailsViewModel
 import com.cryptocompare.ui.theme.Dimensions
@@ -63,11 +63,14 @@ fun DetailsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = state.ticker,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
+                        text = state.ticker.uppercase(),
+                        style = MaterialTheme.typography.headlineMedium,
                     )
                 },
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.bgPrimary,
+                    ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -127,11 +130,9 @@ fun DetailsScreen(
                             .padding(vertical = Dimensions.Padding.screenVertical),
                     verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.lg),
                 ) {
-                    // Сводка по ценам
-                    PriceSummaryRow(
-                        minPrice = state.exchanges.mapNotNull { it.priceSell ?: it.priceBuy }.minOrNull() ?: 0.0,
-                        maxPrice = state.exchanges.mapNotNull { it.priceBuy ?: it.priceSell }.maxOrNull() ?: 0.0,
-                        exchangeCount = state.exchanges.size,
+                    // Разброс между биржами — главный элемент экрана
+                    SpreadBar(
+                        exchanges = state.exchanges,
                         modifier = contentPadding,
                     )
 
