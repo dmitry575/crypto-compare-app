@@ -19,7 +19,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -40,9 +39,8 @@ import com.cryptocompare.ui.theme.textTertiary
  * Строка каталога.
  *
  * Колонок «Max/Min» больше нет: две цены одинакового веса заставляли вычитать
- * одно из другого в уме, хотя разброс — единственное, ради чего сюда заходят.
- * Теперь видно лучшую цену и готовый разброс, а число бирж под тикером
- * подсказывает, насколько этому разбросу можно верить.
+ * одно из другого в уме. Теперь видно цену и готовый спред — насколько широк
+ * рынок по этой паре.
  */
 @Composable
 fun PairRow(
@@ -71,29 +69,16 @@ fun PairRow(
     ) {
         PairBadge(base = base)
 
-        Column(
+        // числа бирж здесь нет: каталог отдаёт одну строку на тикер с общим
+        // providerId, и любой такой счётчик всегда показывал бы единицу
+        Text(
+            text = tickerLabel(pair.ticker, parts),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.textPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(Dimensions.Spacing.xxs),
-        ) {
-            Text(
-                text = tickerLabel(pair.ticker, parts),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text =
-                    pluralStringResource(
-                        R.plurals.pair_detail_exchange_count,
-                        pair.exchangeCount,
-                        pair.exchangeCount,
-                    ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.textTertiary,
-                maxLines = 1,
-            )
-        }
+        )
 
         Column(
             horizontalAlignment = Alignment.End,

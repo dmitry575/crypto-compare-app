@@ -36,11 +36,10 @@ class PairAggregateMapperTest {
     }
 
     @Test
-    fun `exchange count follows the distinct providers`() {
-        // GROUP_CONCAT повторяет биржу столько раз, сколько у неё символов пары
+    fun `repeated providers collapse to distinct ones`() {
         val item = row(providerIds = "10,10,20").toPairUiItem()
 
-        assertEquals(2, item.exchangeCount)
+        assertEquals(listOf(10, 20), item.providerIds)
     }
 
     @Test
@@ -49,7 +48,6 @@ class PairAggregateMapperTest {
         val item = row(providerIds = "0,10,-1").toPairUiItem()
 
         assertEquals(listOf(10), item.providerIds)
-        assertEquals(1, item.exchangeCount)
     }
 
     @Test
@@ -57,7 +55,7 @@ class PairAggregateMapperTest {
         val item = row(symbolIds = null, providerIds = null).toPairUiItem()
 
         assertTrue(item.symbolIds.isEmpty())
-        assertEquals(0, item.exchangeCount)
+        assertTrue(item.providerIds.isEmpty())
     }
 
     @Test

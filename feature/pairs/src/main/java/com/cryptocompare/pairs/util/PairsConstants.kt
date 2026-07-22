@@ -18,6 +18,7 @@ object PairsConstants {
 
         /** Сколько символов базовой валюты влезает в значок пары. */
         const val BADGE_MAX_CHARS = 4
+        const val TICKER_PREFIX = "$"
 
         // размеры заглушек повторяют реальные строки, иначе список дёргается
         val skeletonTickerWidth: Dp = 96.dp

@@ -35,7 +35,11 @@ internal fun PairBadge(
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = base.take(PairsConstants.MainScreen.BADGE_MAX_CHARS),
+            // ведущий «$» у мем-токенов не различает пары, а место занимает
+            text =
+                base
+                    .removePrefix(PairsConstants.MainScreen.TICKER_PREFIX)
+                    .take(PairsConstants.MainScreen.BADGE_MAX_CHARS),
             style = NumericType.Caption,
             color = MaterialTheme.colorScheme.primary,
             maxLines = 1,

@@ -18,6 +18,7 @@
     <!-- Detail screen -->
     <string name="pair_detail_back">Back</string>
     <string name="pair_detail_spread_title">Spread between exchanges</string>
+    <string name="pair_detail_spread_title_single">Bid-ask spread</string>
     <string name="pair_detail_buy_on">Buy on %1$s</string>
     <string name="pair_detail_sell_on">Sell on %1$s</string>
     <string name="pair_detail_spread_difference">Difference %1$s</string>

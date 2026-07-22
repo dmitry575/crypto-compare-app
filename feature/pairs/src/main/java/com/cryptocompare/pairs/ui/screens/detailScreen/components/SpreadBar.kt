@@ -69,8 +69,19 @@ internal fun SpreadBar(
                 ).padding(Dimensions.Padding.cardLarge),
         verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.md),
     ) {
+        // при одной бирже это не разброс между биржами, а её собственный спред
+        // между покупкой и продажей: числа те же, смысл другой
+        val crossExchange = exchanges.size > 1
+
         Text(
-            text = stringResource(R.string.pair_detail_spread_title),
+            text =
+                stringResource(
+                    if (crossExchange) {
+                        R.string.pair_detail_spread_title
+                    } else {
+                        R.string.pair_detail_spread_title_single
+                    },
+                ),
             style = OverlineType,
             color = MaterialTheme.colorScheme.textTertiary,
         )
@@ -81,14 +92,24 @@ internal fun SpreadBar(
             verticalAlignment = Alignment.Bottom,
         ) {
             SpreadEnd(
-                label = stringResource(R.string.pair_detail_buy_on, exchangeName(cheapest)),
+                label =
+                    if (crossExchange) {
+                        stringResource(R.string.pair_detail_buy_on, exchangeName(cheapest))
+                    } else {
+                        stringResource(R.string.pair_detail_buy_price)
+                    },
                 price = buyPrice.toPriceString(),
                 color = MaterialTheme.colorScheme.cryptoSuccess,
                 alignment = TextAlign.Start,
                 modifier = Modifier.weight(1f),
             )
             SpreadEnd(
-                label = stringResource(R.string.pair_detail_sell_on, exchangeName(dearest)),
+                label =
+                    if (crossExchange) {
+                        stringResource(R.string.pair_detail_sell_on, exchangeName(dearest))
+                    } else {
+                        stringResource(R.string.pair_detail_sell_price)
+                    },
                 price = sellPrice.toPriceString(),
                 color = MaterialTheme.colorScheme.cryptoError,
                 alignment = TextAlign.End,
