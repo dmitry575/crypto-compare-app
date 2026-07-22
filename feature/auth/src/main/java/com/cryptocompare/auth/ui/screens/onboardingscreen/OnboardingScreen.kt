@@ -73,6 +73,7 @@ fun OnboardingScreen(
             ) { page ->
                 val slide = pages[page]
                 OnboardingSlide(
+                    page = slide,
                     title = stringResource(slide.titleRes),
                     text = stringResource(slide.textRes),
                 )

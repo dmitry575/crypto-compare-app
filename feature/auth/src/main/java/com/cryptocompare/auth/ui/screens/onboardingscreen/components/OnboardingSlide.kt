@@ -10,12 +10,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import com.cryptocompare.auth.ui.screens.onboardingscreen.OnboardingPage
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.textPrimary
 import com.cryptocompare.ui.theme.textSecondary
 
 @Composable
 internal fun OnboardingSlide(
+    page: OnboardingPage,
     title: String,
     text: String,
     modifier: Modifier = Modifier,
@@ -28,6 +30,8 @@ internal fun OnboardingSlide(
         verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.md, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        OnboardingIllustration(page = page)
+
         Text(
             text = title,
             style = MaterialTheme.typography.headlineMedium,
