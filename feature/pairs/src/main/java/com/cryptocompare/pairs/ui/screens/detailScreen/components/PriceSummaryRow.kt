@@ -26,9 +26,10 @@ fun PriceSummaryRow(
     minPrice: Double,
     maxPrice: Double,
     exchangeCount: Int,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(Dimensions.Gap.md),
         verticalAlignment = Alignment.Bottom,
     ) {

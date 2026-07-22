@@ -113,6 +113,10 @@ fun DetailsScreen(
             }
 
             else -> {
+                // отступ по краям висит на каждом блоке, а не на колонке: график
+                // тогда занимает всю ширину экрана, а не остаток после полей
+                val contentPadding = Modifier.padding(horizontal = Dimensions.Padding.screenHorizontal)
+
                 Column(
                     modifier =
                         Modifier
@@ -120,7 +124,6 @@ fun DetailsScreen(
                             .background(MaterialTheme.colorScheme.bgPrimary)
                             .padding(paddingValues)
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = Dimensions.Padding.screenHorizontal)
                             .padding(vertical = Dimensions.Padding.screenVertical),
                     verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.lg),
                 ) {
@@ -129,6 +132,7 @@ fun DetailsScreen(
                         minPrice = state.exchanges.mapNotNull { it.priceSell ?: it.priceBuy }.minOrNull() ?: 0.0,
                         maxPrice = state.exchanges.mapNotNull { it.priceBuy ?: it.priceSell }.maxOrNull() ?: 0.0,
                         exchangeCount = state.exchanges.size,
+                        modifier = contentPadding,
                     )
 
                     // Выбор биржи (если больше одной)
@@ -137,6 +141,7 @@ fun DetailsScreen(
                             exchanges = state.exchanges,
                             selectedIndex = state.selectedExchangeIndex,
                             onExchangeSelected = viewModel::onExchangeSelected,
+                            modifier = contentPadding,
                         )
                     }
 
@@ -144,9 +149,10 @@ fun DetailsScreen(
                     TimeframeSelector(
                         selected = state.timeframe,
                         onTimeframeSelected = viewModel::onTimeframeSelected,
+                        modifier = contentPadding,
                     )
 
-                    // Свечной график, общий по всем биржам (агрегат)
+                    // Свечной график, общий по всем биржам (агрегат) — во всю ширину
                     Box(
                         modifier =
                             Modifier
@@ -175,7 +181,7 @@ fun DetailsScreen(
 
                     // Карточка с информацией о бирже
                     state.selectedExchange?.let { exchange ->
-                        ExchangeInfoCard(exchange = exchange)
+                        ExchangeInfoCard(exchange = exchange, modifier = contentPadding)
                     }
 
                     Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
