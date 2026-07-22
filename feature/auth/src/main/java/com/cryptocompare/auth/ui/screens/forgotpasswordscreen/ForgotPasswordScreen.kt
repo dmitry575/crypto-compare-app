@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -94,7 +96,7 @@ fun ForgotPasswordScreen(
                     value = uiState.email,
                     onValueChange = viewModel::onEmailChange,
                     placeholder = stringResource(R.string.forgot_password_email),
-                    leadingIcon = AuthConstants.ForgotPassword.EMAIL_ICON,
+                    leadingIcon = Icons.Outlined.MailOutline,
                     keyboardType = KeyboardType.Email,
                     isError = uiState.errorMessage != null,
                 )

@@ -17,6 +17,5 @@ object ProfileConstants {
 
     object ChangePassword {
         /** Ведущая иконка полей ввода — как на экранах авторизации. */
-        const val FIELD_ICON = "🔒"
     }
 }

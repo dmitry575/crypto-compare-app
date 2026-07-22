@@ -11,8 +11,6 @@ object AuthConstants {
     }
 
     object ForgotPassword {
-        const val EMAIL_ICON = "📧"
-
         /** Подзаголовок приглушён относительно основного текста. */
         const val SUBTITLE_ALPHA = 0.7f
     }

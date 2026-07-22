@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -87,7 +90,7 @@ fun RegisterScreen(
                 value = uiState.email,
                 onValueChange = viewModel::onEmailChange,
                 placeholder = "Email",
-                leadingIcon = "📧",
+                leadingIcon = Icons.Outlined.MailOutline,
                 keyboardType = KeyboardType.Email,
                 isError = uiState.errorMessage != null && uiState.email.isBlank(),
             )
@@ -98,7 +101,7 @@ fun RegisterScreen(
                 value = uiState.password,
                 onValueChange = viewModel::onPasswordChange,
                 placeholder = "Password",
-                leadingIcon = "🔒",
+                leadingIcon = Icons.Outlined.Lock,
                 keyboardType = KeyboardType.Password,
                 isPassword = true,
                 isError = uiState.errorMessage != null && uiState.password.isBlank(),
@@ -116,7 +119,7 @@ fun RegisterScreen(
                 value = uiState.confirmPassword,
                 onValueChange = viewModel::onConfirmPasswordChange,
                 placeholder = "Confirm Password",
-                leadingIcon = "🔒",
+                leadingIcon = Icons.Outlined.Lock,
                 keyboardType = KeyboardType.Password,
                 isPassword = true,
                 isError = uiState.errorMessage != null && uiState.confirmPassword.isBlank(),
