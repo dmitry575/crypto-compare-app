@@ -15,9 +15,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import com.cryptocompare.helpers.arbitragePercent
+import com.cryptocompare.helpers.spreadPercent
 import com.cryptocompare.helpers.toPercentString
 import com.cryptocompare.helpers.toPriceString
 import com.cryptocompare.model.provider.ProviderDetail
@@ -25,12 +28,14 @@ import com.cryptocompare.pairs.R
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.NumericType
 import com.cryptocompare.ui.theme.OverlineType
+import com.cryptocompare.ui.theme.accentSoft
 import com.cryptocompare.ui.theme.bgCard
 import com.cryptocompare.ui.theme.borderPrimary
 import com.cryptocompare.ui.theme.cryptoError
 import com.cryptocompare.ui.theme.cryptoSuccess
 import com.cryptocompare.ui.theme.textPrimary
 import com.cryptocompare.ui.theme.textTertiary
+import kotlin.math.abs
 
 /**
  * Разброс цены между биржами — то, ради чего приложение и существует.
@@ -52,8 +57,20 @@ internal fun SpreadBar(
     val buyPrice = cheapest?.let { it.priceSell ?: it.priceBuy } ?: return
     val sellPrice = dearest?.let { it.priceBuy ?: it.priceSell } ?: return
 
-    val difference = sellPrice - buyPrice
-    val percent = if (buyPrice > 0.0) difference * PERCENT_SCALE / buyPrice else 0.0
+    val crossExchange = exchanges.size > 1
+
+    // Две разные величины, и путать их нельзя. При нескольких биржах это
+    // арбитраж — знак значим, отрицательный означает «заработать нельзя».
+    // При одной бирже это ширина рынка, и формула обязана совпадать с SQL
+    // из SymbolDao.pagingPairs(): иначе список показывает 1.16%,
+    // а этот экран -1.15% для той же пары.
+    val percent =
+        if (crossExchange) {
+            arbitragePercent(lowestAsk = buyPrice, highestBid = sellPrice)
+        } else {
+            spreadPercent(low = minOf(buyPrice, sellPrice), high = maxOf(buyPrice, sellPrice))
+        }
+    val difference = if (crossExchange) sellPrice - buyPrice else abs(sellPrice - buyPrice)
 
     Column(
         modifier =
@@ -69,10 +86,6 @@ internal fun SpreadBar(
                 ).padding(Dimensions.Padding.cardLarge),
         verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.md),
     ) {
-        // при одной бирже это не разброс между биржами, а её собственный спред
-        // между покупкой и продажей: числа те же, смысл другой
-        val crossExchange = exchanges.size > 1
-
         Text(
             text =
                 stringResource(
@@ -99,7 +112,15 @@ internal fun SpreadBar(
                         stringResource(R.string.pair_detail_buy_price)
                     },
                 price = buyPrice.toPriceString(),
-                color = MaterialTheme.colorScheme.cryptoSuccess,
+                // цветом красим только арбитраж, где зелёный «дёшево» против
+                // красного «дорого» что-то значит. У бид-аска покупка наоборот
+                // выше продажи, и зелёный на большем числе только путал бы
+                color =
+                    if (crossExchange) {
+                        MaterialTheme.colorScheme.cryptoSuccess
+                    } else {
+                        MaterialTheme.colorScheme.textPrimary
+                    },
                 alignment = TextAlign.Start,
                 modifier = Modifier.weight(1f),
             )
@@ -111,7 +132,12 @@ internal fun SpreadBar(
                         stringResource(R.string.pair_detail_sell_price)
                     },
                 price = sellPrice.toPriceString(),
-                color = MaterialTheme.colorScheme.cryptoError,
+                color =
+                    if (crossExchange) {
+                        MaterialTheme.colorScheme.cryptoError
+                    } else {
+                        MaterialTheme.colorScheme.textPrimary
+                    },
                 alignment = TextAlign.End,
                 modifier = Modifier.weight(1f),
             )
@@ -124,12 +150,16 @@ internal fun SpreadBar(
                     .height(Dimensions.Crypto.spreadTrack)
                     .background(
                         brush =
-                            Brush.horizontalGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.cryptoSuccess,
-                                    MaterialTheme.colorScheme.cryptoError,
-                                ),
-                            ),
+                            if (crossExchange) {
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.cryptoSuccess,
+                                        MaterialTheme.colorScheme.cryptoError,
+                                    ),
+                                )
+                            } else {
+                                SolidColor(MaterialTheme.colorScheme.accentSoft)
+                            },
                         shape = RoundedCornerShape(Dimensions.Radius.full),
                     ),
             content = {},
@@ -194,5 +224,3 @@ private fun SpreadEnd(
 @Composable
 private fun exchangeName(detail: ProviderDetail?): String =
     detail?.provider?.name ?: stringResource(R.string.pair_detail_unknown_exchange)
-
-private const val PERCENT_SCALE = 100.0
