@@ -155,7 +155,7 @@ class CryptoCompareRepositoryImpl
                             ?: throw IllegalStateException("Unsupported ticker format: $ticker")
 
                     val spec = timeframe.toRequestSpec()
-                    val limit = CryptoCompareRepositoryConstants.CANDLE_LIMIT
+                    val limit = spec.limit
 
                     val response =
                         when (spec.resolution) {

@@ -4,6 +4,7 @@ import com.cryptocompare.data.mapper.toRequestSpec
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.model.chart.HistoryResolution
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ChartTimeframeMapperTest {
@@ -32,4 +33,20 @@ class ChartTimeframeMapperTest {
         assertEquals(HistoryResolution.DAY, w1.resolution)
         assertEquals(7, w1.aggregate)
     }
+
+    @Test
+    fun `every timeframe asks for a depth within the api limit`() {
+        ChartTimeframe.entries.forEach { timeframe ->
+            val limit = timeframe.toRequestSpec().limit
+            assertTrue("$timeframe requests $limit candles", limit in 1..MIN_API_MAX_LIMIT)
+        }
+    }
+
+    @Test
+    fun `daily timeframe covers about a year`() {
+        assertEquals(365, ChartTimeframe.D1.toRequestSpec().limit)
+    }
 }
+
+/** Потолок min-api на число точек в одном запросе. */
+private const val MIN_API_MAX_LIMIT = 2000

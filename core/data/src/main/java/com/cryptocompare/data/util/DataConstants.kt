@@ -32,4 +32,26 @@ object DataConstants {
         const val ERROR_RESPONSE = "Error"
         const val UNKNOWN_ERROR = "Unknown error"
     }
+
+    /**
+     * Сколько свечей просим для каждого масштаба. Одной константой на все масштабы
+     * не обойтись: 365 свечей — это год на дневном ряде, но четверо суток на 15m.
+     * Потолок min-api — 2000 точек за запрос.
+     */
+    object HistoryDepth {
+        /** Двое суток. */
+        const val M15 = 192
+
+        /** Неделя. */
+        const val H1 = 168
+
+        /** Месяц. */
+        const val H4 = 180
+
+        /** Год. */
+        const val D1 = 365
+
+        /** Пять лет. */
+        const val W1 = 260
+    }
 }
