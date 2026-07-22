@@ -15,16 +15,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cryptocompare.auth.ui.components.AuthLogo
 import com.cryptocompare.auth.viewmodel.splashviewmodel.SplashViewModel
 import com.cryptocompare.ui.theme.Dimensions
-import com.cryptocompare.ui.theme.GradientBackgroundEndDark
-import com.cryptocompare.ui.theme.GradientBackgroundMiddleDark
-import com.cryptocompare.ui.theme.GradientBackgroundStartDark
+import com.cryptocompare.ui.theme.bgPrimary
 
 @Composable
 fun SplashScreen(
@@ -49,17 +46,8 @@ fun SplashScreen(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(
-                    brush =
-                        Brush.verticalGradient(
-                            colors =
-                                listOf(
-                                    GradientBackgroundStartDark,
-                                    GradientBackgroundMiddleDark,
-                                    GradientBackgroundEndDark,
-                                ),
-                        ),
-                ).padding(Dimensions.Padding.screen),
+                .background(MaterialTheme.colorScheme.bgPrimary)
+                .padding(Dimensions.Padding.screen),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

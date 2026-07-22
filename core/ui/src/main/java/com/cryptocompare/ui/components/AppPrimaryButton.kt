@@ -1,48 +1,45 @@
 package com.cryptocompare.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import com.cryptocompare.ui.theme.CryptoGradients
 import com.cryptocompare.ui.theme.Dimensions
-import com.cryptocompare.ui.theme.inputBorder
+import com.cryptocompare.ui.theme.bgSunk
+import com.cryptocompare.ui.theme.textDisabled
 
+/**
+ * Главная кнопка экрана. Заливка сплошная: градиент был единственным местом,
+ * где встречался второй цвет палитры, и ради него держался целый набор токенов.
+ */
 @Composable
 fun AppPrimaryButton(
     text: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val colors =
-        if (enabled) {
-            CryptoGradients.primary
-        } else {
-            listOf(MaterialTheme.colorScheme.inputBorder, MaterialTheme.colorScheme.inputBorder)
-        }
-
-    Box(
+    Button(
+        onClick = onClick,
+        enabled = enabled,
         modifier =
-            Modifier
+            modifier
                 .fillMaxWidth()
-                .height(Dimensions.Height.button)
-                .background(
-                    brush = Brush.horizontalGradient(colors),
-                    shape = MaterialTheme.shapes.large,
-                ).clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
+                .height(Dimensions.Height.button),
+        shape = RoundedCornerShape(Dimensions.Radius.button),
+        colors =
+            ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                disabledContainerColor = MaterialTheme.colorScheme.bgSunk,
+                disabledContentColor = MaterialTheme.colorScheme.textDisabled,
+            ),
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onPrimary,
-        )
+        Text(text = text, style = MaterialTheme.typography.labelLarge)
     }
 }

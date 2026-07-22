@@ -11,114 +11,86 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 /**
- * Dark Color Scheme for Crypto Compare
+ * Акцент один и тот же в primary и secondary: раньше secondary был фиолетовым,
+ * и два соседних ряда чипов на детальном экране красились в разные цвета просто
+ * потому, что брали разные роли. Пока роли совпадают, такое не повторится.
  */
 internal val CryptoDarkColorScheme =
     darkColorScheme(
-        // Primary colors
-        primary = ElectricCyan,
-        onPrimary = Color.White,
-        primaryContainer = ElectricCyanDark,
-        onPrimaryContainer = Color.White,
-        // Secondary colors
-        secondary = CosmicPurple,
-        onSecondary = Color.White,
-        secondaryContainer = CosmicPurpleLight,
-        onSecondaryContainer = Color.White,
-        // Tertiary colors (for accent elements)
-        tertiary = Success,
-        onTertiary = Color.White,
-        tertiaryContainer = SuccessDark,
-        onTertiaryContainer = Color.White,
-        // Background colors
-        background = BgPrimaryDark,
-        onBackground = TextPrimaryDark,
-        // Surface colors
-        surface = BgSecondaryDark,
-        onSurface = TextPrimaryDark,
-        surfaceVariant = BgTertiaryDark,
-        onSurfaceVariant = TextSecondaryDark,
-        // Container colors
-        surfaceContainer = BgCardDark,
+        primary = AccentDark,
+        onPrimary = OnAccentDark,
+        primaryContainer = AccentSoftDark,
+        onPrimaryContainer = AccentDark,
+        secondary = AccentDark,
+        onSecondary = OnAccentDark,
+        secondaryContainer = AccentSoftDark,
+        onSecondaryContainer = AccentDark,
+        tertiary = AccentDark,
+        onTertiary = OnAccentDark,
+        background = GroundDark,
+        onBackground = InkDark,
+        surface = SurfaceDark,
+        onSurface = InkDark,
+        surfaceVariant = SunkDark,
+        onSurfaceVariant = Ink2Dark,
+        surfaceContainer = SurfaceDark,
         surfaceContainerHigh = SurfaceDark,
-        surfaceContainerHighest = BgTertiaryDark,
-        surfaceContainerLow = BgSecondaryDark,
-        surfaceContainerLowest = BgPrimaryDark,
-        // Inverse colors
-        inverseSurface = TextPrimaryDark,
-        inverseOnSurface = BgPrimaryDark,
-        inversePrimary = ElectricCyanLight,
-        // Error colors
-        error = Error,
-        onError = Color.White,
-        errorContainer = ErrorDark,
-        onErrorContainer = Color.White,
-        // Outline colors
-        outline = BorderPrimaryDark,
-        outlineVariant = BorderSecondaryDark,
-        // Scrim
+        surfaceContainerHighest = SunkDark,
+        surfaceContainerLow = GroundDark,
+        surfaceContainerLowest = SunkDark,
+        inverseSurface = InkDark,
+        inverseOnSurface = GroundDark,
+        inversePrimary = AccentLight,
+        error = DownDark,
+        onError = OnAccentDark,
+        errorContainer = DownSoftDark,
+        onErrorContainer = DownDark,
+        outline = LineDark,
+        outlineVariant = LineSoftDark,
         scrim = ScrimDark,
-        // Surface tint
-        surfaceTint = ElectricCyan,
+        surfaceTint = AccentDark,
     )
 
-/**
- * Light Color Scheme для Crypto Compare
- */
 internal val CryptoLightColorScheme =
     lightColorScheme(
-        // Primary colors
-        primary = ElectricCyan,
-        onPrimary = Color.White,
-        primaryContainer = ElectricCyanLight,
-        onPrimaryContainer = TextPrimaryLight,
-        // Secondary colors
-        secondary = CosmicPurple,
-        onSecondary = Color.White,
-        secondaryContainer = CosmicPurpleLight,
-        onSecondaryContainer = TextPrimaryLight,
-        // Tertiary colors
-        tertiary = SuccessLight,
-        onTertiary = Color.White,
-        tertiaryContainer = Success,
-        onTertiaryContainer = TextPrimaryLight,
-        // Background colors
-        background = BgPrimaryLight,
-        onBackground = TextPrimaryLight,
-        // Surface colors
-        surface = BgSecondaryLight,
-        onSurface = TextPrimaryLight,
-        surfaceVariant = BgTertiaryLight,
-        onSurfaceVariant = TextSecondaryLight,
-        // Container colors
-        surfaceContainer = BgCardLight,
+        primary = AccentLight,
+        onPrimary = OnAccentLight,
+        primaryContainer = AccentSoftLight,
+        onPrimaryContainer = AccentLight,
+        secondary = AccentLight,
+        onSecondary = OnAccentLight,
+        secondaryContainer = AccentSoftLight,
+        onSecondaryContainer = AccentLight,
+        tertiary = AccentLight,
+        onTertiary = OnAccentLight,
+        background = GroundLight,
+        onBackground = InkLight,
+        surface = SurfaceLight,
+        onSurface = InkLight,
+        surfaceVariant = SunkLight,
+        onSurfaceVariant = Ink2Light,
+        surfaceContainer = SurfaceLight,
         surfaceContainerHigh = SurfaceLight,
-        surfaceContainerHighest = BgTertiaryLight,
-        surfaceContainerLow = BgSecondaryLight,
-        surfaceContainerLowest = BgPrimaryLight,
-        // Inverse colors
-        inverseSurface = TextPrimaryLight,
-        inverseOnSurface = BgPrimaryLight,
-        inversePrimary = ElectricCyan,
-        // Error colors
-        error = ErrorLight,
-        onError = Color.White,
-        errorContainer = Error,
-        onErrorContainer = TextPrimaryLight,
-        // Outline colors
-        outline = BorderPrimaryLight,
-        outlineVariant = BorderSecondaryLight,
-        // Scrim
+        surfaceContainerHighest = SunkLight,
+        surfaceContainerLow = GroundLight,
+        surfaceContainerLowest = SunkLight,
+        inverseSurface = InkLight,
+        inverseOnSurface = GroundLight,
+        inversePrimary = AccentDark,
+        error = DownLight,
+        onError = OnAccentLight,
+        errorContainer = DownSoftLight,
+        onErrorContainer = DownLight,
+        outline = LineLight,
+        outlineVariant = LineSoftLight,
         scrim = ScrimLight,
-        // Surface tint
-        surfaceTint = ElectricCyan,
+        surfaceTint = AccentLight,
     )
 
 @Composable
@@ -142,14 +114,10 @@ fun CryptoCompareTheme(
         SideEffect {
             val window = (view.context as Activity).window
 
+            // системные панели сливаются с фоном экрана: отдельного цвета
+            // для них нет, иначе внизу появляется полоса чужого оттенка
             window.statusBarColor = colorScheme.background.toArgb()
-
-            window.navigationBarColor =
-                if (darkTheme) {
-                    BottomNavBackgroundDark.toArgb()
-                } else {
-                    BottomNavBackgroundLight.toArgb()
-                }
+            window.navigationBarColor = colorScheme.background.toArgb()
 
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
             WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
@@ -162,6 +130,7 @@ fun CryptoCompareTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = CryptoTypography,
+            shapes = CryptoShapes,
             content = content,
         )
     }

@@ -15,9 +15,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import com.cryptocompare.ui.theme.CryptoGradients
 import com.cryptocompare.ui.theme.Dimensions
+import com.cryptocompare.ui.theme.borderPrimary
 import com.cryptocompare.ui.theme.inputBackground
 import com.cryptocompare.ui.theme.textPrimary
 
@@ -26,8 +25,6 @@ fun AuthGoogleButton(
     text: String,
     onClick: () -> Unit,
 ) {
-    val borderGradient = Brush.horizontalGradient(CryptoGradients.primary)
-
     Row(
         modifier =
             Modifier
@@ -37,7 +34,7 @@ fun AuthGoogleButton(
                     color = MaterialTheme.colorScheme.inputBackground,
                     shape = RoundedCornerShape(Dimensions.Radius.button),
                 ).border(
-                    BorderStroke(Dimensions.Border.thin, borderGradient),
+                    BorderStroke(Dimensions.Border.thin, MaterialTheme.colorScheme.borderPrimary),
                     shape = RoundedCornerShape(Dimensions.Radius.button),
                 ).clickable(onClick = onClick)
                 .padding(horizontal = Dimensions.Padding.inputHorizontal),
