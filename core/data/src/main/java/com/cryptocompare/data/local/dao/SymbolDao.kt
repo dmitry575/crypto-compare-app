@@ -24,7 +24,13 @@ interface SymbolDao {
             GROUP_CONCAT(id) AS symbolIds,
             GROUP_CONCAT(providerId) AS providerIds,
             MIN(MIN(priceBuy, priceSell)) AS minPrice,
-            MAX(MAX(priceBuy, priceSell)) AS maxPrice
+            MAX(MAX(priceBuy, priceSell)) AS maxPrice,
+            CASE
+                WHEN MIN(MIN(priceBuy, priceSell)) > 0
+                THEN (MAX(MAX(priceBuy, priceSell)) - MIN(MIN(priceBuy, priceSell)))
+                     * 100.0 / MIN(MIN(priceBuy, priceSell))
+                ELSE 0
+            END AS spreadPercent
         FROM symbols
         WHERE ticker IS NOT NULL AND TRIM(ticker) != ''
             AND (:query = '' OR ticker LIKE '%' || :query || '%')

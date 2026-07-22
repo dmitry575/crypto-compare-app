@@ -62,5 +62,6 @@ class LoadPairsUseCaseTest {
             providerIds = listOf(1),
             minPrice = 1.0,
             maxPrice = 2.0,
+            spreadPercent = 100.0,
         )
 }
