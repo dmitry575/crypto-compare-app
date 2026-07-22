@@ -1,5 +1,6 @@
 package com.cryptocompare.pairs.ui.screens.detailScreen.components
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -8,6 +9,10 @@ import com.cryptocompare.helpers.toPriceString
 import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.pairs.util.PairsConstants
+import com.cryptocompare.ui.theme.chartNegative
+import com.cryptocompare.ui.theme.chartPositive
+import com.cryptocompare.ui.theme.textSecondary
+import com.cryptocompare.ui.theme.textTertiary
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.Scroll
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
@@ -19,6 +24,9 @@ import com.patrykandpatrick.vico.compose.cartesian.data.candlestickSeries
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberCandlestickCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
+import com.patrykandpatrick.vico.compose.common.ProvideVicoTheme
+import com.patrykandpatrick.vico.compose.common.VicoTheme
+import com.patrykandpatrick.vico.compose.m3.common.rememberM3VicoTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -70,21 +78,38 @@ fun CandlestickChart(
             }
         }
 
-    CartesianChartHost(
-        chart =
-            rememberCartesianChart(
-                rememberCandlestickCartesianLayer(
-                    rangeProvider = rangeProvider,
-                    minCandleBodyHeight = PairsConstants.Chart.minCandleBodyHeight,
+    // Без своей темы vico берёт палитру по isSystemInDarkTheme(), а не по выбору
+    // пользователя: при системной светлой и тёмной теме в приложении оси рисовались
+    // почти чёрным по тёмному фону. Цвета берём из colorScheme — он уже учитывает выбор.
+    val chartTheme =
+        rememberM3VicoTheme(
+            candlestickCartesianLayerColors =
+                VicoTheme.CandlestickCartesianLayerColors(
+                    bullish = MaterialTheme.colorScheme.chartPositive,
+                    neutral = MaterialTheme.colorScheme.textTertiary,
+                    bearish = MaterialTheme.colorScheme.chartNegative,
                 ),
-                startAxis = VerticalAxis.rememberStart(valueFormatter = priceFormatter),
-                bottomAxis = HorizontalAxis.rememberBottom(valueFormatter = timeFormatter),
-            ),
-        modelProducer = modelProducer,
-        modifier = modifier,
-        // открываем на свежих свечах, а не на самом старом крае
-        scrollState = rememberVicoScrollState(initialScroll = Scroll.Absolute.End),
-    )
+            lineColor = MaterialTheme.colorScheme.outline,
+            textColor = MaterialTheme.colorScheme.textSecondary,
+        )
+
+    ProvideVicoTheme(chartTheme) {
+        CartesianChartHost(
+            chart =
+                rememberCartesianChart(
+                    rememberCandlestickCartesianLayer(
+                        rangeProvider = rangeProvider,
+                        minCandleBodyHeight = PairsConstants.Chart.minCandleBodyHeight,
+                    ),
+                    startAxis = VerticalAxis.rememberStart(valueFormatter = priceFormatter),
+                    bottomAxis = HorizontalAxis.rememberBottom(valueFormatter = timeFormatter),
+                ),
+            modelProducer = modelProducer,
+            modifier = modifier,
+            // открываем на свежих свечах, а не на самом старом крае
+            scrollState = rememberVicoScrollState(initialScroll = Scroll.Absolute.End),
+        )
+    }
 }
 
 // внутри дня подписываем временем, на дневных/недельных — датой
