@@ -5,7 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
 import com.cryptocompare.domain.usecase.profile.DeleteAccountUseCase
 import com.cryptocompare.domain.usecase.profile.SignOutUseCase
+import com.cryptocompare.domain.usecase.settings.ObserveThemePreferenceUseCase
+import com.cryptocompare.domain.usecase.settings.SetThemePreferenceUseCase
 import com.cryptocompare.helpers.toUserMessage
+import com.cryptocompare.model.settings.ThemePreference
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,12 +23,19 @@ class ProfileViewModel
         private val getCurrentUserUseCase: GetCurrentUserUseCase,
         private val signOutUseCase: SignOutUseCase,
         private val deleteAccountUseCase: DeleteAccountUseCase,
+        private val setThemePreferenceUseCase: SetThemePreferenceUseCase,
+        observeThemePreferenceUseCase: ObserveThemePreferenceUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ProfileUiState())
         val uiState = _uiState.asStateFlow()
 
         init {
             loadUser()
+            observeTheme(observeThemePreferenceUseCase)
+        }
+
+        fun onThemePreferenceChange(preference: ThemePreference) {
+            viewModelScope.launch { setThemePreferenceUseCase(preference) }
         }
 
         fun onSignOutClick() {
@@ -68,6 +78,14 @@ class ProfileViewModel
 
         fun onErrorShown() {
             _uiState.update { uiState -> uiState.copy(errorMessage = null) }
+        }
+
+        private fun observeTheme(observeThemePreferenceUseCase: ObserveThemePreferenceUseCase) {
+            viewModelScope.launch {
+                observeThemePreferenceUseCase().collect { preference ->
+                    _uiState.update { uiState -> uiState.copy(themePreference = preference) }
+                }
+            }
         }
 
         private fun loadUser() {

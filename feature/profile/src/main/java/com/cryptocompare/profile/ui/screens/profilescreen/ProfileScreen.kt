@@ -13,7 +13,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.outlined.CurrencyExchange
-import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +39,7 @@ import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileComi
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileConfirmDialog
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileHeader
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileSectionTitle
+import com.cryptocompare.profile.ui.screens.profilescreen.components.ThemeSelector
 import com.cryptocompare.profile.viewmodel.profileviewmodel.ProfileViewModel
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.bgPrimary
@@ -169,9 +169,11 @@ fun ProfileScreen(
             Column(verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.xs)) {
                 ProfileSectionTitle(text = stringResource(R.string.profile_settings_section))
 
-                ProfileComingSoonRow(
-                    text = stringResource(R.string.profile_theme),
-                    icon = Icons.Outlined.DarkMode,
+                ProfileSectionTitle(text = stringResource(R.string.profile_theme))
+
+                ThemeSelector(
+                    selected = uiState.themePreference,
+                    onSelect = viewModel::onThemePreferenceChange,
                 )
 
                 ProfileComingSoonRow(

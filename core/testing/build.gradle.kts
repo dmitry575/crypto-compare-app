@@ -13,5 +13,5 @@ kotlin {
 dependencies {
     implementation(libs.junit)
     testImplementation(libs.junit)
-    api("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    api(libs.coroutines.test)
 }

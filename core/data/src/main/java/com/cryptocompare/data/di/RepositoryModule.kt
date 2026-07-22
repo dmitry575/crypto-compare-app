@@ -1,5 +1,7 @@
 package com.cryptocompare.data.di
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import com.cryptocompare.data.BuildConfig
 import com.cryptocompare.data.local.CryptoCompareDatabase
 import com.cryptocompare.data.local.dao.FavouriteTickerDao
@@ -8,10 +10,12 @@ import com.cryptocompare.data.local.dao.SymbolDao
 import com.cryptocompare.data.repository.AuthRepositoryImpl
 import com.cryptocompare.data.repository.CryptoCompareRepositoryImpl
 import com.cryptocompare.data.repository.FavouriteTickerRepositoryImpl
+import com.cryptocompare.data.repository.ThemeRepositoryImpl
 import com.cryptocompare.data.repository.TickerStreamRepositoryImpl
 import com.cryptocompare.domain.repository.AuthRepository
 import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.domain.repository.FavouriteTickerRepository
+import com.cryptocompare.domain.repository.ThemeRepository
 import com.cryptocompare.domain.repository.TickerStreamRepository
 import com.cryptocompare.network.api.CryptoCompareApi
 import com.cryptocompare.network.api.CryptoCompareHistoryApi
@@ -49,6 +53,10 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideAuthRepository(auth: FirebaseAuth): AuthRepository = AuthRepositoryImpl(auth)
+
+    @Provides
+    @Singleton
+    fun provideThemeRepository(dataStore: DataStore<Preferences>): ThemeRepository = ThemeRepositoryImpl(dataStore)
 
     @Provides
     @Singleton
