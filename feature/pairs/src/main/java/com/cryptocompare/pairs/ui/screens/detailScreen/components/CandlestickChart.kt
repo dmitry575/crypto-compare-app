@@ -9,12 +9,14 @@ import com.cryptocompare.helpers.toPriceString
 import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.pairs.util.PairsConstants
+import com.cryptocompare.pairs.util.visibleCandleWindow
 import com.cryptocompare.ui.theme.chartNegative
 import com.cryptocompare.ui.theme.chartPositive
 import com.cryptocompare.ui.theme.textSecondary
 import com.cryptocompare.ui.theme.textTertiary
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.Scroll
+import com.patrykandpatrick.vico.compose.cartesian.Zoom
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
@@ -24,6 +26,7 @@ import com.patrykandpatrick.vico.compose.cartesian.data.candlestickSeries
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberCandlestickCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
+import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.compose.common.ProvideVicoTheme
 import com.patrykandpatrick.vico.compose.common.VicoTheme
 import com.patrykandpatrick.vico.compose.m3.common.rememberM3VicoTheme
@@ -38,8 +41,24 @@ fun CandlestickChart(
     modifier: Modifier = Modifier,
 ) {
     val modelProducer = remember { CartesianChartModelProducer() }
+    val scrollState = rememberVicoScrollState(initialScroll = Scroll.Absolute.End)
 
-    LaunchedEffect(candles) {
+    // шкалу Y считаем по видимым свечам, а не по всей загруженной истории:
+    // иначе ось растянута на годовой размах, а видимый месяц — тонкая лента.
+    // Чтение scrollState.value подписывает нас на скролл, окно едет вместе с ним.
+    val window =
+        visibleCandleWindow(
+            candleCount = candles.size,
+            visibleCount = PairsConstants.Chart.VISIBLE_CANDLES,
+            scrollValue = scrollState.value,
+            maxScrollValue = scrollState.maxValue,
+        )
+
+    // Транзакция перезапускается и при смене окна, хотя данные те же. Иначе новый
+    // rangeProvider не доедет: внутри vico всё привязано к chart.id, а он переживает
+    // rememberCartesianChart (там copy() исходного графика), так что границы
+    // пересчитываются только на транзакции модели.
+    LaunchedEffect(candles, window) {
         if (candles.isEmpty()) return@LaunchedEffect
         modelProducer.runTransaction {
             candlestickSeries(
@@ -54,12 +73,13 @@ fun CandlestickChart(
 
     // без этого ось Y начинается с нуля и свечи сплющиваются в полоску сверху
     val rangeProvider =
-        remember(candles) {
-            if (candles.isEmpty()) {
+        remember(candles, window) {
+            val visible = candles.slice(window)
+            if (visible.isEmpty()) {
                 CartesianLayerRangeProvider.auto()
             } else {
-                val low = candles.minOf { it.low }
-                val high = candles.maxOf { it.high }
+                val low = visible.minOf { it.low }
+                val high = visible.maxOf { it.high }
                 val padding =
                     ((high - low) * PairsConstants.Chart.RANGE_PADDING)
                         .takeIf { it > 0.0 } ?: (high * PairsConstants.Chart.RANGE_PADDING)
@@ -68,6 +88,8 @@ fun CandlestickChart(
         }
 
     val priceFormatter = remember { CartesianValueFormatter { _, value, _ -> value.toPriceString() } }
+    val priceItemPlacer =
+        remember { VerticalAxis.ItemPlacer.count({ PairsConstants.Chart.PRICE_LABEL_COUNT }) }
     val timeFormatter =
         remember(candles, timeframe) {
             val labelFormat = SimpleDateFormat(timeframe.labelPattern(), Locale.US)
@@ -101,13 +123,28 @@ fun CandlestickChart(
                         rangeProvider = rangeProvider,
                         minCandleBodyHeight = PairsConstants.Chart.minCandleBodyHeight,
                     ),
-                    startAxis = VerticalAxis.rememberStart(valueFormatter = priceFormatter),
+                    startAxis =
+                        VerticalAxis.rememberStart(
+                            valueFormatter = priceFormatter,
+                            itemPlacer = priceItemPlacer,
+                        ),
                     bottomAxis = HorizontalAxis.rememberBottom(valueFormatter = timeFormatter),
                 ),
             modelProducer = modelProducer,
             modifier = modifier,
             // открываем на свежих свечах, а не на самом старом крае
-            scrollState = rememberVicoScrollState(initialScroll = Scroll.Absolute.End),
+            scrollState = scrollState,
+            // Фиксированное окно вместо натуральной ширины свечи: сколько бы истории
+            // ни загрузили, в кадре всегда VISIBLE_CANDLES свечей. Щипковый зум
+            // выключен намеренно — на нём это равенство держится, и окно считается
+            // точно, без оценок по пикселям. Масштаб переключается кнопками сверху.
+            zoomState =
+                rememberVicoZoomState(
+                    zoomEnabled = false,
+                    initialZoom = Zoom.x(PairsConstants.Chart.VISIBLE_CANDLES.toDouble()),
+                ),
+            // данные при прокрутке не меняются, анимировать нечего
+            animationSpec = null,
         )
     }
 }
