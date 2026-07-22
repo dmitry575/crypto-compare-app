@@ -27,6 +27,8 @@
     <string name="pair_detail_sell_price">Sell price</string>
     <string name="pair_detail_spread">Spread</string>
     <string name="pair_detail_no_chart_data">No chart data</string>
+    <string name="pair_detail_chart_source">Aggregate across all exchanges</string>
+    <string name="pair_detail_exchange_section">Exchange</string>
 
     <!-- Chart timeframes -->
     <string name="timeframe_m15">15m</string>

@@ -41,8 +41,10 @@ import com.cryptocompare.pairs.ui.screens.detailScreen.components.SpreadBar
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.TimeframeSelector
 import com.cryptocompare.pairs.viewmodel.detailViewModel.DetailsViewModel
 import com.cryptocompare.ui.theme.Dimensions
+import com.cryptocompare.ui.theme.OverlineType
 import com.cryptocompare.ui.theme.bgPrimary
 import com.cryptocompare.ui.theme.textSecondary
+import com.cryptocompare.ui.theme.textTertiary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,17 +138,8 @@ fun DetailsScreen(
                         modifier = contentPadding,
                     )
 
-                    // Выбор биржи (если больше одной)
-                    if (state.exchanges.size > 1) {
-                        ExchangeSelector(
-                            exchanges = state.exchanges,
-                            selectedIndex = state.selectedExchangeIndex,
-                            onExchangeSelected = viewModel::onExchangeSelected,
-                            modifier = contentPadding,
-                        )
-                    }
-
-                    // Масштаб графика: переключение не трогает выбор биржи
+                    // Масштаб графика: он стоит вплотную над графиком, потому что
+                    // управляет именно им
                     TimeframeSelector(
                         selected = state.timeframe,
                         onTimeframeSelected = viewModel::onTimeframeSelected,
@@ -177,6 +170,37 @@ fun DetailsScreen(
                                     timeframe = state.timeframe,
                                     modifier = Modifier.fillMaxSize(),
                                 )
+                        }
+                    }
+
+                    if (state.candles.isNotEmpty()) {
+                        Text(
+                            text = stringResource(R.string.pair_detail_chart_source),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.textTertiary,
+                            modifier = contentPadding,
+                        )
+                    }
+
+                    // Выбор биржи стоит под графиком, а не над ним: график строится
+                    // по агрегату и на биржу не реагирует, а близость сверху обещала
+                    // связь, которой нет — на UX-тесте это прочли именно так.
+                    // Здесь селектор рядом с карточкой, которой он и управляет.
+                    if (state.exchanges.size > 1) {
+                        Column(
+                            modifier = contentPadding,
+                            verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.pair_detail_exchange_section),
+                                style = OverlineType,
+                                color = MaterialTheme.colorScheme.textTertiary,
+                            )
+                            ExchangeSelector(
+                                exchanges = state.exchanges,
+                                selectedIndex = state.selectedExchangeIndex,
+                                onExchangeSelected = viewModel::onExchangeSelected,
+                            )
                         }
                     }
 
