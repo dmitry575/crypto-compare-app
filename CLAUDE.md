@@ -202,8 +202,12 @@ model/auth/      AuthUser
 model/provider/  Provider, ProviderStatus, ProviderDetail
 model/symbol/    Symbol, PairUiItem, PairAggregateRow
 model/ticker/    TickerPrice, TickerDetail, TickerStreamEvent, TickerConnectionState
-model/chart/     Candle
+model/chart/     Candle, ChartTimeframe, HistoryResolution, HistoryRequestSpec
+model/settings/  ThemePreference
 ```
+
+Собственной папки `model/` у других модулей нет: доменные модели живут только здесь,
+даже если пользуется ими один слой (так `HistoryResolution` переехал из `core:data`).
 
 Новая модель кладётся в подходящий подпакет; если её тема новая — заводим новый
 подпакет, а не корень `model/`.

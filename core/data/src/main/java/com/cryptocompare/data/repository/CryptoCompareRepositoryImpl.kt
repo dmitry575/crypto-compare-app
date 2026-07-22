@@ -15,13 +15,13 @@ import com.cryptocompare.data.mapper.toDomainFromEntity
 import com.cryptocompare.data.mapper.toEntityFromDto
 import com.cryptocompare.data.mapper.toPairUiItem
 import com.cryptocompare.data.mapper.toRequestSpec
-import com.cryptocompare.data.model.HistoryResolution
 import com.cryptocompare.data.paging.SymbolsRemoteMediator
 import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.helpers.parseTicker
 import com.cryptocompare.helpers.util.CryptoCompareRepositoryConstants
 import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.chart.ChartTimeframe
+import com.cryptocompare.model.chart.HistoryResolution
 import com.cryptocompare.model.provider.Provider
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.symbol.Symbol

@@ -1,8 +1,8 @@
 package com.cryptocompare.data
 
 import com.cryptocompare.data.mapper.toRequestSpec
-import com.cryptocompare.data.model.HistoryResolution
 import com.cryptocompare.model.chart.ChartTimeframe
+import com.cryptocompare.model.chart.HistoryResolution
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

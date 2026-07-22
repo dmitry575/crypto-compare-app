@@ -1,8 +1,8 @@
 package com.cryptocompare.data.mapper
 
-import com.cryptocompare.data.model.HistoryRequestSpec
-import com.cryptocompare.data.model.HistoryResolution
 import com.cryptocompare.model.chart.ChartTimeframe
+import com.cryptocompare.model.chart.HistoryRequestSpec
+import com.cryptocompare.model.chart.HistoryResolution
 
 fun ChartTimeframe.toRequestSpec(): HistoryRequestSpec =
     when (this) {

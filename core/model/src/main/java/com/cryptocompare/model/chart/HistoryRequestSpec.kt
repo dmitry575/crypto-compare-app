@@ -1,4 +1,4 @@
-package com.cryptocompare.data.model
+package com.cryptocompare.model.chart
 
 /** Какой ряд и с какой агрегацией запрашивать для выбранного масштаба. */
 data class HistoryRequestSpec(
