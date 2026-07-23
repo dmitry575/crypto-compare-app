@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Cryptocompare" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- AppCompat-совместимая тема нужна для AppCompatActivity (per-app locale).
+         DayNight — чтобы фон окна до появления Compose следовал системной теме. -->
+    <style name="Theme.Cryptocompare" parent="Theme.AppCompat.DayNight.NoActionBar" />
 </resources>

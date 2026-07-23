@@ -26,6 +26,8 @@
     <string name="profile_theme_system">Системная</string>
     <string name="profile_theme_light">Светлая</string>
     <string name="profile_theme_dark">Тёмная</string>
+    <string name="profile_language">Язык</string>
+    <string name="profile_language_system">Системный</string>
     <string name="profile_base_currency">Базовая валюта</string>
     <string name="profile_coming_soon">Скоро</string>
 
