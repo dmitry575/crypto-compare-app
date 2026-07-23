@@ -57,6 +57,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    // HorizontalPager: foundation приезжал транзитивно, для пейджера нужен явно
+    implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.material)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.compose.material.icons.extended)

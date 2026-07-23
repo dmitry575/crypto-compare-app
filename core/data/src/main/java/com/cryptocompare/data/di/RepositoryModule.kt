@@ -10,11 +10,13 @@ import com.cryptocompare.data.local.dao.SymbolDao
 import com.cryptocompare.data.repository.AuthRepositoryImpl
 import com.cryptocompare.data.repository.CryptoCompareRepositoryImpl
 import com.cryptocompare.data.repository.FavouriteTickerRepositoryImpl
+import com.cryptocompare.data.repository.OnboardingRepositoryImpl
 import com.cryptocompare.data.repository.ThemeRepositoryImpl
 import com.cryptocompare.data.repository.TickerStreamRepositoryImpl
 import com.cryptocompare.domain.repository.AuthRepository
 import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.domain.repository.FavouriteTickerRepository
+import com.cryptocompare.domain.repository.OnboardingRepository
 import com.cryptocompare.domain.repository.ThemeRepository
 import com.cryptocompare.domain.repository.TickerStreamRepository
 import com.cryptocompare.network.api.CryptoCompareApi
@@ -53,6 +55,11 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideAuthRepository(auth: FirebaseAuth): AuthRepository = AuthRepositoryImpl(auth)
+
+    @Provides
+    @Singleton
+    fun provideOnboardingRepository(dataStore: DataStore<Preferences>): OnboardingRepository =
+        OnboardingRepositoryImpl(dataStore)
 
     @Provides
     @Singleton

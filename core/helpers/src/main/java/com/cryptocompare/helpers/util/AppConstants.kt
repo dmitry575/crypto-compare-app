@@ -9,6 +9,10 @@ object AppConstants {
         listOf(
             "USDT",
             "USDC",
+            "USDG",
+            "USDF",
+            "USD1",
+            "USDE",
             "BUSD",
             "TUSD",
             "USDP",

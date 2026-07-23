@@ -28,4 +28,15 @@
     <string name="forgot_password_back_to_login">Back to sign in</string>
     <string name="auth_app_name">CoinDiff</string>
     <string name="auth_tagline">Compare one pair across exchanges</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_start">Get started</string>
+    <string name="onboarding_slide_1_title">One pair, every exchange</string>
+    <string name="onboarding_slide_1_text">See what the same pair costs on each exchange, side by side.</string>
+    <string name="onboarding_slide_2_title">Spot the difference</string>
+    <string name="onboarding_slide_2_text">The spread tells you how far prices drift apart \u2014 and where they don\'t.</string>
+    <string name="onboarding_slide_3_title">Keep an eye on it</string>
+    <string name="onboarding_slide_3_text">Star the pairs you follow and check the candles before you act.</string>
 </resources>
