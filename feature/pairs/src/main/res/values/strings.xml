@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">providers</string>
+    <string name="app_name" translatable="false">providers</string>
 
     <!-- Main screen -->
     <string name="pairs_title">Symbols</string>

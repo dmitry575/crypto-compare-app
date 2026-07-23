@@ -1,0 +1,46 @@
+<resources>
+    <!-- Экран профиля -->
+    <string name="profile_title">Профиль</string>
+    <string name="profile_back">Назад</string>
+    <string name="profile_avatar">Фото профиля</string>
+    <string name="profile_no_email">Нет почты</string>
+
+    <!-- Действия с аккаунтом -->
+    <string name="profile_account_section">Аккаунт</string>
+    <string name="profile_change_password">Сменить пароль</string>
+    <string name="profile_sign_out">Выйти</string>
+    <string name="profile_delete_account">Удалить аккаунт</string>
+
+    <!-- Диалоги подтверждения -->
+    <string name="profile_sign_out_dialog_title">Выйти?</string>
+    <string name="profile_sign_out_dialog_text">Чтобы снова увидеть избранное, придётся войти заново.</string>
+    <string name="profile_sign_out_dialog_confirm">Выйти</string>
+    <string name="profile_delete_dialog_title">Удалить аккаунт?</string>
+    <string name="profile_delete_dialog_text">Это действие необратимо. Аккаунт и всё избранное будут удалены навсегда.</string>
+    <string name="profile_delete_dialog_confirm">Удалить</string>
+    <string name="profile_dialog_cancel">Отмена</string>
+
+    <!-- Настройки -->
+    <string name="profile_appearance_section">Оформление</string>
+    <string name="profile_theme">Тема</string>
+    <string name="profile_theme_system">Системная</string>
+    <string name="profile_theme_light">Светлая</string>
+    <string name="profile_theme_dark">Тёмная</string>
+    <string name="profile_base_currency">Базовая валюта</string>
+    <string name="profile_coming_soon">Скоро</string>
+
+    <!-- Смена пароля -->
+    <string name="change_password_title">Сменить пароль</string>
+    <string name="change_password_current">Текущий пароль</string>
+    <string name="change_password_new">Новый пароль</string>
+    <string name="change_password_confirm">Повторите новый пароль</string>
+    <string name="change_password_submit">Обновить пароль</string>
+    <string name="change_password_submitting">Обновляем…</string>
+    <string name="change_password_success">Пароль обновлён</string>
+
+    <!-- Проверка при смене пароля -->
+    <string name="change_password_error_current_empty">Введите текущий пароль</string>
+    <string name="change_password_error_weak">Новый пароль слишком простой</string>
+    <string name="change_password_error_mismatch">Пароли не совпадают</string>
+    <string name="change_password_error_same">Новый пароль совпадает с текущим</string>
+</resources>
