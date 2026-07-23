@@ -14,5 +14,11 @@ sealed class ConnectionState {
 
     data class Error(
         val errorMsg: String,
+        /**
+         * Настоящее исключение, если оно было. Наружу (в TickerConnectionState)
+         * не идёт — только errorMsg, — но core:data логирует по нему non-fatal,
+         * чтобы Crashlytics группировал сбои по типу, а не по одной строке.
+         */
+        val cause: Throwable? = null,
     ) : ConnectionState()
 }

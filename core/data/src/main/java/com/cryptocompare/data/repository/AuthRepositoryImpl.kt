@@ -3,6 +3,7 @@ package com.cryptocompare.data.repository
 import com.cryptocompare.data.mapper.toAuthUser
 import com.cryptocompare.data.util.DataConstants
 import com.cryptocompare.domain.repository.AuthRepository
+import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.model.auth.AuthUser
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
@@ -18,6 +19,7 @@ class AuthRepositoryImpl
     @Inject
     constructor(
         private val auth: FirebaseAuth,
+        private val crashReporter: CrashReporter,
     ) : AuthRepository {
         override val currentUser: AuthUser?
             get() = auth.currentUser?.toAuthUser()
@@ -42,7 +44,8 @@ class AuthRepositoryImpl
                 val result = auth.createUserWithEmailAndPassword(email, password).await()
                 val user = result.user ?: error(DataConstants.Auth.NULL_USER)
                 user.toAuthUser()
-            }.onFailure { exception -> if (exception is CancellationException) throw exception }
+            }.onSuccess { user -> crashReporter.setUser(user.uid) }
+                .onFailure { exception -> if (exception is CancellationException) throw exception }
 
         override suspend fun signInWithEmail(
             email: String,
@@ -52,7 +55,8 @@ class AuthRepositoryImpl
                 val result = auth.signInWithEmailAndPassword(email, password).await()
                 val user = result.user ?: error(DataConstants.Auth.NULL_USER)
                 user.toAuthUser()
-            }.onFailure { exception -> if (exception is CancellationException) throw exception }
+            }.onSuccess { user -> crashReporter.setUser(user.uid) }
+                .onFailure { exception -> if (exception is CancellationException) throw exception }
 
         override suspend fun signInWithGoogle(idToken: String): Result<AuthUser> =
             runCatching {
@@ -60,7 +64,8 @@ class AuthRepositoryImpl
                 val result = auth.signInWithCredential(credential).await()
                 val user = result.user ?: error(DataConstants.Auth.NULL_USER)
                 user.toAuthUser()
-            }.onFailure { exception -> if (exception is CancellationException) throw exception }
+            }.onSuccess { user -> crashReporter.setUser(user.uid) }
+                .onFailure { exception -> if (exception is CancellationException) throw exception }
 
         override suspend fun sendPasswordResetEmail(email: String): Result<Unit> =
             runCatching {
@@ -70,6 +75,8 @@ class AuthRepositoryImpl
 
         override suspend fun signOut() {
             auth.signOut()
+            // отчёты после выхода не должны приписываться прежнему пользователю
+            crashReporter.clearUser()
         }
 
         override suspend fun deleteAccount(): Result<Unit> =
