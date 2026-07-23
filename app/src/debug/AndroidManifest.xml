@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Оверлей только для debug-сборок. Выключает сбор крашей: иначе консоль
+  Crashlytics засорялась бы падениями с машин разработчиков вперемешку
+  с реальными от пользователей. В release этого файла нет — там сбор включён.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <meta-data
+            android:name="firebase_crashlytics_collection_enabled"
+            android:value="false" />
+    </application>
+</manifest>
