@@ -14,8 +14,31 @@
     <string name="google_sign_in_failed">Google Sign-In failed</string>
     <string name="google_sign_in_token_missing">Google token not found</string>
 
+    <!-- Shared auth fields -->
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_continue_google">Continue with Google</string>
+    <string name="auth_divider_or">OR</string>
+
     <!-- Login screen -->
     <string name="login_forgot_password">Forgot Password?</string>
+    <string name="login_submit">Sign In</string>
+    <string name="login_submitting">Signing in\u2026</string>
+    <string name="login_no_account">Don\'t have an account?\u0020</string>
+    <string name="login_sign_up">Sign Up</string>
+
+    <!-- Register screen -->
+    <string name="register_title">Create Account</string>
+    <string name="register_subtitle">Join us to track crypto prices</string>
+    <string name="register_confirm_password">Confirm Password</string>
+    <string name="register_submit">Sign Up</string>
+    <string name="register_submitting">Signing up\u2026</string>
+    <string name="register_have_account">Already have an account?\u0020</string>
+    <string name="register_sign_in">Sign In</string>
+
+    <!-- Splash screen -->
+    <string name="splash_checking">Checking session\u2026</string>
+    <string name="splash_retry">Retry</string>
 
     <!-- Forgot password screen -->
     <string name="forgot_password_title">Reset password</string>

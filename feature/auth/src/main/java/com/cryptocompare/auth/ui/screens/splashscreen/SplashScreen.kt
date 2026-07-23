@@ -75,7 +75,7 @@ fun SplashScreen(
         Spacer(modifier = Modifier.height(Dimensions.Spacing.sm))
         if (uiState.isCheckAuth) {
             Text(
-                text = "Checking session...",
+                text = stringResource(R.string.splash_checking),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
             )
@@ -90,7 +90,7 @@ fun SplashScreen(
                 )
                 Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
                 Button(onClick = viewModel::checkAuthentification) {
-                    Text(text = "Retry")
+                    Text(text = stringResource(R.string.splash_retry))
                 }
             }
         }
