@@ -10,10 +10,12 @@ import com.cryptocompare.data.local.dao.SymbolDao
 import com.cryptocompare.data.repository.AuthRepositoryImpl
 import com.cryptocompare.data.repository.CryptoCompareRepositoryImpl
 import com.cryptocompare.data.repository.FavouriteTickerRepositoryImpl
+import com.cryptocompare.data.repository.FirebaseCrashReporter
 import com.cryptocompare.data.repository.OnboardingRepositoryImpl
 import com.cryptocompare.data.repository.ThemeRepositoryImpl
 import com.cryptocompare.data.repository.TickerStreamRepositoryImpl
 import com.cryptocompare.domain.repository.AuthRepository
+import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.domain.repository.FavouriteTickerRepository
 import com.cryptocompare.domain.repository.OnboardingRepository
@@ -23,6 +25,7 @@ import com.cryptocompare.network.api.CryptoCompareApi
 import com.cryptocompare.network.api.CryptoCompareHistoryApi
 import com.cryptocompare.network.websocket.WebSocketClient
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Module
 import dagger.Provides
@@ -54,12 +57,23 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideAuthRepository(auth: FirebaseAuth): AuthRepository = AuthRepositoryImpl(auth)
+    fun provideAuthRepository(
+        auth: FirebaseAuth,
+        crashReporter: CrashReporter,
+    ): AuthRepository = AuthRepositoryImpl(auth, crashReporter)
 
     @Provides
     @Singleton
     fun provideOnboardingRepository(dataStore: DataStore<Preferences>): OnboardingRepository =
         OnboardingRepositoryImpl(dataStore)
+
+    @Provides
+    @Singleton
+    fun provideFirebaseCrashlytics(): FirebaseCrashlytics = FirebaseCrashlytics.getInstance()
+
+    @Provides
+    @Singleton
+    fun provideCrashReporter(crashlytics: FirebaseCrashlytics): CrashReporter = FirebaseCrashReporter(crashlytics)
 
     @Provides
     @Singleton
@@ -70,7 +84,8 @@ object RepositoryModule {
     fun provideTickerStreamRepository(
         webSocketClient: WebSocketClient,
         @Named("wsUrl") wsUrl: String,
-    ): TickerStreamRepository = TickerStreamRepositoryImpl(webSocketClient, wsUrl)
+        crashReporter: CrashReporter,
+    ): TickerStreamRepository = TickerStreamRepositoryImpl(webSocketClient, wsUrl, crashReporter)
 
     @Provides
     @Singleton

@@ -2,6 +2,7 @@ package com.cryptocompare.data
 
 import app.cash.turbine.test
 import com.cryptocompare.data.repository.TickerStreamRepositoryImpl
+import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.model.ticker.TickerConnectionState
 import com.cryptocompare.model.ticker.TickerStreamEvent
 import com.cryptocompare.network.dto.webSocketDTO.SocketDtoMessage
@@ -49,6 +50,40 @@ class TickerStreamRepositoryImplTest {
                 err as TickerConnectionState.Error
                 assertEquals("boom", err.errorMsg)
 
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `socket failure is reported with its real cause`() =
+        runTest {
+            val fixture = createRepository()
+            val cause = java.io.IOException("connection reset")
+
+            fixture.repository.connectionState.test {
+                awaitItem()
+                fixture.networkState.value = ConnectionState.Error("connection reset", cause)
+                awaitItem()
+
+                // Crashlytics группирует по типу исключения, поэтому передаём его,
+                // а не строку
+                io.mockk.verify { fixture.crashReporter.recordException(cause) }
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `error without a cause is not reported`() =
+        runTest {
+            val fixture = createRepository()
+
+            fixture.repository.connectionState.test {
+                awaitItem()
+                // «Max attempts reached» и подобные — не исключения, логировать нечего
+                fixture.networkState.value = ConnectionState.Error("max attempts")
+                awaitItem()
+
+                io.mockk.verify(exactly = 0) { fixture.crashReporter.recordException(any()) }
                 cancelAndIgnoreRemainingEvents()
             }
         }
@@ -226,14 +261,15 @@ class TickerStreamRepositoryImplTest {
     private fun createRepository(wsUrl: String = "ws://localhost:8081"): RepositoryFixture {
         val networkState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
         val networkMessages = MutableSharedFlow<SocketDtoMessage>()
+        val crashReporter = mockk<CrashReporter>(relaxed = true)
         val webSocketClient =
             mockk<WebSocketClient>(relaxed = true) {
                 every { connectionState } returns networkState
                 every { messages } returns networkMessages
             }
 
-        val repository = TickerStreamRepositoryImpl(webSocketClient, wsUrl)
-        return RepositoryFixture(repository, networkState, networkMessages, webSocketClient)
+        val repository = TickerStreamRepositoryImpl(webSocketClient, wsUrl, crashReporter)
+        return RepositoryFixture(repository, networkState, networkMessages, webSocketClient, crashReporter)
     }
 
     private data class RepositoryFixture(
@@ -241,5 +277,6 @@ class TickerStreamRepositoryImplTest {
         val networkState: MutableStateFlow<ConnectionState>,
         val networkMessages: MutableSharedFlow<SocketDtoMessage>,
         val webSocketClient: WebSocketClient,
+        val crashReporter: CrashReporter,
     )
 }

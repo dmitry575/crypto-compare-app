@@ -194,7 +194,7 @@ class WebSocketClient
                     // response == null означает, что до HTTP-ответа дело не дошло:
                     // обычно неверный хост/порт или сервер не отвечает на upgrade
                     Log.e(TAG, "failure on $currentUrl, http=${response?.code}: ${t.message}", t)
-                    _connectionState.value = ConnectionState.Error(t.message ?: "Error in websocket")
+                    _connectionState.value = ConnectionState.Error(t.message ?: "Error in websocket", t)
                     reconnect()
                 }
 

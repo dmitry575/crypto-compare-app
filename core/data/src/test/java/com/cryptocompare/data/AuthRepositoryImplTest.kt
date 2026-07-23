@@ -2,6 +2,7 @@ package com.cryptocompare.data
 
 import app.cash.turbine.test
 import com.cryptocompare.data.repository.AuthRepositoryImpl
+import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.model.auth.AuthUser
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.AuthResult
@@ -28,7 +29,8 @@ import org.junit.Test
 
 class AuthRepositoryImplTest {
     private val auth: FirebaseAuth = mockk(relaxed = true)
-    private val repository = AuthRepositoryImpl(auth)
+    private val crashReporter: CrashReporter = mockk(relaxed = true)
+    private val repository = AuthRepositoryImpl(auth, crashReporter)
 
     @Test
     fun `currentUser maps firebase user`() {
