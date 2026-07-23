@@ -1,0 +1,52 @@
+<resources>
+    <string name="google_sign_in_failed">Не удалось войти через Google</string>
+    <string name="google_sign_in_token_missing">Токен Google не найден</string>
+
+    <!-- Общие поля входа -->
+    <string name="auth_email">Почта</string>
+    <string name="auth_password">Пароль</string>
+    <string name="auth_continue_google">Продолжить с Google</string>
+    <string name="auth_divider_or">ИЛИ</string>
+
+    <!-- Экран входа -->
+    <string name="login_forgot_password">Забыли пароль?</string>
+    <string name="login_submit">Войти</string>
+    <string name="login_submitting">Входим…</string>
+    <string name="login_no_account">Нет аккаунта? </string>
+    <string name="login_sign_up">Зарегистрироваться</string>
+
+    <!-- Экран регистрации -->
+    <string name="register_title">Создать аккаунт</string>
+    <string name="register_subtitle">Присоединяйтесь, чтобы следить за ценами</string>
+    <string name="register_confirm_password">Повторите пароль</string>
+    <string name="register_submit">Зарегистрироваться</string>
+    <string name="register_submitting">Регистрируем…</string>
+    <string name="register_have_account">Уже есть аккаунт? </string>
+    <string name="register_sign_in">Войти</string>
+
+    <!-- Экран заставки -->
+    <string name="splash_checking">Проверяем сессию…</string>
+    <string name="splash_retry">Повторить</string>
+
+    <!-- Восстановление пароля -->
+    <string name="forgot_password_title">Сброс пароля</string>
+    <string name="forgot_password_subtitle">Введите почту, и мы пришлём ссылку для нового пароля.</string>
+    <string name="forgot_password_email">Почта</string>
+    <string name="forgot_password_submit">Отправить ссылку</string>
+    <string name="forgot_password_sending">Отправляем…</string>
+    <string name="forgot_password_success">Письмо отправлено, проверьте почту</string>
+    <string name="forgot_password_success_hint">Ссылка одноразовая и скоро истечёт. Если письма нет — проверьте спам.</string>
+    <string name="forgot_password_back_to_login">Назад ко входу</string>
+    <string name="auth_tagline">Сравнивайте пару на разных биржах</string>
+
+    <!-- Онбординг -->
+    <string name="onboarding_skip">Пропустить</string>
+    <string name="onboarding_next">Далее</string>
+    <string name="onboarding_start">Начать</string>
+    <string name="onboarding_slide_1_title">Одна пара, все биржи</string>
+    <string name="onboarding_slide_1_text">Смотрите, сколько стоит одна и та же пара на каждой бирже, рядом.</string>
+    <string name="onboarding_slide_2_title">Замечайте разницу</string>
+    <string name="onboarding_slide_2_text">Разброс показывает, насколько расходятся цены — и где нет.</string>
+    <string name="onboarding_slide_3_title">Держите под контролем</string>
+    <string name="onboarding_slide_3_text">Отмечайте пары в избранном и смотрите свечи перед решением.</string>
+</resources>

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ui</string>
+    <string name="app_name" translatable="false">ui</string>
 
     <!-- Password requirements, shared by sign up and change password -->
     <string name="password_requirement_length">At least 6 characters</string>

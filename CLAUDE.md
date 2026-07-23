@@ -129,7 +129,18 @@ app
 6. **Семантика цен.** Бэкенд отдаёт `priceSell` = ask (по ней пользователь покупает),
    `priceBuy` = bid (по ней продаёт). В UI подписи соответственно инвертированы.
 
-7. **Один `NavHostController` на приложение.**
+7. **Переключение языка требует `AppCompatActivity`.**
+   Язык меняется в приложении (профиль → Язык) через `AppCompatDelegate.setApplicationLocales`
+   — per-app locale, работает от API 26. Но применяется он только у `AppCompatActivity`:
+   с `ComponentActivity` вызов проходит без ошибок и молча не меняет язык. Поэтому
+   `MainActivity` наследует `AppCompatActivity`, а `Theme.Cryptocompare` — от
+   `Theme.AppCompat.DayNight.NoActionBar` (иначе активность падает с «You need to use a
+   Theme.AppCompat theme»). Выбор хранит сам фреймворк через сервис
+   `AppLocalesMetadataHolderService` с `autoStoreLocales=true` в манифесте — своего
+   DataStore у языка нет, в отличие от темы. Новый язык = элемент `AppLanguage` +
+   `values-<tag>` + строка в `locales_config.xml`.
+
+8. **Один `NavHostController` на приложение.**
    `rememberNavController()` вызывается ровно один раз — в `AppNavigation`. Фичи не заводят
    свой `NavHost`, а отдают вложенный граф:
    ```kotlin

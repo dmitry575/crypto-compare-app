@@ -1,0 +1,6 @@
+<resources>
+    <!-- Требования к паролю: общие для регистрации и смены пароля -->
+    <string name="password_requirement_length">Не короче 6 символов</string>
+    <string name="password_requirement_letter">Содержит букву</string>
+    <string name="password_requirement_number">Содержит цифру</string>
+</resources>

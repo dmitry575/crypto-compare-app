@@ -1,0 +1,44 @@
+<resources>
+    <!-- Главный экран -->
+    <string name="pairs_title">Пары</string>
+    <string name="pairs_search_placeholder">Поиск пары</string>
+    <string name="pairs_filter_all">Все</string>
+    <string name="pairs_filter_favorites">Избранное</string>
+    <string name="pairs_clear_search">Очистить поиск</string>
+    <string name="pairs_spread">Разброс между биржами</string>
+    <string name="pairs_empty_favorites">Пока пусто. Нажмите звёздочку у пары, чтобы добавить её сюда.</string>
+    <string name="pairs_empty_search">Ничего не найдено по запросу «%1$s»</string>
+    <string name="pairs_open_profile">Профиль</string>
+    <string name="pairs_error_retry">Повторить</string>
+    <string name="pairs_add_to_favorites">В избранное</string>
+    <string name="pairs_remove_from_favorites">Убрать из избранного</string>
+
+    <!-- Детальный экран -->
+    <string name="pair_detail_back">Назад</string>
+    <string name="pair_detail_spread_title">Разброс между биржами</string>
+    <string name="pair_detail_spread_title_single">Спред покупки и продажи</string>
+    <string name="pair_detail_buy_on">Купить на %1$s</string>
+    <string name="pair_detail_sell_on">Продать на %1$s</string>
+    <string name="pair_detail_spread_difference">Разница %1$s</string>
+    <string name="pair_detail_unknown_exchange">неизвестно</string>
+    <string name="pair_detail_buy_price">Цена покупки</string>
+    <string name="pair_detail_sell_price">Цена продажи</string>
+    <string name="pair_detail_spread">Спред</string>
+    <string name="pair_detail_no_chart_data">Нет данных для графика</string>
+    <string name="pair_detail_chart_source">Среднее по всем биржам</string>
+    <string name="pair_detail_exchange_section">Биржа</string>
+
+    <!-- Масштабы графика -->
+    <string name="timeframe_m15">15м</string>
+    <string name="timeframe_h1">1ч</string>
+    <string name="timeframe_h4">4ч</string>
+    <string name="timeframe_d1">1д</string>
+    <string name="timeframe_w1">1н</string>
+    <string name="pair_detail_no_exchanges">Нет данных по биржам\nдля %1$s</string>
+    <plurals name="pair_detail_exchange_count">
+        <item quantity="one">%d биржа</item>
+        <item quantity="few">%d биржи</item>
+        <item quantity="many">%d бирж</item>
+        <item quantity="other">%d биржи</item>
+    </plurals>
+</resources>

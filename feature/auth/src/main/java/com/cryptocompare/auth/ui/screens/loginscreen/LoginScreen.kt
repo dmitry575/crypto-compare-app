@@ -92,7 +92,7 @@ fun LoginScreen(
             AppTextField(
                 value = uiState.email,
                 onValueChange = viewModel::onEmailChange,
-                placeholder = "Email",
+                placeholder = stringResource(R.string.auth_email),
                 leadingIcon = Icons.Outlined.MailOutline,
                 keyboardType = KeyboardType.Email,
                 isError = uiState.errorMessage != null && uiState.email.isBlank(),
@@ -103,7 +103,7 @@ fun LoginScreen(
             AppTextField(
                 value = uiState.password,
                 onValueChange = viewModel::onPasswordChange,
-                placeholder = "Password",
+                placeholder = stringResource(R.string.auth_password),
                 leadingIcon = Icons.Outlined.Lock,
                 keyboardType = KeyboardType.Password,
                 isPassword = true,
@@ -125,19 +125,22 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
 
             AppPrimaryButton(
-                text = if (uiState.isLoading) "Signing in..." else "Sign In",
+                text =
+                    stringResource(
+                        if (uiState.isLoading) R.string.login_submitting else R.string.login_submit,
+                    ),
                 onClick = viewModel::signInWithEmail,
                 enabled = !uiState.isLoading,
             )
 
             Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
 
-            AuthDivider()
+            AuthDivider(text = stringResource(R.string.auth_divider_or))
 
             Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
 
             AuthGoogleButton(
-                text = "Continue with Google",
+                text = stringResource(R.string.auth_continue_google),
                 onClick = googleSignInHandler,
             )
 
@@ -149,8 +152,8 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(Dimensions.Spacing.lg))
 
             AuthFooterLink(
-                prompt = "Don't have an account? ",
-                actionText = "Sign Up",
+                prompt = stringResource(R.string.login_no_account),
+                actionText = stringResource(R.string.login_sign_up),
                 onClick = onRegisterClick,
             )
 

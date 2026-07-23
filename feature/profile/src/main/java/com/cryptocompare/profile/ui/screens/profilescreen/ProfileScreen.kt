@@ -34,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cryptocompare.profile.R
+import com.cryptocompare.profile.ui.screens.profilescreen.components.LanguageSelector
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileActionRow
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileComingSoonRow
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileConfirmDialog
@@ -158,6 +159,19 @@ fun ProfileScreen(
                             selected = uiState.themePreference,
                             onSelect = viewModel::onThemePreferenceChange,
                         )
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.divider)
+
+                    Column(
+                        modifier = Modifier.padding(Dimensions.Padding.cardMedium),
+                        verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.profile_language),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        LanguageSelector()
                     }
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.divider)
