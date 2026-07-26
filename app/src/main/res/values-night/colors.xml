@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Тёмный GroundDark. Квалификатор -night выбирается по системной ночной теме,
+         поэтому это только первый кадр: дальше фон окна красит CryptoCompareTheme
+         по выбору пользователя. -->
+    <color name="window_background">#0E1417</color>
+</resources>

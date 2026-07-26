@@ -113,11 +113,18 @@ fun CryptoCompareTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
+            val background = colorScheme.background.toArgb()
+
+            // Фон окна красим цветом текущей схемы, а не полагаемся на
+            // windowBackground из темы: тот выбирается по системной ночной теме,
+            // а у нас тема своя. Иначе при переключении темы внутри приложения
+            // под Compose просвечивал старый фон окна, пока перерисовывался Scaffold.
+            window.decorView.setBackgroundColor(background)
 
             // системные панели сливаются с фоном экрана: отдельного цвета
             // для них нет, иначе внизу появляется полоса чужого оттенка
-            window.statusBarColor = colorScheme.background.toArgb()
-            window.navigationBarColor = colorScheme.background.toArgb()
+            window.statusBarColor = background
+            window.navigationBarColor = background
 
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
             WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
