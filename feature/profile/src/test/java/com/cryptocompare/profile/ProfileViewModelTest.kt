@@ -1,13 +1,17 @@
 package com.cryptocompare.profile
 
 import com.cryptocompare.domain.repository.AuthRepository
+import com.cryptocompare.domain.repository.LanguageRepository
 import com.cryptocompare.domain.repository.ThemeRepository
 import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
 import com.cryptocompare.domain.usecase.profile.DeleteAccountUseCase
 import com.cryptocompare.domain.usecase.profile.SignOutUseCase
+import com.cryptocompare.domain.usecase.settings.ObserveLanguageUseCase
 import com.cryptocompare.domain.usecase.settings.ObserveThemePreferenceUseCase
+import com.cryptocompare.domain.usecase.settings.SetLanguageUseCase
 import com.cryptocompare.domain.usecase.settings.SetThemePreferenceUseCase
 import com.cryptocompare.model.auth.AuthUser
+import com.cryptocompare.model.settings.AppLanguage
 import com.cryptocompare.model.settings.ThemePreference
 import com.cryptocompare.profile.viewmodel.profileviewmodel.ProfileViewModel
 import com.cryptocompare.testing.MainDispatcherRule
@@ -40,12 +44,16 @@ class ProfileViewModelTest {
     private val themeRepository: ThemeRepository = mockk(relaxed = true)
     private val setThemePreferenceUseCase = SetThemePreferenceUseCase(themeRepository)
     private val observeThemePreferenceUseCase = ObserveThemePreferenceUseCase(themeRepository)
+    private val languageRepository: LanguageRepository = mockk(relaxed = true)
+    private val setLanguageUseCase = SetLanguageUseCase(languageRepository)
+    private val observeLanguageUseCase = ObserveLanguageUseCase(languageRepository)
 
     @Before
     fun setUp() {
-        clearMocks(authRepository, themeRepository)
+        clearMocks(authRepository, themeRepository, languageRepository)
         every { authRepository.currentUser } returns TEST_USER
         every { themeRepository.observeThemePreference() } returns flowOf(ThemePreference.SYSTEM)
+        every { languageRepository.observeLanguage() } returns flowOf(AppLanguage.SYSTEM)
     }
 
     @Test
@@ -164,7 +172,9 @@ class ProfileViewModelTest {
             signOutUseCase = signOutUseCase,
             deleteAccountUseCase = deleteAccountUseCase,
             setThemePreferenceUseCase = setThemePreferenceUseCase,
+            setLanguageUseCase = setLanguageUseCase,
             observeThemePreferenceUseCase = observeThemePreferenceUseCase,
+            observeLanguageUseCase = observeLanguageUseCase,
         )
 
     private companion object {

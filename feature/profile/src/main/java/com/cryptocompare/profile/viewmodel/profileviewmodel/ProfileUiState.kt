@@ -1,6 +1,7 @@
 package com.cryptocompare.profile.viewmodel.profileviewmodel
 
 import com.cryptocompare.model.auth.AuthUser
+import com.cryptocompare.model.settings.AppLanguage
 import com.cryptocompare.model.settings.ThemePreference
 
 data class ProfileUiState(
@@ -12,4 +13,5 @@ data class ProfileUiState(
     val isSignedOut: Boolean = false,
     val errorMessage: String? = null,
     val themePreference: ThemePreference = ThemePreference.DEFAULT,
+    val language: AppLanguage = AppLanguage.DEFAULT,
 )

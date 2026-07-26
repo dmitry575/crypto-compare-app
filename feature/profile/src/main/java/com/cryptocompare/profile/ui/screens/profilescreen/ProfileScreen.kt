@@ -171,7 +171,10 @@ fun ProfileScreen(
                             text = stringResource(R.string.profile_language),
                             style = MaterialTheme.typography.bodyLarge,
                         )
-                        LanguageSelector()
+                        LanguageSelector(
+                            selected = uiState.language,
+                            onSelect = viewModel::onLanguageChange,
+                        )
                     }
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.divider)
