@@ -64,10 +64,17 @@ fun MainScreen(
     val pairItems = viewModel.pairs.collectAsLazyPagingItems()
     val focusManager = LocalFocusManager.current
 
-    val isLoading = pairItems.loadState.refresh is LoadState.Loading && pairItems.itemCount == 0
     val pagingError =
         (pairItems.loadState.refresh as? LoadState.Error)
             ?: (pairItems.loadState.append as? LoadState.Error)
+
+    // Пусто по-настоящему, только когда загрузка дошла до конца: endOfPaginationReached
+    // сбрасывается на время refresh, поэтому при переключении фильтра, пока список
+    // ещё догружается, «ничего не найдено» не мелькает — вместо него скелетоны.
+    val isEmpty =
+        pairItems.itemCount == 0 &&
+            pairItems.loadState.refresh is LoadState.NotLoading &&
+            pairItems.loadState.append.endOfPaginationReached
 
     // первая загрузка провалилась и показывать нечего — не пустой экран, а ошибка с «Повторить»
     val firstLoadFailed = pagingError != null && pairItems.itemCount == 0
@@ -176,9 +183,26 @@ fun MainScreen(
             )
 
             when {
-                isLoading -> {
-                    // скелетонов ровно столько, сколько влезает: высота строки фиксированная,
-                    // иначе на маленьком экране строки сплющиваются
+                firstLoadFailed -> {
+                    ErrorState(
+                        message = pagingError.error.toUserMessage(),
+                        onRetry = pairItems::retry,
+                    )
+                }
+
+                isEmpty -> {
+                    EmptyState(
+                        message =
+                            if (uiState.value.onlyFavourite) {
+                                stringResource(R.string.pairs_empty_favorites)
+                            } else {
+                                stringResource(R.string.pairs_empty_search, uiState.value.searchQuery)
+                            },
+                    )
+                }
+
+                pairItems.itemCount == 0 -> {
+                    // ещё грузится или переключается фильтр — скелетоны, а не пустой экран
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val rowSpacing = Dimensions.Gap.sm
                         val rowHeight = Dimensions.Height.listItemSmall
@@ -199,24 +223,6 @@ fun MainScreen(
                             }
                         }
                     }
-                }
-
-                firstLoadFailed -> {
-                    ErrorState(
-                        message = pagingError.error.toUserMessage(),
-                        onRetry = pairItems::retry,
-                    )
-                }
-
-                pairItems.itemCount == 0 -> {
-                    EmptyState(
-                        message =
-                            if (uiState.value.onlyFavourite) {
-                                stringResource(R.string.pairs_empty_favorites)
-                            } else {
-                                stringResource(R.string.pairs_empty_search, uiState.value.searchQuery)
-                            },
-                    )
                 }
 
                 else -> {
