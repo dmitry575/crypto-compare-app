@@ -129,16 +129,23 @@ app
 6. **Семантика цен.** Бэкенд отдаёт `priceSell` = ask (по ней пользователь покупает),
    `priceBuy` = bid (по ней продаёт). В UI подписи соответственно инвертированы.
 
-7. **Переключение языка требует `AppCompatActivity`.**
-   Язык меняется в приложении (профиль → Язык) через `AppCompatDelegate.setApplicationLocales`
-   — per-app locale, работает от API 26. Но применяется он только у `AppCompatActivity`:
-   с `ComponentActivity` вызов проходит без ошибок и молча не меняет язык. Поэтому
-   `MainActivity` наследует `AppCompatActivity`, а `Theme.Cryptocompare` — от
-   `Theme.AppCompat.DayNight.NoActionBar` (иначе активность падает с «You need to use a
-   Theme.AppCompat theme»). Выбор хранит сам фреймворк через сервис
-   `AppLocalesMetadataHolderService` с `autoStoreLocales=true` в манифесте — своего
-   DataStore у языка нет, в отличие от темы. Новый язык = элемент `AppLanguage` +
-   `values-<tag>` + строка в `locales_config.xml`.
+7. **Язык переключается рекомпозицией, а не `setApplicationLocales`.**
+   Per-app locale (`AppCompatDelegate.setApplicationLocales`) пересоздаёт активность,
+   и на время recreate экран пропадал и прыгал вверх-вниз, пока доезжали window insets.
+   Плюс он требует `AppCompatActivity`: с `ComponentActivity` вызов проходит без ошибок
+   и молча ничего не меняет. Поэтому язык живёт как тема — DataStore + `LanguageRepository`
+   + `ProvideAppLanguage` в `core:ui`, который подменяет `LocalConfiguration`/`LocalContext`.
+   `MainActivity` остаётся `ComponentActivity`.
+
+   В `LocalContext` уходит **`ContextWrapper` над самой активностью** с подменённым
+   `getResources()`, а не результат `createConfigurationContext()`. Тот возвращает
+   `ContextImpl`, и всё, что ищет Activity обходом `baseContext` — `hiltViewModel()`,
+   наш `findActivity()` в Google-входе, — падает с «Expected an activity context».
+   Тему у обёртки не подменяем: у `createConfigurationContext` она дефолтная.
+
+   `ProvideAppLanguage` вызывается всегда, в том числе для `AppLanguage.SYSTEM`:
+   если убирать его из композиции по условию, поддерево пересоздаётся и теряет состояние.
+   Новый язык = элемент `AppLanguage` + `values-<tag>` + строка-название.
 
 8. **Один `NavHostController` на приложение.**
    `rememberNavController()` вызывается ровно один раз — в `AppNavigation`. Фичи не заводят

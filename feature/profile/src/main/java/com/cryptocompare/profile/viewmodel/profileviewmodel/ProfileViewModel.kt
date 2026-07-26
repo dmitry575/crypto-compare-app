@@ -5,9 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
 import com.cryptocompare.domain.usecase.profile.DeleteAccountUseCase
 import com.cryptocompare.domain.usecase.profile.SignOutUseCase
+import com.cryptocompare.domain.usecase.settings.ObserveLanguageUseCase
 import com.cryptocompare.domain.usecase.settings.ObserveThemePreferenceUseCase
+import com.cryptocompare.domain.usecase.settings.SetLanguageUseCase
 import com.cryptocompare.domain.usecase.settings.SetThemePreferenceUseCase
 import com.cryptocompare.helpers.toUserMessage
+import com.cryptocompare.model.settings.AppLanguage
 import com.cryptocompare.model.settings.ThemePreference
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +27,9 @@ class ProfileViewModel
         private val signOutUseCase: SignOutUseCase,
         private val deleteAccountUseCase: DeleteAccountUseCase,
         private val setThemePreferenceUseCase: SetThemePreferenceUseCase,
+        private val setLanguageUseCase: SetLanguageUseCase,
         observeThemePreferenceUseCase: ObserveThemePreferenceUseCase,
+        observeLanguageUseCase: ObserveLanguageUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ProfileUiState())
         val uiState = _uiState.asStateFlow()
@@ -32,10 +37,15 @@ class ProfileViewModel
         init {
             loadUser()
             observeTheme(observeThemePreferenceUseCase)
+            observeLanguage(observeLanguageUseCase)
         }
 
         fun onThemePreferenceChange(preference: ThemePreference) {
             viewModelScope.launch { setThemePreferenceUseCase(preference) }
+        }
+
+        fun onLanguageChange(language: AppLanguage) {
+            viewModelScope.launch { setLanguageUseCase(language) }
         }
 
         fun onSignOutClick() {
@@ -84,6 +94,14 @@ class ProfileViewModel
             viewModelScope.launch {
                 observeThemePreferenceUseCase().collect { preference ->
                     _uiState.update { uiState -> uiState.copy(themePreference = preference) }
+                }
+            }
+        }
+
+        private fun observeLanguage(observeLanguageUseCase: ObserveLanguageUseCase) {
+            viewModelScope.launch {
+                observeLanguageUseCase().collect { language ->
+                    _uiState.update { uiState -> uiState.copy(language = language) }
                 }
             }
         }

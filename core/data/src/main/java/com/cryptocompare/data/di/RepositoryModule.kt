@@ -11,6 +11,7 @@ import com.cryptocompare.data.repository.AuthRepositoryImpl
 import com.cryptocompare.data.repository.CryptoCompareRepositoryImpl
 import com.cryptocompare.data.repository.FavouriteTickerRepositoryImpl
 import com.cryptocompare.data.repository.FirebaseCrashReporter
+import com.cryptocompare.data.repository.LanguageRepositoryImpl
 import com.cryptocompare.data.repository.OnboardingRepositoryImpl
 import com.cryptocompare.data.repository.ThemeRepositoryImpl
 import com.cryptocompare.data.repository.TickerStreamRepositoryImpl
@@ -18,6 +19,7 @@ import com.cryptocompare.domain.repository.AuthRepository
 import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.domain.repository.FavouriteTickerRepository
+import com.cryptocompare.domain.repository.LanguageRepository
 import com.cryptocompare.domain.repository.OnboardingRepository
 import com.cryptocompare.domain.repository.ThemeRepository
 import com.cryptocompare.domain.repository.TickerStreamRepository
@@ -78,6 +80,11 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideThemeRepository(dataStore: DataStore<Preferences>): ThemeRepository = ThemeRepositoryImpl(dataStore)
+
+    @Provides
+    @Singleton
+    fun provideLanguageRepository(dataStore: DataStore<Preferences>): LanguageRepository =
+        LanguageRepositoryImpl(dataStore)
 
     @Provides
     @Singleton

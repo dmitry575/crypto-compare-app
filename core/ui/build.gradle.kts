@@ -46,6 +46,5 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.core)
-    implementation(libs.androidx.appcompat)
     implementation(project(":core:model"))
 }
