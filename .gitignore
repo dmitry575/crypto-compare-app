@@ -9,6 +9,7 @@
 .cxx
 local.properties
 .idea
+**/release
 app/google-services.json
 
 # рабочие файлы Claude Code: worktrees — это копии всего проекта
@@ -19,9 +20,6 @@ app/google-services.json
 *.jks
 *.keystore
 keystore/
-
-
-
 
 # Kotlin build artifacts
 .kotlin/
