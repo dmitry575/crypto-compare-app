@@ -121,7 +121,6 @@ kotlin {
 dependencies {
     // modules
     implementation(project(":core:domain"))
-    implementation(project(":core:model"))
     implementation(project(":core:network"))
     implementation(project(":core:helpers"))
 

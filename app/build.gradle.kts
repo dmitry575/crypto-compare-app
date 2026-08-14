@@ -19,9 +19,9 @@ android {
     defaultConfig {
         applicationId = "com.boomhaa.cryptocompare"
         minSdk = 26
-        targetSdk = 36
-        versionCode = 5
-        versionName = "1.4"
+        targetSdk = 37
+        versionCode = 1
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
