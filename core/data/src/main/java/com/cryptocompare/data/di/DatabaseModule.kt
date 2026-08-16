@@ -4,9 +4,12 @@ import android.content.Context
 import androidx.room.Room
 import com.cryptocompare.data.local.CryptoCompareDatabase
 import com.cryptocompare.data.local.dao.FavouriteTickerDao
+import com.cryptocompare.data.local.dao.PendingFavouriteOperationDao
 import com.cryptocompare.data.local.dao.ProviderDao
 import com.cryptocompare.data.local.dao.SymbolDao
 import com.cryptocompare.data.local.migrations.AssetMigrations
+import com.cryptocompare.data.transactionrunner.DatabaseTransactionRunner
+import com.cryptocompare.data.transactionrunner.DatabaseTransactionRunnerImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -41,4 +44,13 @@ object DatabaseModule {
 
     @Provides
     fun provideFavouriteTickerDao(database: CryptoCompareDatabase): FavouriteTickerDao = database.favouriteTickerDao()
+
+    @Provides
+    fun providePendingFavouriteOperationDao(database: CryptoCompareDatabase): PendingFavouriteOperationDao =
+        database.pendingFavoriteOperationDao()
+
+    @Provides
+    @Singleton
+    fun provideDatabaseTransactionRunner(database: CryptoCompareDatabase): DatabaseTransactionRunner =
+        DatabaseTransactionRunnerImpl(database)
 }

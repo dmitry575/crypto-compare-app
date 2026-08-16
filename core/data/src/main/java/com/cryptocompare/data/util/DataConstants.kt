@@ -28,6 +28,15 @@ object DataConstants {
         const val NO_PASSWORD_PROVIDER = "Account has no email and password sign-in"
     }
 
+    object Favourites {
+        /** syncPendingFavouriteOperations() кидает это, если очередь не опустела за MAX_SYNC_PASSES проходов. */
+        const val SYNC_INCOMPLETE = "Pending favourite operations did not settle before sync"
+
+        const val BATCH_CHUNK_SIZE = 500
+
+        const val MAX_SYNC_PASSES = 5
+    }
+
     object History {
         /** Время меньше этого порога считаем секундами, а не миллисекундами. */
         const val MILLIS_THRESHOLD = 1_000_000_000_000L

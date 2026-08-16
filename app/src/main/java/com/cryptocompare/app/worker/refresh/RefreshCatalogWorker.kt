@@ -1,4 +1,4 @@
-package com.cryptocompare.app.worker
+package com.cryptocompare.app.worker.refresh
 
 import android.content.Context
 import androidx.hilt.work.HiltWorker

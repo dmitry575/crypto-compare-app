@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.cryptocompare.data.local.CryptoCompareDatabase
 import com.cryptocompare.data.local.migrations.AssetMigrations
+import junit.framework.TestCase.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -57,27 +58,27 @@ class CryptoCompareDatabaseMigrationTest {
         )
     }
 
-    /*
-     * Шаблон теста для следующей миграции — раскомментировать, подставив версии:
-     *
-     * @Test
-     * fun migrate5To6() {
-     *     helper.createDatabase(TEST_DB, 5).apply {
-     *         execSQL("INSERT INTO favourite_tickers (userId, ticker, updatedAt) VALUES ('u', 'BTCUSDT', 1)")
-     *         close()
-     *     }
-     *
-     *     val db = helper.runMigrationsAndValidate(TEST_DB, 6, true, *AssetMigrations.loadAll(context))
-     *
-     *     db.query("SELECT ticker FROM favourite_tickers").use { cursor ->
-     *         assertTrue(cursor.moveToFirst())
-     *         assertEquals("BTCUSDT", cursor.getString(0))
-     *     }
-     * }
-     */
+    @Test
+    fun migrate5To6() {
+        helper.createDatabase(TEST_DB, 5).apply {
+            execSQL("INSERT INTO favourite_tickers (userId, ticker, updatedAt) VALUES ('u', 'BTCUSDT', 1)")
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 6, true, *AssetMigrations.loadAll(context))
+
+        db.query("SELECT ticker FROM favourite_tickers").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("BTCUSDT", cursor.getString(0))
+        }
+        db.query("SELECT COUNT(*) FROM pending_favourite_operations").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+    }
 
     private companion object {
         const val TEST_DB = "migration-test.db"
-        const val CURRENT_VERSION = 5
+        const val CURRENT_VERSION = 6
     }
 }

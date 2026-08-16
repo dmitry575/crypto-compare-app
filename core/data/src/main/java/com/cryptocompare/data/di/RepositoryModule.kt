@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import com.cryptocompare.data.BuildConfig
 import com.cryptocompare.data.local.CryptoCompareDatabase
 import com.cryptocompare.data.local.dao.FavouriteTickerDao
+import com.cryptocompare.data.local.dao.PendingFavouriteOperationDao
 import com.cryptocompare.data.local.dao.ProviderDao
 import com.cryptocompare.data.local.dao.SymbolDao
 import com.cryptocompare.data.repository.AuthRepositoryImpl
@@ -15,6 +16,7 @@ import com.cryptocompare.data.repository.LanguageRepositoryImpl
 import com.cryptocompare.data.repository.OnboardingRepositoryImpl
 import com.cryptocompare.data.repository.ThemeRepositoryImpl
 import com.cryptocompare.data.repository.TickerStreamRepositoryImpl
+import com.cryptocompare.data.transactionrunner.DatabaseTransactionRunner
 import com.cryptocompare.domain.repository.AuthRepository
 import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.domain.repository.CryptoCompareRepository
@@ -98,8 +100,18 @@ object RepositoryModule {
     @Singleton
     fun provideFavoritePairsRepository(
         favouriteTickerDao: FavouriteTickerDao,
+        pendingFavouriteOperationDao: PendingFavouriteOperationDao,
+        transactionRunner: DatabaseTransactionRunner,
         auth: FirebaseAuth,
         firestore: FirebaseFirestore,
         @Named("ioDispatcher") ioDispatcher: CoroutineDispatcher,
-    ): FavouriteTickerRepository = FavouriteTickerRepositoryImpl(firestore, favouriteTickerDao, auth, ioDispatcher)
+    ): FavouriteTickerRepository =
+        FavouriteTickerRepositoryImpl(
+            firestore = firestore,
+            favouriteTickerDao = favouriteTickerDao,
+            pendingFavouriteOperationDao = pendingFavouriteOperationDao,
+            transactionRunner = transactionRunner,
+            auth = auth,
+            ioDispatcher = ioDispatcher,
+        )
 }

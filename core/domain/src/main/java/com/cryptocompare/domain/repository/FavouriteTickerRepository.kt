@@ -8,4 +8,6 @@ interface FavouriteTickerRepository {
     suspend fun toggleFavouriteTicker(ticker: String): Result<Boolean>
 
     suspend fun syncFavouriteTickers(): Result<Unit>
+
+    suspend fun deleteAllFavorites(): Result<Unit>
 }

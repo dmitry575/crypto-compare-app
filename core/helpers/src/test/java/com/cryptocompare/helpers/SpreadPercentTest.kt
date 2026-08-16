@@ -42,6 +42,24 @@ class SpreadPercentTest {
     }
 
     @Test
+    fun `bid-ask spread divides by the ask`() {
+        // формула карточки биржи: |ask - bid| / ask * 100 (знаменатель — аск,
+        // в отличие от spreadPercent, где делим на минимум)
+        val expected = (ask - bid) * 100.0 / ask
+
+        assertEquals(expected, bidAskSpreadPercent(ask = ask, bid = bid), 1e-9)
+    }
+
+    @Test
+    fun `bid-ask spread is never negative and survives broken prices`() {
+        assertTrue(bidAskSpreadPercent(ask = ask, bid = bid) > 0)
+        assertEquals(0.0, bidAskSpreadPercent(ask = 0.0, bid = 10.0), 1e-9)
+        assertEquals(0.0, bidAskSpreadPercent(ask = -1.0, bid = 10.0), 1e-9)
+        assertEquals(0.0, bidAskSpreadPercent(ask = Double.NaN, bid = 10.0), 1e-9)
+        assertEquals(0.0, bidAskSpreadPercent(ask = 10.0, bid = Double.NaN), 1e-9)
+    }
+
+    @Test
     fun `the two measures no longer disagree on the same pair`() {
         // 1.16% против -1.15% — ровно то расхождение, из-за которого
         // и появились эти функции: величины разные, и путать их нельзя

@@ -16,6 +16,11 @@ android {
         minSdk = 26
     }
 
+    testOptions {
+        targetSdk = 37
+        unitTests.isIncludeAndroidResources = false
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -34,6 +39,12 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_21)
+    }
+}
+
+androidComponents {
+    beforeVariants(selector().all()) { variant ->
+        variant.androidTest.enable = false
     }
 }
 

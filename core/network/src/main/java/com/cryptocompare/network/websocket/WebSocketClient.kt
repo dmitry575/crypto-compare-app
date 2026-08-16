@@ -48,12 +48,20 @@ class WebSocketClient
         private val subscribedTickers = mutableSetOf<String>()
         private val lock = Any()
 
-        private var reconnectJob: Job? = null
-        private var isManuallyDisconnect = false
-        private var reconnectAttempts = 0
+        // Эти поля читаются и пишутся из потоков OkHttp-колбэков (onOpen/onClosed/
+        // onFailure) и из korutin реконнекта — @Volatile гарантирует их видимость
+        // между потоками. Без него disconnect() мог выставить isManuallyDisconnect,
+        // а onClosed на потоке OkHttp прочитать устаревшее false и переподключиться.
+        @Volatile private var reconnectJob: Job? = null
+
+        @Volatile private var isManuallyDisconnect = false
+
+        @Volatile private var reconnectAttempts = 0
         private val maxReconnectingAttempts = 10
-        private var webSocket: WebSocket? = null
-        private var currentUrl: String? = null
+
+        @Volatile private var webSocket: WebSocket? = null
+
+        @Volatile private var currentUrl: String? = null
 
         private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
         val connectionState = _connectionState.asStateFlow()

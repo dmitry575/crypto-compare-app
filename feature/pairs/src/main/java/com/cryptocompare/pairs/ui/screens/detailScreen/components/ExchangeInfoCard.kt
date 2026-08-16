@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import com.cryptocompare.helpers.bidAskSpreadPercent
 import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.pairs.R
 import com.cryptocompare.pairs.util.PairsConstants
@@ -27,7 +28,6 @@ import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.borderPrimary
 import com.cryptocompare.ui.theme.textSecondary
 import com.cryptocompare.ui.theme.textTertiary
-import kotlin.math.abs
 
 @Composable
 fun ExchangeInfoCard(
@@ -59,7 +59,7 @@ fun ExchangeInfoCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = exchange.provider.name ?: "Unknown Exchange",
+                    text = exchange.provider.name ?: stringResource(R.string.pair_detail_unknown_exchange),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
@@ -109,9 +109,10 @@ fun ExchangeInfoCard(
                 }
             }
 
-            if (exchange.priceBuy != null && exchange.priceSell != null) {
-                val spread = abs(exchange.priceSell!! - exchange.priceBuy!!)
-                val spreadPct = if (exchange.priceSell!! > 0) spread / exchange.priceSell!! * 100 else 0.0
+            val ask = exchange.priceSell
+            val bid = exchange.priceBuy
+            if (ask != null && bid != null) {
+                val spreadPct = bidAskSpreadPercent(ask = ask, bid = bid)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,

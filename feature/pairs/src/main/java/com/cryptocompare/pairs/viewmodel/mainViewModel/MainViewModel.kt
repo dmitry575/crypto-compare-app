@@ -20,7 +20,6 @@ import com.cryptocompare.pairs.util.PairsConstants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,7 +56,11 @@ class MainViewModel
         // database in batches, so the UI is not re-rendered on every single tick
         private val pendingPriceUpdates = mutableMapOf<Int, TickerPrice>()
         private val pendingPricesLock = Any()
-        private var priceFlushJob: Job? = null
+
+        // guarded by pendingPricesLock; cleared in the SAME critical section that
+        // observes an empty queue, so a tick can't slip in between "queue is empty"
+        // and the job ending and get stranded with no flush scheduled for it
+        private var isFlushScheduled = false
 
         @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
         val pairs: Flow<PagingData<PairUiItem>> =
@@ -142,25 +145,32 @@ class MainViewModel
         // the flush job lives only while ticks keep coming: one interval with no
         // new updates and it exits, the next tick schedules it again
         private fun schedulePriceFlush() {
-            if (priceFlushJob?.isActive == true) return
+            synchronized(pendingPricesLock) {
+                if (isFlushScheduled) return
+                isFlushScheduled = true
+            }
 
-            priceFlushJob =
-                viewModelScope.launch {
-                    while (true) {
-                        delay(PairsConstants.MainScreen.PRICE_FLUSH_INTERVAL_MS)
+            viewModelScope.launch {
+                while (true) {
+                    delay(PairsConstants.MainScreen.PRICE_FLUSH_INTERVAL_MS)
 
-                        val batch =
-                            synchronized(pendingPricesLock) {
-                                pendingPriceUpdates.values.toList().also { pendingPriceUpdates.clear() }
+                    val batch =
+                        synchronized(pendingPricesLock) {
+                            // клеим флаг к наблюдению пустоты: тик, добавленный
+                            // до этого блока, попадёт в batch; добавленный после —
+                            // увидит isFlushScheduled == false и запустит новый джоб
+                            if (pendingPriceUpdates.isEmpty()) {
+                                isFlushScheduled = false
+                                return@launch
                             }
-
-                        if (batch.isEmpty()) break
-
-                        applyTickerPriceChangesUseCase(batch).onFailure { exception ->
-                            _uiState.update { it.copy(error = exception.toUserMessage()) }
+                            pendingPriceUpdates.values.toList().also { pendingPriceUpdates.clear() }
                         }
+
+                    applyTickerPriceChangesUseCase(batch).onFailure { exception ->
+                        _uiState.update { it.copy(error = exception.toUserMessage()) }
                     }
                 }
+            }
         }
 
         fun syncFavouriteTickers() {

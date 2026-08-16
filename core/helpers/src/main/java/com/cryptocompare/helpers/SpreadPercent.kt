@@ -1,5 +1,7 @@
 package com.cryptocompare.helpers
 
+import kotlin.math.abs
+
 /**
  * Спред между покупкой и продажей в процентах — ширина рынка.
  *
@@ -30,6 +32,22 @@ fun arbitragePercent(
 ): Double {
     if (lowestAsk <= 0.0 || !lowestAsk.isFinite() || !highestBid.isFinite()) return 0.0
     return (highestBid - lowestAsk) * PERCENT_SCALE / lowestAsk
+}
+
+/**
+ * Bid-ask спред одной биржи в процентах: насколько аск выше бида, в долях от
+ * самого аска этой биржи. Это отдельная величина — не путать со [spreadPercent]
+ * (ширина рынка между биржами, делится на минимальную цену) и [arbitragePercent]
+ * (заработок на перепродаже между биржами). Здесь знаменатель — аск конкретной
+ * биржи, а значение всегда неотрицательно. Раньше эта формула жила прямо в
+ * `ExchangeInfoCard` с `!!`, вне тестов.
+ */
+fun bidAskSpreadPercent(
+    ask: Double,
+    bid: Double,
+): Double {
+    if (ask <= 0.0 || !ask.isFinite() || !bid.isFinite()) return 0.0
+    return abs(ask - bid) * PERCENT_SCALE / ask
 }
 
 private const val PERCENT_SCALE = 100.0

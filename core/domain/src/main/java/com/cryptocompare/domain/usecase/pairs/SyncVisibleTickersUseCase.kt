@@ -11,7 +11,7 @@ class SyncVisibleTickersUseCase
     ) {
         operator fun invoke(
             visibleTickers: List<String>,
-            subscribedTickers: MutableSet<String>,
+            subscribedTickers: Set<String>,
         ): Set<String> {
             // Экран отдаёт всё, что реально видно, а сколько из этого потянет
             // соединение — знает только этот слой. Берём верхние строки:

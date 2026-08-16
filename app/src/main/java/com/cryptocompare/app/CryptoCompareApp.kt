@@ -24,5 +24,6 @@ class CryptoCompareApp :
     override fun onCreate() {
         super.onCreate()
         WorkScheduler.scheduleDailyRefreshCatalog(this)
+        WorkScheduler.scheduleFavouriteTickersSync(this)
     }
 }

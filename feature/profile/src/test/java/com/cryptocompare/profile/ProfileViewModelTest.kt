@@ -1,6 +1,7 @@
 package com.cryptocompare.profile
 
 import com.cryptocompare.domain.repository.AuthRepository
+import com.cryptocompare.domain.repository.FavouriteTickerRepository
 import com.cryptocompare.domain.repository.LanguageRepository
 import com.cryptocompare.domain.repository.ThemeRepository
 import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
@@ -40,7 +41,8 @@ class ProfileViewModelTest {
     private val authRepository: AuthRepository = mockk(relaxed = true)
     private val getCurrentUserUseCase = GetCurrentUserUseCase(authRepository)
     private val signOutUseCase = SignOutUseCase(authRepository)
-    private val deleteAccountUseCase = DeleteAccountUseCase(authRepository)
+    private val favouriteTickerRepository: FavouriteTickerRepository = mockk(relaxed = true)
+    private val deleteAccountUseCase = DeleteAccountUseCase(authRepository, favouriteTickerRepository)
     private val themeRepository: ThemeRepository = mockk(relaxed = true)
     private val setThemePreferenceUseCase = SetThemePreferenceUseCase(themeRepository)
     private val observeThemePreferenceUseCase = ObserveThemePreferenceUseCase(themeRepository)
@@ -97,6 +99,7 @@ class ProfileViewModelTest {
     @Test
     fun `confirmed delete account clears state on success`() =
         runTest {
+            coEvery { favouriteTickerRepository.deleteAllFavorites() } returns Result.success(Unit)
             coEvery { authRepository.deleteAccount() } returns Result.success(Unit)
             val viewModel = createViewModel()
 
@@ -104,6 +107,7 @@ class ProfileViewModelTest {
             viewModel.onDeleteAccountConfirmed()
             advanceUntilIdle()
 
+            coVerify(exactly = 1) { favouriteTickerRepository.deleteAllFavorites() }
             coVerify(exactly = 1) { authRepository.deleteAccount() }
             val uiState = viewModel.uiState.value
             assertNull(uiState.user)
@@ -116,6 +120,7 @@ class ProfileViewModelTest {
     @Test
     fun `delete account failure keeps user and shows error`() =
         runTest {
+            coEvery { favouriteTickerRepository.deleteAllFavorites() } returns Result.success(Unit)
             coEvery { authRepository.deleteAccount() } returns
                 Result.failure(IllegalStateException(RECENT_LOGIN_ERROR))
             val viewModel = createViewModel()

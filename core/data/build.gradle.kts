@@ -151,6 +151,7 @@ dependencies {
     testImplementation(libs.coroutines.test)
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)
+    androidTestImplementation(libs.mockk.android)
 
     // миграции проверяются только на устройстве: нужен настоящий SQLite
     androidTestImplementation(libs.junit)
