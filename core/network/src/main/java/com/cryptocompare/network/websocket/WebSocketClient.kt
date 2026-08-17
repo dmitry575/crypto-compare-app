@@ -34,6 +34,7 @@ import javax.inject.Named
 import javax.inject.Singleton
 import kotlin.math.min
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class WebSocketClient
@@ -57,7 +58,6 @@ class WebSocketClient
         @Volatile private var isManuallyDisconnect = false
 
         @Volatile private var reconnectAttempts = 0
-        private val maxReconnectingAttempts = 10
 
         @Volatile private var webSocket: WebSocket? = null
 
@@ -112,12 +112,10 @@ class WebSocketClient
 
             val url = currentUrl ?: return
 
-            if (reconnectAttempts >= maxReconnectingAttempts) {
-                Log.e(TAG, "giving up after $reconnectAttempts reconnect attempts to $url")
-                _connectionState.value = ConnectionState.Error("Max attempts are reached")
-                return
-            }
-
+            // Жёсткого предела попыток нет намеренно: после разрыва сеть может
+            // лежать сколько угодно, и поток котировок должен восстановиться, когда
+            // она вернётся. Частоту держит экспоненциальный бэкофф с потолком
+            // MAX_RECONNECT_DELAY_MS (30с) — офлайн это всего один пинг раз в 30с.
             val delayMs = reconnectDelayMs(reconnectAttempts)
             Log.w(TAG, "reconnect #${reconnectAttempts + 1} in ${delayMs}ms")
             _connectionState.value =
@@ -129,7 +127,7 @@ class WebSocketClient
             reconnectAttempts++
             reconnectJob =
                 scope.launch {
-                    delay(delayMs)
+                    delay(delayMs.milliseconds)
                     connect(url)
                 }
         }

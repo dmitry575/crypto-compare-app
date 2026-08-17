@@ -33,6 +33,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WebSocketClientTest {
@@ -261,7 +262,7 @@ class WebSocketClientTest {
                     delays.add(currentState.timeDelay)
                 }
 
-                advanceTimeBy(35_000)
+                advanceTimeBy(35_000.milliseconds)
             }
 
             for (i in 1 until delays.size) {
@@ -273,35 +274,27 @@ class WebSocketClientTest {
         }
 
     @Test
-    fun `reconnect should stop after max attempts`() =
+    fun `reconnect should keep retrying past the old attempt limit`() =
         testScope.runTest {
             client.connect("wss://api.example.com/ws")
 
-            client.connectionState.test {
-                awaitItem()
+            // Раньше клиент сдавался после 10 попыток; жёсткого предела больше нет —
+            // прогоняем заведомо больше и убеждаемся, что он продолжает пытаться
+            // восстановиться, а не переходит в терминальное «Max attempts».
+            repeat(15) { attempt ->
+                simulateWebSocketFailure(Throwable("Network error"))
 
-                val max = 10
-                repeat(max + 1) {
-                    simulateWebSocketFailure(Throwable("Network error"))
-                    advanceUntilIdle()
+                // onFailure синхронно ставит Error, затем reconnect() — Reconnecting;
+                // если бы предел вернули, на 11-й попытке тут был бы Error, а не Reconnecting
+                val state = client.connectionState.value
+                assertTrue(
+                    "attempt $attempt: должен продолжать реконнект, а не сдаваться (был $state)",
+                    state is ConnectionState.Reconnecting,
+                )
 
-                    while (true) {
-                        val s = awaitItem()
-
-                        if (s is ConnectionState.Error && s.errorMsg.contains("Max attempts")) {
-                            cancelAndIgnoreRemainingEvents()
-                            return@test
-                        }
-
-                        if (s is ConnectionState.Reconnecting) {
-                            advanceTimeBy(s.timeDelay)
-                            advanceUntilIdle()
-                            break
-                        }
-                    }
-                }
-
-                throw AssertionError("Should stop after max attempts, but it didn't")
+                // проматываем бэкофф, чтобы сработал следующий connect()
+                advanceTimeBy(((state as ConnectionState.Reconnecting).timeDelay + 1_000).milliseconds)
+                advanceUntilIdle()
             }
         }
 
@@ -372,7 +365,7 @@ class WebSocketClientTest {
                 val rec = awaitItem()
                 require(rec is ConnectionState.Reconnecting)
 
-                advanceTimeBy(rec.timeDelay)
+                advanceTimeBy(rec.timeDelay.milliseconds)
                 advanceUntilIdle()
 
                 simulateWebSocketOpen()
@@ -411,7 +404,7 @@ class WebSocketClientTest {
                 val rec = awaitItem()
                 require(rec is ConnectionState.Reconnecting)
 
-                advanceTimeBy(rec.timeDelay)
+                advanceTimeBy(rec.timeDelay.milliseconds)
                 advanceUntilIdle()
 
                 simulateWebSocketOpen()

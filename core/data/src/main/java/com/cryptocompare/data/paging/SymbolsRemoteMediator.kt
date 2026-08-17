@@ -79,6 +79,15 @@ class SymbolsRemoteMediator(
             val endReached = symbols.isEmpty()
 
             database.withTransaction {
+                // Пустой, но успешный ответ на REFRESH не должен обнулять каталог:
+                // это почти наверняка временный сбой бэкенда, а не «символов больше
+                // нет». Не трогаем ничего — прежние данные и ключ остаются, а
+                // следующий refresh перестроит каталог, когда данные вернутся.
+                // (Для APPEND пустой ответ — легитимный конец страниц, его пропускаем
+                // ниже, чтобы записать endReached в ключ.)
+                if (loadType == LoadType.REFRESH && symbols.isEmpty()) {
+                    return@withTransaction
+                }
                 if (loadType == LoadType.REFRESH) {
                     symbolDao.deleteAll()
                 }
