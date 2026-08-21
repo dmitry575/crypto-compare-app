@@ -4,6 +4,7 @@
     <string name="profile_back">Back</string>
     <string name="profile_avatar">Profile photo</string>
     <string name="profile_no_email">No email</string>
+    <string name="profile_privacy_policy">Privacy Policy</string>
 
     <!-- Account actions -->
     <string name="profile_account_section">Account</string>

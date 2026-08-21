@@ -1,5 +1,6 @@
 package com.cryptocompare.profile.ui.screens.profilescreen
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Policy
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -30,9 +32,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cryptocompare.helpers.util.AppConstants
 import com.cryptocompare.profile.R
 import com.cryptocompare.profile.ui.screens.profilescreen.components.LanguageSelector
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileActionRow
@@ -59,6 +64,7 @@ fun ProfileScreen(
     val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
 
     LaunchedEffect(uiState.isSignedOut) {
         if (uiState.isSignedOut) {
@@ -202,6 +208,22 @@ fun ProfileScreen(
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.divider)
                     }
+
+                    ProfileActionRow(
+                        text = stringResource(R.string.profile_privacy_policy),
+                        icon = Icons.Outlined.Policy,
+                        onClick = {
+                            context.startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    AppConstants.PRIVACY_POLICY_URL.toUri(),
+                                ),
+                            )
+                        },
+                        enabled = !uiState.isLoading,
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.divider)
 
                     ProfileActionRow(
                         text = stringResource(R.string.profile_sign_out),
