@@ -38,7 +38,7 @@ import kotlin.coroutines.cancellation.CancellationException
 class MainViewModel
     @Inject
     constructor(
-        loadPairsUseCase: LoadPairsUseCase,
+        private val loadPairsUseCase: LoadPairsUseCase,
         private val syncVisibleTickersUseCase: SyncVisibleTickersUseCase,
         private val streamDisconnectUseCase: StreamDisconnectUseCase,
         private val observeTickerEventUseCase: ObserveTickerEventUseCase,

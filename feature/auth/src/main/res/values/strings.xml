@@ -49,7 +49,7 @@
     <string name="forgot_password_success">Email sent, check your inbox</string>
     <string name="forgot_password_success_hint">The link works once and expires shortly. Check spam if it is missing.</string>
     <string name="forgot_password_back_to_login">Back to sign in</string>
-    <string name="auth_app_name" translatable="false">CoinDiff</string>
+    <string name="auth_app_name" translatable="false">Coins Compare</string>
     <string name="auth_tagline">Compare one pair across exchanges</string>
 
     <!-- Onboarding -->

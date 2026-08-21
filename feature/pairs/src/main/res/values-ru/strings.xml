@@ -16,13 +16,13 @@
     <!-- Детальный экран -->
     <string name="pair_detail_back">Назад</string>
     <string name="pair_detail_spread_title">Разброс между биржами</string>
-    <string name="pair_detail_spread_title_single">Спред покупки и продажи</string>
-    <string name="pair_detail_buy_on">Купить на %1$s</string>
-    <string name="pair_detail_sell_on">Продать на %1$s</string>
+    <string name="pair_detail_spread_title_single">Спред Ask/Bid</string>
+    <string name="pair_detail_buy_on">Цена покупки на %1$s</string>
+    <string name="pair_detail_sell_on">Цена продажи на %1$s</string>
     <string name="pair_detail_spread_difference">Разница %1$s</string>
     <string name="pair_detail_unknown_exchange">неизвестно</string>
-    <string name="pair_detail_buy_price">Цена покупки</string>
-    <string name="pair_detail_sell_price">Цена продажи</string>
+    <string name="pair_detail_buy_price">Цена Ask</string>
+    <string name="pair_detail_sell_price">Цена Bid</string>
     <string name="pair_detail_spread">Спред</string>
     <string name="pair_detail_no_chart_data">Нет данных для графика</string>
     <string name="pair_detail_chart_source">Среднее по всем биржам</string>

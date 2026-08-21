@@ -133,9 +133,10 @@ class FavouriteTickerRepositoryImpl
                         chunk.forEach { document -> batch.delete(document.reference) }
                         batch.commit().await()
                     }
-
-                    favouriteTickerDao.deleteByUser(userId)
-                    pendingFavouriteOperationDao.deleteByUser(userId)
+                    transactionRunner.run {
+                        favouriteTickerDao.deleteByUser(userId)
+                        pendingFavouriteOperationDao.deleteByUser(userId)
+                    }
                 }.onFailure { exception -> if (exception is CancellationException) throw exception }
             }
 

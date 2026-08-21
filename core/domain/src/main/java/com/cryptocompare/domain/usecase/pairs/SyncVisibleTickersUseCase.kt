@@ -18,6 +18,7 @@ class SyncVisibleTickersUseCase
             // подписок получается min(видимые, MAX_SUBSCRIPTIONS).
             val normalizedVisibleTickers =
                 visibleTickers
+                    .asSequence()
                     .map { it.lowercase() }
                     .filter { it.isNotBlank() }
                     .distinct()

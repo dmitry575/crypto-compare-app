@@ -85,7 +85,7 @@ class AuthRepositoryImpl
                 // FirebaseAuthRecentLoginRequiredException доходит до UI как есть —
                 // toUserMessage() превращает его в понятную просьбу перелогиниться
                 user.delete().await()
-                Unit
+                crashReporter.clearUser()
             }.onFailure { exception -> if (exception is CancellationException) throw exception }
 
         override suspend fun changePassword(

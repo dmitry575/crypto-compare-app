@@ -19,12 +19,12 @@
     <string name="pair_detail_back">Back</string>
     <string name="pair_detail_spread_title">Spread between exchanges</string>
     <string name="pair_detail_spread_title_single">Bid-ask spread</string>
-    <string name="pair_detail_buy_on">Buy on %1$s</string>
-    <string name="pair_detail_sell_on">Sell on %1$s</string>
+    <string name="pair_detail_buy_on">Buy price on %1$s</string>
+    <string name="pair_detail_sell_on">Sale price on %1$s</string>
     <string name="pair_detail_spread_difference">Difference %1$s</string>
     <string name="pair_detail_unknown_exchange">unknown</string>
-    <string name="pair_detail_buy_price">Buy price</string>
-    <string name="pair_detail_sell_price">Sell price</string>
+    <string name="pair_detail_buy_price">Ask price</string>
+    <string name="pair_detail_sell_price">Bid price</string>
     <string name="pair_detail_spread">Spread</string>
     <string name="pair_detail_no_chart_data">No chart data</string>
     <string name="pair_detail_chart_source">Aggregate across all exchanges</string>
