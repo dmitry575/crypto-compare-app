@@ -161,6 +161,10 @@ class WebSocketClient
             }
         }
 
+        /** Снимок активных подписок: снаружи по нему считают дифф, не рассылая лишних сообщений. */
+        val activeSubscriptions: Set<String>
+            get() = synchronized(lock) { subscribedTickers.toSet() }
+
         private companion object {
             const val TAG = WebSocketConstants.LOG_TAG
         }

@@ -91,6 +91,9 @@ class TickerStreamRepositoryImpl
                 }
             }
 
+        override val activeSubscriptions: Set<String>
+            get() = webSocketClient.activeSubscriptions
+
         override fun connect() {
             webSocketClient.connect(wsUrl)
         }
