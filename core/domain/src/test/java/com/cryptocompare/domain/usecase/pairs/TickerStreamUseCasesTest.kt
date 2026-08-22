@@ -61,4 +61,57 @@ class TickerStreamUseCasesTest {
         // отключение не должно попутно дёргать подписки
         verify(exactly = 0) { repository.unsubscribe(any()) }
     }
+
+    @Test
+    fun `StreamConnectUseCase opens the connection`() {
+        StreamConnectUseCase(repository)()
+
+        verify(exactly = 1) { repository.connect() }
+        verify(exactly = 0) { repository.unsubscribe(any()) }
+    }
+
+    @Test
+    fun `SubscribeSingleTickerUseCase leaves only the requested ticker subscribed`() {
+        every { repository.activeSubscriptions } returns setOf("btcusdt", "ethusdt")
+
+        val previous = SubscribeSingleTickerUseCase(repository)("adausdt")
+
+        assertEquals(setOf("btcusdt", "ethusdt"), previous)
+        verify(exactly = 1) { repository.unsubscribe("btcusdt") }
+        verify(exactly = 1) { repository.unsubscribe("ethusdt") }
+        verify(exactly = 1) { repository.subscribe("adausdt") }
+    }
+
+    @Test
+    fun `SubscribeSingleTickerUseCase does not resubscribe an already active ticker`() {
+        every { repository.activeSubscriptions } returns setOf("btcusdt")
+
+        SubscribeSingleTickerUseCase(repository)("BTCUSDT")
+
+        verify(exactly = 0) { repository.subscribe(any()) }
+        verify(exactly = 0) { repository.unsubscribe(any()) }
+    }
+
+    @Test
+    fun `RestoreTickerSubscriptionsUseCase diffs against active subscriptions`() {
+        every { repository.activeSubscriptions } returns setOf("btcusdt", "ethusdt")
+
+        RestoreTickerSubscriptionsUseCase(repository)(setOf("ETHUSDT", "adausdt"))
+
+        verify(exactly = 1) { repository.unsubscribe("btcusdt") }
+        verify(exactly = 1) { repository.subscribe("adausdt") }
+        // ethusdt остался активным — трогать его не надо
+        verify(exactly = 0) { repository.subscribe("ethusdt") }
+        verify(exactly = 0) { repository.unsubscribe("ethusdt") }
+    }
+
+    @Test
+    fun `RestoreTickerSubscriptionsUseCase skips blank tickers`() {
+        every { repository.activeSubscriptions } returns emptySet()
+
+        RestoreTickerSubscriptionsUseCase(repository)(setOf("", "  ", "btcusdt"))
+
+        verify(exactly = 1) { repository.subscribe("btcusdt") }
+        verify(exactly = 1) { repository.subscribe(any()) }
+    }
 }
