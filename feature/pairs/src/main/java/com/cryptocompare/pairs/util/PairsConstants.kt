@@ -56,10 +56,23 @@ object PairsConstants {
         /** Внутри дня подписывать датой бессмысленно — она везде одинаковая. */
         const val LABEL_DATE_PATTERN = "MM-dd"
         const val LABEL_TIME_PATTERN = "HH:mm"
+
+        /** Длительность одной свечи: по ней живой тик попадает в текущий бар. */
+        const val M15_DURATION_MS = 15L * 60L * 1000L
+        const val H1_DURATION_MS = 60L * 60L * 1000L
+        const val H4_DURATION_MS = 4L * H1_DURATION_MS
+        const val D1_DURATION_MS = 24L * H1_DURATION_MS
+        const val W1_DURATION_MS = 7L * D1_DURATION_MS
     }
 
     object DetailScreen {
         const val SPREAD_FORMAT = "%.4f%%"
+
+        /**
+         * Тики приходят десятками в секунду; в состояние графика пробрасывается
+         * только последний за интервал, иначе непрерывная рекомпозиция съедает кадры.
+         */
+        const val LIVE_PRICE_INTERVAL_MS = 500L
 
         val statusDotSize: Dp = 8.dp
         val websiteIconSize: Dp = 14.dp
