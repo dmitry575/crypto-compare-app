@@ -33,6 +33,7 @@ import com.patrykandpatrick.vico.compose.m3.common.rememberM3VicoTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 @Composable
 fun CandlestickChart(
@@ -42,14 +43,22 @@ fun CandlestickChart(
 ) {
     val modelProducer = remember { CartesianChartModelProducer() }
     val scrollState = rememberVicoScrollState(initialScroll = Scroll.Absolute.End)
+    val zoomState =
+        rememberVicoZoomState(
+            zoomEnabled = true,
+            initialZoom = Zoom.x(PairsConstants.Chart.VISIBLE_CANDLES.toDouble()),
+            minZoom = Zoom.x(PairsConstants.Chart.MIN_VISIBLE_CANDLES.toDouble()),
+            maxZoom = Zoom.x(PairsConstants.Chart.MAX_VISIBLE_CANDLES.toDouble()),
+        )
 
     // шкалу Y считаем по видимым свечам, а не по всей загруженной истории:
     // иначе ось растянута на годовой размах, а видимый месяц — тонкая лента.
-    // Чтение scrollState.value подписывает нас на скролл, окно едет вместе с ним.
+    // Чтение scrollState.value и zoomState.value подписывает нас на скролл
+    // и пинч-зум: окно едет вместе с ними, у vico Zoom.x(N) держит в кадре N свечей.
     val window =
         visibleCandleWindow(
             candleCount = candles.size,
-            visibleCount = PairsConstants.Chart.VISIBLE_CANDLES,
+            visibleCount = zoomState.value.roundToInt(),
             scrollValue = scrollState.value,
             maxScrollValue = scrollState.maxValue,
         )
@@ -134,15 +143,7 @@ fun CandlestickChart(
             modifier = modifier,
             // открываем на свежих свечах, а не на самом старом крае
             scrollState = scrollState,
-            // Фиксированное окно вместо натуральной ширины свечи: сколько бы истории
-            // ни загрузили, в кадре всегда VISIBLE_CANDLES свечей. Щипковый зум
-            // выключен намеренно — на нём это равенство держится, и окно считается
-            // точно, без оценок по пикселям. Масштаб переключается кнопками сверху.
-            zoomState =
-                rememberVicoZoomState(
-                    zoomEnabled = false,
-                    initialZoom = Zoom.x(PairsConstants.Chart.VISIBLE_CANDLES.toDouble()),
-                ),
+            zoomState = zoomState,
             // данные при прокрутке не меняются, анимировать нечего
             animationSpec = null,
         )
