@@ -68,9 +68,7 @@ class DetailsViewModelTest {
 
     private fun connectUseCaseMock(): StreamConnectUseCase = mockk(relaxed = true)
 
-    private fun subscribeSingleUseCaseMock(
-        previous: Set<String> = setOf("ethusdt", "adausdt"),
-    ): SubscribeSingleTickerUseCase = mockk { every { this@mockk.invoke(any()) } returns previous }
+    private fun subscribeSingleUseCaseMock(): SubscribeSingleTickerUseCase = mockk(relaxed = true)
 
     private fun restoreUseCaseMock(): RestoreTickerSubscriptionsUseCase = mockk(relaxed = true)
 
@@ -137,7 +135,7 @@ class DetailsViewModelTest {
     fun `init connects and takes over subscriptions for the pair ticker`() =
         runTest {
             val connect = connectUseCaseMock()
-            val subscribeSingle = subscribeSingleUseCaseMock(previous = emptySet())
+            val subscribeSingle = subscribeSingleUseCaseMock()
 
             makeVm(connect = connect, subscribeSingle = subscribeSingle)
             runCurrent()
@@ -237,17 +235,17 @@ class DetailsViewModelTest {
         }
 
     @Test
-    fun `clearing the viewmodel restores previous catalog subscriptions`() =
+    fun `clearing the viewmodel ends the subscription takeover`() =
         runTest {
             val restore = restoreUseCaseMock()
-            val subscribeSingle = subscribeSingleUseCaseMock(previous = setOf("ethusdt", "adausdt"))
 
-            val vm = makeVm(subscribeSingle = subscribeSingle, restore = restore)
+            val vm = makeVm(restore = restore)
             runCurrent()
 
             clearViewModel(vm)
 
-            verify(exactly = 1) { restore.invoke(setOf("ethusdt", "adausdt")) }
+            // база каталога живёт в репозитории — VM лишь отпускает захват
+            verify(exactly = 1) { restore.invoke() }
         }
 
     /** onCleared() защищён, поэтому дёргаем его через настоящий ViewModelStore. */

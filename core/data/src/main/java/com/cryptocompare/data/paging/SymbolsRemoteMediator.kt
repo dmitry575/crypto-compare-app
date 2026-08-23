@@ -7,6 +7,7 @@ import androidx.paging.RemoteMediator
 import androidx.room.withTransaction
 import com.cryptocompare.data.local.CryptoCompareDatabase
 import com.cryptocompare.data.local.entity.CatalogRemoteKeyEntity
+import com.cryptocompare.data.mapper.normalizeSymbols
 import com.cryptocompare.data.mapper.toEntityFromDto
 import com.cryptocompare.helpers.util.CryptoCompareRepositoryConstants
 import com.cryptocompare.model.symbol.PairAggregateRow
@@ -71,11 +72,7 @@ class SymbolsRemoteMediator(
                 return MediatorResult.Error(IllegalStateException(message))
             }
 
-            val symbols =
-                response.symbols
-                    ?.map { symbol ->
-                        symbol.copy(providerId = if (symbol.providerId == 0) 1 else symbol.providerId)
-                    }.orEmpty()
+            val symbols = response.symbols.normalizeSymbols()
             val endReached = symbols.isEmpty()
 
             database.withTransaction {

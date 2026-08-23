@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
 class DetailsViewModel
@@ -44,8 +45,8 @@ class DetailsViewModel
         /** Загруженные масштабы: повторное переключение не идёт в сеть. */
         private val candlesByTimeframe = mutableMapOf<ChartTimeframe, List<Candle>>()
 
-        /** Подписки каталога, снятые на время показа деталей: слотов у соединения мало. */
-        private var previousSubscriptions: Set<String> = emptySet()
+        /** Захватили ли подписку под этот экран — чтобы отпустить её ровно один раз. */
+        private var subscriptionTakenOver = false
 
         private val pendingTickLock = Any()
 
@@ -69,7 +70,8 @@ class DetailsViewModel
             if (ticker.isBlank()) return
 
             streamConnectUseCase()
-            previousSubscriptions = subscribeSingleTickerUseCase(ticker)
+            subscribeSingleTickerUseCase(ticker)
+            subscriptionTakenOver = true
 
             viewModelScope.launch {
                 try {
@@ -100,18 +102,15 @@ class DetailsViewModel
 
             viewModelScope.launch {
                 while (true) {
-                    delay(PairsConstants.DetailScreen.LIVE_PRICE_INTERVAL_MS)
+                    delay(PairsConstants.DetailScreen.LIVE_PRICE_INTERVAL_MS.milliseconds)
 
                     val tick =
                         synchronized(pendingTickLock) {
                             val current = pendingTick
+                            if (current == null) isTickFlushScheduled = false
                             pendingTick = null
                             current
-                        } ?: run {
-                            isTickFlushScheduled = false
-                            return@launch
-                        }
-
+                        } ?: return@launch
                     applyLiveTick(tick)
                 }
             }
@@ -213,8 +212,11 @@ class DetailsViewModel
         }
 
         override fun onCleared() {
-            // каталог ждёт свои подписки обратно, даже если его композиция ещё жива
-            restoreTickerSubscriptionsUseCase(previousSubscriptions)
+            // отпускаем захват только если сами его брали — иначе чужой счётчик уедет
+            // в минус и каталог вернётся раньше времени поверх активного экрана
+            if (subscriptionTakenOver) {
+                restoreTickerSubscriptionsUseCase()
+            }
             super.onCleared()
         }
     }

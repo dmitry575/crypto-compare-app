@@ -9,6 +9,7 @@ import com.cryptocompare.data.local.dao.ProviderDao
 import com.cryptocompare.data.local.dao.SymbolDao
 import com.cryptocompare.data.local.entity.SymbolEntity
 import com.cryptocompare.data.mapper.errorMessageOrNull
+import com.cryptocompare.data.mapper.normalizeSymbols
 import com.cryptocompare.data.mapper.symbolToDomainFromDto
 import com.cryptocompare.data.mapper.toCandles
 import com.cryptocompare.data.mapper.toDomainFromEntity
@@ -224,10 +225,7 @@ class CryptoCompareRepositoryImpl
                 }
 
                 val symbols =
-                    response.symbols
-                        ?.map { symbol ->
-                            symbol.copy(providerId = if (symbol.providerId == 0) 1 else symbol.providerId)
-                        }.orEmpty()
+                    response.symbols.normalizeSymbols()
                 if (symbols.isEmpty()) break
 
                 refreshedSymbols += symbols.toEntityFromDto(syncedAtMillis)

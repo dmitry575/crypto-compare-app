@@ -43,12 +43,16 @@ fun CandlestickChart(
 ) {
     val modelProducer = remember { CartesianChartModelProducer() }
     val scrollState = rememberVicoScrollState(initialScroll = Scroll.Absolute.End)
+    // minZoom/maxZoom у vico ограничивают КОЭФФИЦИЕНТ зума, а он обратен числу
+    // видимых свечей: Zoom.x(N) тем больше, чем меньше N. Поэтому нижней границе
+    // зума соответствует максимум свечей в кадре, а верхней — минимум. Перепутать
+    // местами нельзя: vico требует maxZoom >= minZoom и роняет экран на первом кадре.
     val zoomState =
         rememberVicoZoomState(
             zoomEnabled = true,
             initialZoom = Zoom.x(PairsConstants.Chart.VISIBLE_CANDLES.toDouble()),
-            minZoom = Zoom.x(PairsConstants.Chart.MIN_VISIBLE_CANDLES.toDouble()),
-            maxZoom = Zoom.x(PairsConstants.Chart.MAX_VISIBLE_CANDLES.toDouble()),
+            minZoom = Zoom.x(PairsConstants.Chart.MAX_VISIBLE_CANDLES.toDouble()),
+            maxZoom = Zoom.x(PairsConstants.Chart.MIN_VISIBLE_CANDLES.toDouble()),
         )
 
     // шкалу Y считаем по видимым свечам, а не по всей загруженной истории:

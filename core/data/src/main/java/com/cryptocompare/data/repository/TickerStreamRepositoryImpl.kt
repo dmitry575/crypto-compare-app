@@ -91,8 +91,12 @@ class TickerStreamRepositoryImpl
                 }
             }
 
-        override val activeSubscriptions: Set<String>
-            get() = webSocketClient.activeSubscriptions
+        // база каталога и счётчик захватов живут вместе с синглтоном-репозиторием,
+        // а не в отдельных ViewModel'ях: только так набор переживает наложение
+        // экранов деталей друг на друга
+        private val takeoverLock = Any()
+        private var catalogBaseline: Set<String>? = null
+        private var activeTakeovers = 0
 
         override fun connect() {
             webSocketClient.connect(wsUrl)
@@ -108,5 +112,39 @@ class TickerStreamRepositoryImpl
 
         override fun unsubscribe(ticker: String) {
             webSocketClient.unsubscribe(ticker)
+        }
+
+        override fun beginSingleTickerTakeover(ticker: String) {
+            val normalizedTicker = ticker.lowercase()
+
+            synchronized(takeoverLock) {
+                // база снимается только у первого захвата: вложенный экран не должен
+                // запомнить как «каталог» уже урезанный до одного тикера набор
+                if (activeTakeovers == 0) {
+                    catalogBaseline = webSocketClient.activeSubscriptions
+                }
+                activeTakeovers++
+            }
+
+            // оставляем в соединении единственный тикер экрана
+            val current = webSocketClient.activeSubscriptions
+            (current - normalizedTicker).forEach(webSocketClient::unsubscribe)
+            if (normalizedTicker.isNotBlank() && normalizedTicker !in current) {
+                webSocketClient.subscribe(normalizedTicker)
+            }
+        }
+
+        override fun endSingleTickerTakeover() {
+            val baseline =
+                synchronized(takeoverLock) {
+                    if (activeTakeovers > 0) activeTakeovers--
+                    // каталог возвращаем только когда ушёл последний захвативший экран
+                    if (activeTakeovers == 0) catalogBaseline.also { catalogBaseline = null } else null
+                } ?: return
+
+            // приводим подписки к сохранённому набору: лишние снимаем, недостающие досылаем
+            val current = webSocketClient.activeSubscriptions
+            (current - baseline).forEach(webSocketClient::unsubscribe)
+            (baseline - current).forEach(webSocketClient::subscribe)
         }
     }

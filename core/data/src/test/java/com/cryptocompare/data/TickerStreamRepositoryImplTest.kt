@@ -258,6 +258,61 @@ class TickerStreamRepositoryImplTest {
         }
     }
 
+    @Test
+    fun `takeover leaves only the screen ticker and restores the catalog on release`() {
+        val fixture = createRepository()
+        val subscriptions = simulateSubscriptions(fixture.webSocketClient, initial = setOf("btcusdt", "ethusdt"))
+
+        fixture.repository.beginSingleTickerTakeover("ADAUSDT")
+        assertEquals(setOf("adausdt"), subscriptions())
+
+        fixture.repository.endSingleTickerTakeover()
+        assertEquals(setOf("btcusdt", "ethusdt"), subscriptions())
+    }
+
+    @Test
+    fun `nested takeover restores the catalog only after the last release`() {
+        val fixture = createRepository()
+        val subscriptions = simulateSubscriptions(fixture.webSocketClient, initial = setOf("btcusdt"))
+
+        // второй экран деталей накладывается на первый до того, как первый ушёл
+        fixture.repository.beginSingleTickerTakeover("ethusdt")
+        fixture.repository.beginSingleTickerTakeover("adausdt")
+        assertEquals(setOf("adausdt"), subscriptions())
+
+        // ушёл один из двух — каталог возвращать рано, активный экран остаётся с тикером
+        fixture.repository.endSingleTickerTakeover()
+        assertEquals(setOf("adausdt"), subscriptions())
+
+        // ушёл последний — только теперь возвращаем базу каталога
+        fixture.repository.endSingleTickerTakeover()
+        assertEquals(setOf("btcusdt"), subscriptions())
+    }
+
+    @Test
+    fun `release without a matching takeover leaves subscriptions untouched`() {
+        val fixture = createRepository()
+        val subscriptions = simulateSubscriptions(fixture.webSocketClient, initial = setOf("btcusdt", "ethusdt"))
+
+        fixture.repository.endSingleTickerTakeover()
+
+        assertEquals(setOf("btcusdt", "ethusdt"), subscriptions())
+        io.mockk.verify(exactly = 0) { fixture.webSocketClient.subscribe(any()) }
+        io.mockk.verify(exactly = 0) { fixture.webSocketClient.unsubscribe(any()) }
+    }
+
+    /** Мокаем подписки соединения изменяемым множеством, чтобы дифф захвата было видно по факту. */
+    private fun simulateSubscriptions(
+        webSocketClient: WebSocketClient,
+        initial: Set<String>,
+    ): () -> Set<String> {
+        val current = initial.toMutableSet()
+        every { webSocketClient.activeSubscriptions } answers { current.toSet() }
+        every { webSocketClient.subscribe(any()) } answers { current.add(firstArg<String>().lowercase()) }
+        every { webSocketClient.unsubscribe(any()) } answers { current.remove(firstArg<String>().lowercase()) }
+        return { current.toSet() }
+    }
+
     private fun createRepository(wsUrl: String = "ws://localhost:8081"): RepositoryFixture {
         val networkState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
         val networkMessages = MutableSharedFlow<SocketDtoMessage>()

@@ -14,6 +14,8 @@ object AppConstants {
             "USDC",
             "USDG",
             "USDF",
+            "USDS",
+            "USDR",
             "USD1",
             "USDE",
             "BUSD",
