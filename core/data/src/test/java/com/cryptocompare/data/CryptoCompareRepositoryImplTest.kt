@@ -10,14 +10,12 @@ import com.cryptocompare.model.provider.Provider
 import com.cryptocompare.model.provider.ProviderStatus
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.network.api.CryptoCompareApi
-import com.cryptocompare.network.api.CryptoCompareHistoryApi
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.GetProvidersResponse
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.GetSymbolsResponse
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.ProviderDto
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.SymbolDto
-import com.cryptocompare.network.dto.apiDTO.historyDTO.GetHistoryResponse
-import com.cryptocompare.network.dto.apiDTO.historyDTO.HistoryCandleDto
-import com.cryptocompare.network.dto.apiDTO.historyDTO.HistoryDataDto
+import com.cryptocompare.network.dto.apiDTO.klinesDTO.GetKlinesResponse
+import com.cryptocompare.network.dto.apiDTO.klinesDTO.KlineEntryDto
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -65,11 +63,9 @@ class CryptoCompareRepositoryImplTest {
         symbolDao: SymbolDao = mockk(),
         providerDao: ProviderDao = mockk(),
         database: CryptoCompareDatabase = mockk(relaxed = true),
-        historyApi: CryptoCompareHistoryApi = mockk(relaxed = true),
     ): CryptoCompareRepositoryImpl =
         CryptoCompareRepositoryImpl(
             cryptoCompareApi = api,
-            historyApi = historyApi,
             database = database,
             symbolDao = symbolDao,
             providerDao = providerDao,
@@ -393,77 +389,119 @@ class CryptoCompareRepositoryImplTest {
             assertEquals(1, result.getOrThrow().size)
         }
 
-    @Test
-    fun `getCandles splits ticker and issues a single aggregate request`() =
-        runTest(dispatcher) {
-            val historyApi = mockk<CryptoCompareHistoryApi>()
-            val repo = createRepo(historyApi = historyApi)
+    private fun kline(
+        openTime: String,
+        open: Double = 1.0,
+        high: Double = 1.5,
+        low: Double = 0.5,
+        close: Double = 1.2,
+    ) = KlineEntryDto(
+        openTime = openTime,
+        openPrice = open,
+        highPrice = high,
+        lowPrice = low,
+        closePrice = close,
+        volume = 10.0,
+    )
 
-            coEvery { historyApi.getDailyHistory("BTC", "USDT", any(), any()) } returns
-                GetHistoryResponse(
-                    response = "Success",
-                    message = null,
-                    error = null,
-                    data = HistoryDataDto(listOf(HistoryCandleDto(1_751_328_000L, 1.0, 1.5, 0.5, 1.2))),
+    @Test
+    fun `getCandles requests a klines page for the provider and maps the response`() =
+        runTest(dispatcher) {
+            val api = mockk<CryptoCompareApi>()
+            val repo = createRepo(api = api)
+
+            coEvery {
+                api.getKlines(providerId = 7, symbol = "btcusdt", interval = "1d", limit = 300, offset = 0)
+            } returns
+                GetKlinesResponse(
+                    errorCode = 0,
+                    errorMsgs = null,
+                    providerId = 7,
+                    providerName = "mexc",
+                    ticker = "btcusdt",
+                    interval = "1d",
+                    klines = listOf(kline("2026-07-01T00:00:00Z", open = 1.0, close = 1.2)),
                 )
 
-            val result = repo.getCandles("btcusdt", ChartTimeframe.D1)
+            val result =
+                repo.getCandles(
+                    providerId = 7,
+                    symbol = "btcusdt",
+                    timeframe = ChartTimeframe.D1,
+                    limit = 300,
+                    offset = 0,
+                )
 
             assertTrue(result.isSuccess)
             val candle = result.getOrThrow().single()
             assertEquals(1.0, candle.open, 0.0)
             assertEquals(1.2, candle.close, 0.0)
-            // время приходит в секундах и разворачивается в миллисекунды
-            assertEquals(1_751_328_000_000L, candle.timeMillis)
-            coVerify(exactly = 1) { historyApi.getDailyHistory(any(), any(), any(), any()) }
+            assertEquals(
+                java.time.Instant
+                    .parse("2026-07-01T00:00:00Z")
+                    .toEpochMilli(),
+                candle.timeMillis,
+            )
+            coVerify(exactly = 1) {
+                api.getKlines(providerId = 7, symbol = "btcusdt", interval = "1d", limit = 300, offset = 0)
+            }
         }
 
     @Test
-    fun `getCandles drops empty zero candles`() =
+    fun `getCandles drops empty zero candles and sorts by time`() =
         runTest(dispatcher) {
-            val historyApi = mockk<CryptoCompareHistoryApi>()
-            val repo = createRepo(historyApi = historyApi)
+            val api = mockk<CryptoCompareApi>()
+            val repo = createRepo(api = api)
 
-            coEvery { historyApi.getDailyHistory("BTC", "USDT", any(), any()) } returns
-                GetHistoryResponse(
-                    response = "Success",
-                    message = null,
-                    error = null,
-                    data =
-                        HistoryDataDto(
-                            listOf(
-                                HistoryCandleDto(1_751_328_000L, 0.0, 0.0, 0.0, 0.0),
-                                HistoryCandleDto(1_751_414_400L, 1.0, 2.0, 0.5, 1.5),
-                            ),
+            coEvery { api.getKlines(any(), any(), any(), any(), any()) } returns
+                GetKlinesResponse(
+                    errorCode = 0,
+                    errorMsgs = null,
+                    providerId = 1,
+                    providerName = null,
+                    ticker = "btcusdt",
+                    interval = "1d",
+                    klines =
+                        listOf(
+                            kline("2026-07-02T00:00:00Z", open = 1.0, high = 2.0, low = 0.5, close = 1.5),
+                            kline("2026-07-01T00:00:00Z", open = 0.0, high = 0.0, low = 0.0, close = 0.0),
                         ),
                 )
 
-            val result = repo.getCandles("btcusdt", ChartTimeframe.D1)
+            val candles = repo.getCandles(1, "btcusdt", ChartTimeframe.D1, 300, 0).getOrThrow()
 
-            assertEquals(1, result.getOrThrow().size)
+            assertEquals(1, candles.size)
+            assertEquals(1.5, candles.single().close, 0.0)
+        }
+
+    @Test
+    fun `getCandles returns an empty page unchanged as the end-of-history signal`() =
+        runTest(dispatcher) {
+            val api = mockk<CryptoCompareApi>()
+            val repo = createRepo(api = api)
+
+            coEvery { api.getKlines(any(), any(), any(), any(), any()) } returns
+                GetKlinesResponse(0, null, 1, null, "btcusdt", "1d", emptyList())
+
+            val result = repo.getCandles(1, "btcusdt", ChartTimeframe.D1, 300, 900)
+
+            assertTrue(result.isSuccess)
+            assertTrue(result.getOrThrow().isEmpty())
         }
 
     @Test
     fun `getCandles returns failure when api reports an error`() =
         runTest(dispatcher) {
-            val historyApi = mockk<CryptoCompareHistoryApi>()
-            val repo = createRepo(historyApi = historyApi)
+            val api = mockk<CryptoCompareApi>()
+            val repo = createRepo(api = api)
 
-            coEvery { historyApi.getDailyHistory(any(), any(), any(), any()) } returns
-                GetHistoryResponse("Error", "API key required", null, null)
+            coEvery { api.getKlines(any(), any(), any(), any(), any()) } returns
+                GetKlinesResponse(-2, listOf("Invalid request"), null, null, null, null, null)
 
-            val result = repo.getCandles("btcusdt", ChartTimeframe.D1)
-
-            assertTrue(result.isFailure)
-            assertEquals("API key required", result.exceptionOrNull()!!.message)
-        }
-
-    @Test
-    fun `getCandles fails on unsupported ticker format`() =
-        runTest(dispatcher) {
-            val result = createRepo().getCandles("zzz", ChartTimeframe.D1)
+            val result = repo.getCandles(1, "btcusdt", ChartTimeframe.D1, 300, 0)
 
             assertTrue(result.isFailure)
+            assertEquals("Invalid request", result.exceptionOrNull()!!.message)
         }
 
     @Test

@@ -3,32 +3,30 @@ package com.cryptocompare.data.repository
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.paging.filter
 import androidx.paging.map
 import com.cryptocompare.data.local.CryptoCompareDatabase
 import com.cryptocompare.data.local.dao.ProviderDao
 import com.cryptocompare.data.local.dao.SymbolDao
 import com.cryptocompare.data.local.entity.SymbolEntity
-import com.cryptocompare.data.mapper.errorMessageOrNull
 import com.cryptocompare.data.mapper.normalizeSymbols
 import com.cryptocompare.data.mapper.symbolToDomainFromDto
 import com.cryptocompare.data.mapper.toCandles
 import com.cryptocompare.data.mapper.toDomainFromEntity
 import com.cryptocompare.data.mapper.toEntityFromDto
+import com.cryptocompare.data.mapper.toKlineInterval
 import com.cryptocompare.data.mapper.toPairUiItem
-import com.cryptocompare.data.mapper.toRequestSpec
 import com.cryptocompare.data.paging.SymbolsRemoteMediator
+import com.cryptocompare.data.util.DataConstants
 import com.cryptocompare.domain.repository.CryptoCompareRepository
-import com.cryptocompare.helpers.parseTicker
 import com.cryptocompare.helpers.util.CryptoCompareRepositoryConstants
 import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.chart.ChartTimeframe
-import com.cryptocompare.model.chart.HistoryResolution
 import com.cryptocompare.model.provider.Provider
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.symbol.Symbol
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.network.api.CryptoCompareApi
-import com.cryptocompare.network.api.CryptoCompareHistoryApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
@@ -44,7 +42,6 @@ class CryptoCompareRepositoryImpl
     @Inject
     constructor(
         private val cryptoCompareApi: CryptoCompareApi,
-        private val historyApi: CryptoCompareHistoryApi,
         private val database: CryptoCompareDatabase,
         private val symbolDao: SymbolDao,
         private val providerDao: ProviderDao,
@@ -116,7 +113,9 @@ class CryptoCompareRepositoryImpl
                         favouriteTickers = normalizedFavourites,
                     )
                 },
-            ).flow.map { pagingData -> pagingData.map { it.toPairUiItem() } }
+            ).flow.map { pagingData ->
+                pagingData.filter { it.maxPrice > 0 && it.minPrice > 0 }.map { it.toPairUiItem() }
+            }
         }
 
         // per-exchange rows live only on the network: the catalog collapses a
@@ -143,34 +142,32 @@ class CryptoCompareRepositoryImpl
                 }
             }
 
-        // история свечей из стороннего min-api: ровно один запрос на масштаб,
-        // без разбивки по биржам и без локального кеша
+        // история свечей с нашего бэкенда: одна страница на биржу, окно листается
+        // offset/limit, локального кеша нет — истории слишком много
         override suspend fun getCandles(
-            ticker: String,
+            providerId: Int,
+            symbol: String,
             timeframe: ChartTimeframe,
+            limit: Int,
+            offset: Int,
         ): Result<List<Candle>> =
             withContext(ioDispatcher) {
                 runCatching {
-                    val (fromSymbol, toSymbol) =
-                        ticker.parseTicker()
-                            ?: throw IllegalStateException("Unsupported ticker format: $ticker")
-
-                    val spec = timeframe.toRequestSpec()
-                    val limit = spec.limit
-
                     val response =
-                        when (spec.resolution) {
-                            HistoryResolution.MINUTE ->
-                                historyApi.getMinuteHistory(fromSymbol, toSymbol, limit, spec.aggregate)
+                        cryptoCompareApi.getKlines(
+                            providerId = providerId,
+                            symbol = symbol,
+                            interval = timeframe.toKlineInterval(),
+                            limit = limit,
+                            offset = offset,
+                        )
 
-                            HistoryResolution.HOUR ->
-                                historyApi.getHourHistory(fromSymbol, toSymbol, limit, spec.aggregate)
+                    if (response.errorCode != DataConstants.Klines.ERROR_CODE_OK) {
+                        val message =
+                            response.errorMsgs?.joinToString("\n") ?: DataConstants.Klines.UNKNOWN_ERROR
+                        throw IllegalStateException(message)
+                    }
 
-                            HistoryResolution.DAY ->
-                                historyApi.getDailyHistory(fromSymbol, toSymbol, limit, spec.aggregate)
-                        }
-
-                    response.errorMessageOrNull()?.let { throw IllegalStateException(it) }
                     response.toCandles()
                 }.onFailure { error ->
                     if (error is CancellationException) {
@@ -218,14 +215,12 @@ class CryptoCompareRepositoryImpl
                         skip = skip,
                         rows = CryptoCompareRepositoryConstants.SYMBOLS_IN_ROW,
                     )
-
                 if (response.errorCode != 0) {
                     val message = response.errorMsgs?.joinToString("\n") ?: "Unknown error"
                     throw IllegalStateException(message)
                 }
 
-                val symbols =
-                    response.symbols.normalizeSymbols()
+                val symbols = response.symbols.normalizeSymbols()
                 if (symbols.isEmpty()) break
 
                 refreshedSymbols += symbols.toEntityFromDto(syncedAtMillis)

@@ -5,13 +5,20 @@ import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.chart.ChartTimeframe
 import javax.inject.Inject
 
+/**
+ * Одна страница истории свечей биржи. Свечи привязаны к провайдеру, а глубина
+ * листается [offset]/[limit] — историю целиком в память не тянем.
+ */
 class GetTickerHistoryUseCase
     @Inject
     constructor(
         private val cryptoCompareRepository: CryptoCompareRepository,
     ) {
         suspend operator fun invoke(
-            ticker: String,
+            providerId: Int,
+            symbol: String,
             timeframe: ChartTimeframe,
-        ): Result<List<Candle>> = cryptoCompareRepository.getCandles(ticker, timeframe)
+            limit: Int,
+            offset: Int,
+        ): Result<List<Candle>> = cryptoCompareRepository.getCandles(providerId, symbol, timeframe, limit, offset)
     }

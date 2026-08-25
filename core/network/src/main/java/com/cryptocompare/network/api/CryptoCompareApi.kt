@@ -4,11 +4,23 @@ import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.GetProviderResponse
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.GetProvidersResponse
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.GetSymbolResponse
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.GetSymbolsResponse
+import com.cryptocompare.network.dto.apiDTO.klinesDTO.GetKlinesResponse
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface CryptoCompareApi {
+    // История свечей одной пары у биржи. Окно листается страницами: offset —
+    // сколько самых свежих свечей пропустить, limit — сколько вернуть (макс. 1000).
+    @GET("klines/{providerId}")
+    suspend fun getKlines(
+        @Path("providerId") providerId: Int,
+        @Query("symbol") symbol: String,
+        @Query("interval") interval: String,
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,
+    ): GetKlinesResponse
+
     @GET("providers")
     suspend fun getProviders(
         @Query("skip") skip: Int? = null,

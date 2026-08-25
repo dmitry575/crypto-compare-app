@@ -6,8 +6,6 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-// ключ необязателен для сборки: без него график просто не загрузится
-val cryptoCompareApiKey = providers.gradleProperty("CRYPTOCOMPARE_API_KEY").orNull.orEmpty()
 val debugBaseUrl = project.requireDebugProperty("DEBUG_BASE_URL", "http://example_ip:port")
 val releaseBaseUrl = project.requireReleaseProperty("RELEASE_BASE_URL", "http://example_ip:port")
 
@@ -60,19 +58,6 @@ android {
 
     defaultConfig {
         minSdk = 26
-
-        // история свечей берётся из стороннего CryptoCompare min-api;
-        // ключ не хранится в исходниках — положите его в gradle.properties
-        buildConfigField(
-            "String",
-            "HISTORY_BASE_URL",
-            "\"https://min-api.cryptocompare.com/\"",
-        )
-        buildConfigField(
-            "String",
-            "CRYPTOCOMPARE_API_KEY",
-            "\"$cryptoCompareApiKey\"",
-        )
     }
 
     buildTypes {

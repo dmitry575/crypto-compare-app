@@ -26,7 +26,6 @@ import com.cryptocompare.domain.repository.OnboardingRepository
 import com.cryptocompare.domain.repository.ThemeRepository
 import com.cryptocompare.domain.repository.TickerStreamRepository
 import com.cryptocompare.network.api.CryptoCompareApi
-import com.cryptocompare.network.api.CryptoCompareHistoryApi
 import com.cryptocompare.network.websocket.WebSocketClient
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -51,13 +50,11 @@ object RepositoryModule {
     @Singleton
     fun provideCryptoCompareRepository(
         api: CryptoCompareApi,
-        historyApi: CryptoCompareHistoryApi,
         database: CryptoCompareDatabase,
         providerDao: ProviderDao,
         symbolDao: SymbolDao,
         @Named("ioDispatcher") ioDispatcher: CoroutineDispatcher,
-    ): CryptoCompareRepository =
-        CryptoCompareRepositoryImpl(api, historyApi, database, symbolDao, providerDao, ioDispatcher)
+    ): CryptoCompareRepository = CryptoCompareRepositoryImpl(api, database, symbolDao, providerDao, ioDispatcher)
 
     @Provides
     @Singleton

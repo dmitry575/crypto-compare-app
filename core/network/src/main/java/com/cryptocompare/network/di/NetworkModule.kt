@@ -2,7 +2,6 @@ package com.cryptocompare.network.di
 
 import com.cryptocompare.network.BuildConfig
 import com.cryptocompare.network.api.CryptoCompareApi
-import com.cryptocompare.network.api.CryptoCompareHistoryApi
 import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
@@ -54,40 +53,4 @@ object NetworkModule {
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
             .create(CryptoCompareApi::class.java)
-
-    // отдельный клиент под сторонний min-api: другой хост и ключ в заголовке
-    @Provides
-    @Singleton
-    @Named("historyOkHttpClient")
-    fun provideHistoryOkHttpClient(): OkHttpClient =
-        OkHttpClient
-            .Builder()
-            .addInterceptor { chain ->
-                val apiKey = BuildConfig.CRYPTOCOMPARE_API_KEY
-                val request =
-                    if (apiKey.isBlank()) {
-                        chain.request()
-                    } else {
-                        chain
-                            .request()
-                            .newBuilder()
-                            .header("Authorization", "Apikey $apiKey")
-                            .build()
-                    }
-                chain.proceed(request)
-            }.build()
-
-    @Provides
-    @Singleton
-    fun provideCryptoCompareHistoryApi(
-        gson: Gson,
-        @Named("historyOkHttpClient") okHttpClient: OkHttpClient,
-    ): CryptoCompareHistoryApi =
-        Retrofit
-            .Builder()
-            .baseUrl(BuildConfig.HISTORY_BASE_URL)
-            .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create(gson))
-            .build()
-            .create(CryptoCompareHistoryApi::class.java)
 }
