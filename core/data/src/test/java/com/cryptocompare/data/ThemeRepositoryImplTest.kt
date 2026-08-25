@@ -1,53 +1,33 @@
 package com.cryptocompare.data
 
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.cryptocompare.data.repository.ThemeRepositoryImpl
 import com.cryptocompare.data.util.DataConstants
 import com.cryptocompare.model.settings.ThemePreference
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TemporaryFolder
 
 class ThemeRepositoryImplTest {
-    @get:Rule
-    val temporaryFolder = TemporaryFolder()
-
-    /**
-     * Именно настоящий scope, а не TestScope: у DataStore и runTest были бы
-     * разные виртуальные часы, и тест вставал бы намертво.
-     */
-    private val dataStoreScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-
     private lateinit var dataStore: DataStore<Preferences>
     private lateinit var repository: ThemeRepositoryImpl
 
     @Before
     fun setUp() {
-        // настоящий DataStore поверх временного файла: подменять его моком
-        // бессмысленно — проверять надо как раз сериализацию значения
-        dataStore =
-            PreferenceDataStoreFactory.create(scope = dataStoreScope) {
-                temporaryFolder.newFile("theme.preferences_pb")
-            }
+        // DataStore в памяти, а не поверх файла: проверять надо логику репозитория
+        // (имя enum ↔ строка, откат на дефолт), а не файловую сериализацию Google.
+        // Файловый DataStore на Windows к тому же флейкал на переименовании .tmp.
+        dataStore = InMemoryPreferencesDataStore()
         repository = ThemeRepositoryImpl(dataStore)
-    }
-
-    @After
-    fun tearDown() {
-        dataStoreScope.cancel()
     }
 
     @Test
@@ -93,4 +73,17 @@ class ThemeRepositoryImplTest {
 
             assertEquals(ThemePreference.SYSTEM, repository.observeThemePreference().first())
         }
+
+    /** Честный `DataStore<Preferences>` в памяти: те же `data`/`updateData`, что и у настоящего, но без файла. */
+    private class InMemoryPreferencesDataStore : DataStore<Preferences> {
+        private val state = MutableStateFlow(emptyPreferences())
+
+        override val data: Flow<Preferences> = state.asStateFlow()
+
+        override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences {
+            val updated = transform(state.value)
+            state.value = updated
+            return updated
+        }
+    }
 }
