@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -26,6 +27,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +41,7 @@ import com.cryptocompare.pairs.ui.screens.detailScreen.components.ExchangeInfoCa
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.ExchangeSelector
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.SpreadBar
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.TimeframeSelector
+import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.viewmodel.detailViewModel.DetailsViewModel
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.OverlineType
@@ -146,7 +149,9 @@ fun DetailsScreen(
                         modifier = contentPadding,
                     )
 
-                    // Свечной график, общий по всем биржам (агрегат) — во всю ширину
+                    // Свечной график выбранной биржи — во всю ширину. key(биржа, масштаб)
+                    // пересоздаёт график при их смене: скролл/зум сбрасываются на свежий
+                    // край, а история одной биржи только копится (догрузка слева).
                     Box(
                         modifier =
                             Modifier
@@ -164,12 +169,28 @@ fun DetailsScreen(
                                     color = MaterialTheme.colorScheme.textSecondary,
                                 )
 
-                            else ->
-                                CandlestickChart(
-                                    candles = state.candles,
-                                    timeframe = state.timeframe,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
+                            else -> {
+                                key(state.selectedExchange?.provider?.id, state.timeframe) {
+                                    CandlestickChart(
+                                        candles = state.candles,
+                                        modifier = Modifier.fillMaxSize(),
+                                        onLoadOlder = viewModel::loadOlderCandles,
+                                        onLoadNewer = viewModel::loadNewerCandles,
+                                        canLoadOlder = state.chartCanLoadOlder && !state.chartLoadingMore,
+                                        canLoadNewer = state.chartCanLoadNewer && !state.chartLoadingMore,
+                                    )
+                                }
+
+                                // догрузка более старой страницы идёт у левого края
+                                if (state.chartLoadingMore) {
+                                    CircularProgressIndicator(
+                                        modifier =
+                                            Modifier
+                                                .align(Alignment.CenterStart)
+                                                .size(PairsConstants.Chart.loadMoreIndicatorSize),
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -182,10 +203,10 @@ fun DetailsScreen(
                         )
                     }
 
-                    // Выбор биржи стоит под графиком, а не над ним: график строится
-                    // по агрегату и на биржу не реагирует, а близость сверху обещала
-                    // связь, которой нет — на UX-тесте это прочли именно так.
-                    // Здесь селектор рядом с карточкой, которой он и управляет.
+                    // Выбор биржи: теперь график строится по выбранной бирже и
+                    // перезагружается при её смене (историю отдаёт наш бэкенд по
+                    // providerId). Селектор оставлен рядом с карточкой, которой он
+                    // тоже управляет; при желании его можно поднять к графику.
                     if (state.exchanges.size > 1) {
                         Column(
                             modifier = contentPadding,

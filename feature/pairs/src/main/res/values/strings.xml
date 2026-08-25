@@ -27,7 +27,7 @@
     <string name="pair_detail_sell_price">Bid price</string>
     <string name="pair_detail_spread">Spread</string>
     <string name="pair_detail_no_chart_data">No chart data</string>
-    <string name="pair_detail_chart_source">Aggregate across all exchanges</string>
+    <string name="pair_detail_chart_source">Candles of the selected exchange</string>
     <string name="pair_detail_exchange_section">Exchange</string>
 
     <!-- Chart timeframes -->
