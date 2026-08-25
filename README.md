@@ -1,9 +1,9 @@
 # CryptoCompare (CoinDiff)
 
 An Android app for comparing quotes of the same crypto pair across different
-exchanges. The ticker catalog and live prices come from a custom backend
-(REST + WebSocket); chart history is loaded from the third-party CryptoCompare
-min-api.
+exchanges. The ticker catalog, live prices, and chart history all come from a
+custom backend (REST + WebSocket). The chart is per selected exchange and its
+history is paged from `GET /v1/klines/{providerId}` (offset/limit), no local cache.
 
 - `applicationId`: `com.boomhaa.cryptocompare`
 - code namespace: `com.cryptocompare.*`
@@ -78,8 +78,12 @@ app
    fails silently). The main screen syncs its visible rows against this limit;
    the detail screen takes over all subscription slots while open and restores
    the previous set on exit.
-4. **One history request per screen.** The chart shows the CCCAGG aggregate;
-   switching the selected exchange never reloads the chart.
+4. **Chart is per selected exchange, history is a sliding window.** Candles come
+   from the backend by `providerId`; switching the exchange reloads the chart.
+   The full history is reachable in both directions with no local cache: a
+   fixed-size in-memory window pages older on scroll-left and newer on
+   scroll-right, dropping the far edge and reloading it on return. Candles plot
+   by index so no-trade gaps don't stretch the axis.
 5. **Room migrations ship as SQL assets**, destructive fallback is off.
 6. **Price semantics:** backend `priceSell` = ask (you buy at this),
    `priceBuy` = bid (you sell at this). UI labels follow this inversion.
@@ -124,12 +128,10 @@ DEBUG_BASE_URL=http://<host>:<port>/v1/
 RELEASE_BASE_URL=http://<host>:<port>/v1/
 DEBUG_WS_BASE_URL=ws://<host>
 RELEASE_WS_BASE_URL=ws://<host>
-CRYPTOCOMPARE_API_KEY=<min-api key>
 ```
 
-`BASE_URL` is mandatory (the build fails without it).
-`CRYPTOCOMPARE_API_KEY` is optional — without it the chart simply shows an
-empty state. Get a key at https://developers.coindesk.com/.
+`BASE_URL` is mandatory (the build fails without it). There is no third-party
+key any more — chart history comes from the same backend as everything else.
 
 ### Build & run
 

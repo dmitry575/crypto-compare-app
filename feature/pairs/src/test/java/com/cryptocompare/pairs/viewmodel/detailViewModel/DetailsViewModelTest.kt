@@ -20,6 +20,7 @@ import com.cryptocompare.model.ticker.TickerStreamEvent
 import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.testing.MainDispatcherRule
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -29,6 +30,8 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -79,7 +82,7 @@ class DetailsViewModelTest {
         }
 
     private fun historyUseCaseMock(candles: List<Candle>): GetTickerHistoryUseCase =
-        mockk { coEvery { this@mockk.invoke(any(), any()) } returns Result.success(candles) }
+        mockk { coEvery { this@mockk.invoke(any(), any(), any(), any(), any()) } returns Result.success(candles) }
 
     private fun observeEventsUseCaseMock(): ObserveTickerEventUseCase =
         mockk { every { this@mockk.invoke() } returns events }
@@ -232,6 +235,80 @@ class DetailsViewModelTest {
                     .priceBuy!!,
                 0.0,
             )
+        }
+
+    @Test
+    fun `selecting another exchange reloads the chart for that provider`() =
+        runTest {
+            val history = mockk<GetTickerHistoryUseCase>()
+            coEvery { history.invoke(1, any(), any(), any(), any()) } returns
+                Result.success(listOf(candle(hourBucket, close = 104.0)))
+            coEvery { history.invoke(2, any(), any(), any(), any()) } returns
+                Result.success(listOf(candle(hourBucket, close = 222.0)))
+
+            val vm = makeVm(history = history)
+            runCurrent()
+            // по умолчанию график первой биржи (id 1)
+            assertEquals(
+                104.0,
+                vm.uiState.value.candles
+                    .last()
+                    .close,
+                0.0,
+            )
+
+            vm.onExchangeSelected(1) // вторая биржа — id 2
+            runCurrent()
+
+            assertEquals(
+                222.0,
+                vm.uiState.value.candles
+                    .last()
+                    .close,
+                0.0,
+            )
+            coVerify(exactly = 1) { history.invoke(2, "btcusdt", any(), any(), 0) }
+        }
+
+    @Test
+    fun `loading older candles prepends the page sorted from oldest to newest`() =
+        runTest {
+            val initial = listOf(candle(3000L, close = 30.0), candle(4000L, close = 40.0))
+            val older = listOf(candle(1000L, close = 10.0), candle(2000L, close = 20.0))
+            val history = mockk<GetTickerHistoryUseCase>()
+            coEvery { history.invoke(1, "btcusdt", any(), any(), 0) } returns Result.success(initial)
+            coEvery { history.invoke(1, "btcusdt", any(), any(), 2) } returns Result.success(older)
+
+            val vm = makeVm(history = history)
+            runCurrent()
+            assertEquals(2, vm.uiState.value.candles.size)
+
+            vm.loadOlderCandles()
+            runCurrent()
+
+            val candles = vm.uiState.value.candles
+            assertEquals(4, candles.size)
+            assertEquals(1000L, candles.first().timeMillis)
+            assertEquals(4000L, candles.last().timeMillis)
+            assertFalse(vm.uiState.value.chartLoadingMore)
+        }
+
+    @Test
+    fun `an empty older page stops older paging`() =
+        runTest {
+            val history = mockk<GetTickerHistoryUseCase>()
+            coEvery { history.invoke(any(), any(), any(), any(), 0) } returns
+                Result.success(listOf(candle(4000L, close = 40.0)))
+            coEvery { history.invoke(any(), any(), any(), any(), 1) } returns Result.success(emptyList())
+
+            val vm = makeVm(history = history)
+            runCurrent()
+            assertTrue(vm.uiState.value.chartCanLoadOlder)
+
+            vm.loadOlderCandles()
+            runCurrent()
+
+            assertFalse(vm.uiState.value.chartCanLoadOlder)
         }
 
     @Test

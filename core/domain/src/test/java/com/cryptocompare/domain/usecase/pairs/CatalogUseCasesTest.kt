@@ -16,37 +16,39 @@ class CatalogUseCasesTest {
     private val repository: CryptoCompareRepository = mockk()
 
     @Test
-    fun `GetTickerHistoryUseCase passes ticker and timeframe through`() =
+    fun `GetTickerHistoryUseCase passes provider, symbol, timeframe and paging through`() =
         runTest {
             val candles = listOf(candle(1_751_328_000_000L), candle(1_751_331_600_000L))
-            coEvery { repository.getCandles(TICKER, ChartTimeframe.H4) } returns Result.success(candles)
+            coEvery {
+                repository.getCandles(PROVIDER_ID, TICKER, ChartTimeframe.H4, LIMIT, OFFSET)
+            } returns Result.success(candles)
 
-            val result = GetTickerHistoryUseCase(repository)(TICKER, ChartTimeframe.H4)
+            val result = GetTickerHistoryUseCase(repository)(PROVIDER_ID, TICKER, ChartTimeframe.H4, LIMIT, OFFSET)
 
             assertEquals(candles, result.getOrNull())
-            coVerify(exactly = 1) { repository.getCandles(TICKER, ChartTimeframe.H4) }
+            coVerify(exactly = 1) { repository.getCandles(PROVIDER_ID, TICKER, ChartTimeframe.H4, LIMIT, OFFSET) }
         }
 
     @Test
     fun `GetTickerHistoryUseCase asks for each timeframe separately`() =
         runTest {
-            coEvery { repository.getCandles(any(), any()) } returns Result.success(emptyList())
+            coEvery { repository.getCandles(any(), any(), any(), any(), any()) } returns Result.success(emptyList())
             val useCase = GetTickerHistoryUseCase(repository)
 
-            ChartTimeframe.entries.forEach { timeframe -> useCase(TICKER, timeframe) }
+            ChartTimeframe.entries.forEach { timeframe -> useCase(PROVIDER_ID, TICKER, timeframe, LIMIT, OFFSET) }
 
             ChartTimeframe.entries.forEach { timeframe ->
-                coVerify(exactly = 1) { repository.getCandles(TICKER, timeframe) }
+                coVerify(exactly = 1) { repository.getCandles(PROVIDER_ID, TICKER, timeframe, LIMIT, OFFSET) }
             }
         }
 
     @Test
-    fun `GetTickerHistoryUseCase propagates a missing api key or rate limit`() =
+    fun `GetTickerHistoryUseCase propagates a backend error`() =
         runTest {
-            coEvery { repository.getCandles(any(), any()) } returns
+            coEvery { repository.getCandles(any(), any(), any(), any(), any()) } returns
                 Result.failure(IllegalStateException(RATE_LIMIT))
 
-            val result = GetTickerHistoryUseCase(repository)(TICKER, ChartTimeframe.DEFAULT)
+            val result = GetTickerHistoryUseCase(repository)(PROVIDER_ID, TICKER, ChartTimeframe.DEFAULT, LIMIT, OFFSET)
 
             assertTrue(result.isFailure)
             assertEquals(RATE_LIMIT, result.exceptionOrNull()?.message)
@@ -77,6 +79,9 @@ class CatalogUseCasesTest {
 
     private companion object {
         const val TICKER = "btcusdt"
+        const val PROVIDER_ID = 1
+        const val LIMIT = 300
+        const val OFFSET = 0
         const val RATE_LIMIT = "You are over your rate limit please upgrade your account"
     }
 }

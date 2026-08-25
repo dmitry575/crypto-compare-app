@@ -20,9 +20,17 @@ interface CryptoCompareRepository {
 
     suspend fun getSymbolsByTicker(ticker: String): Result<List<Symbol>>
 
+    /**
+     * Страница истории свечей одной пары у конкретной биржи. Кэша нет — истории
+     * слишком много; окно листается через [offset]/[limit]. Пустой список = у
+     * биржи для этого окна свечей нет (в т.ч. монета там не торговалась).
+     */
     suspend fun getCandles(
-        ticker: String,
+        providerId: Int,
+        symbol: String,
         timeframe: ChartTimeframe,
+        limit: Int,
+        offset: Int,
     ): Result<List<Candle>>
 
     suspend fun applyPriceUpdates(updates: List<TickerPrice>): Result<Unit>
