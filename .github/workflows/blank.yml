@@ -2,8 +2,14 @@ name: CI-CD
 
 on:
   push:
-    branches: ["main", "master"]
+    # fix/chart-rendering — временно, чтобы собрать APK с фиксом графика до мержа;
+    # убрать из списка после мержа (для веток есть workflow_dispatch ниже).
+    branches: ["main", "master", "fix/chart-rendering"]
   pull_request:
+  # ручной запуск: Actions → CI-CD → Run workflow → выбрать ветку → соберётся и
+  # уйдёт в телеграм подписанный APK этой ветки. Кнопка появляется, когда этот
+  # workflow есть в ветке по умолчанию (main).
+  workflow_dispatch:
 
 jobs:
   linter:
@@ -80,7 +86,7 @@ jobs:
     name: CD / Build signed APK
     runs-on: ubuntu-latest
     needs: [linter, tests]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    if: github.event_name != 'pull_request'
     env:
       ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/keystore/release.jks
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -128,20 +134,28 @@ jobs:
       - name: Build signed release APK
         run: ./gradlew --no-daemon assembleRelease
 
-      - name: Check APK exists
-        run: ls -la app/build/outputs/apk/release/
+      - name: Rename APK with branch and commit
+        id: apk
+        shell: bash
+        run: |
+          # слэши в имени ветки недопустимы в имени файла — заменяем на дефис
+          safe_ref="${GITHUB_REF_NAME//\//-}"
+          apk_name="coins-compare-${safe_ref}-${GITHUB_SHA::7}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "app/build/outputs/apk/release/${apk_name}"
+          ls -la app/build/outputs/apk/release/
+          echo "name=${apk_name}" >> "$GITHUB_OUTPUT"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          path: app/build/outputs/apk/release/${{ steps.apk.outputs.name }}
 
   send_to_telegram:
     name: CD / Send signed APK to Telegram
     runs-on: ubuntu-latest
     needs: build_apk
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    if: github.event_name != 'pull_request'
 
     steps:
       - name: Download APK artifact
@@ -156,7 +170,8 @@ jobs:
       - name: Send APK to Telegram group
         shell: bash
         run: |
-          APK_PATH="artifacts/app-release.apk"
+          # имя файла содержит ветку и sha (см. шаг Rename APK) — телеграм покажет его как есть
+          APK_PATH="$(ls artifacts/*.apk | head -1)"
           CAPTION="✅ Signed APK build
 
           Repository: ${GITHUB_REPOSITORY}
