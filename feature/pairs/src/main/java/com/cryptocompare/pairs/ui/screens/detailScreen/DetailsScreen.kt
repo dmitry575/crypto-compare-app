@@ -173,6 +173,7 @@ fun DetailsScreen(
                                 key(state.selectedExchange?.provider?.id, state.timeframe) {
                                     CandlestickChart(
                                         candles = state.candles,
+                                        timeframe = state.timeframe,
                                         modifier = Modifier.fillMaxSize(),
                                         onLoadOlder = viewModel::loadOlderCandles,
                                         onLoadNewer = viewModel::loadNewerCandles,
