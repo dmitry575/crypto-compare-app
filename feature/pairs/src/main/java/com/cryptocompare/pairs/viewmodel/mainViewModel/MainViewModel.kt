@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
 class MainViewModel
@@ -152,7 +153,7 @@ class MainViewModel
 
             viewModelScope.launch {
                 while (true) {
-                    delay(PairsConstants.MainScreen.PRICE_FLUSH_INTERVAL_MS)
+                    delay(PairsConstants.MainScreen.PRICE_FLUSH_INTERVAL_MS.milliseconds)
 
                     val batch =
                         synchronized(pendingPricesLock) {
@@ -191,7 +192,6 @@ class MainViewModel
 
         override fun onCleared() {
             streamDisconnectUseCase()
-            super.onCleared()
         }
 
         private data class PairsFilter(

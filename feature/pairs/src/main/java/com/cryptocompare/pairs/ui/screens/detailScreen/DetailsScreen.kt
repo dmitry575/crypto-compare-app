@@ -151,7 +151,7 @@ fun DetailsScreen(
 
                     // Свечной график выбранной биржи — во всю ширину. key(биржа, масштаб)
                     // пересоздаёт график при их смене: скролл/зум сбрасываются на свежий
-                    // край, а история одной биржи только копится (догрузка слева).
+                    // край. История биржи приходит одним запросом и дальше не меняется.
                     Box(
                         modifier =
                             Modifier
@@ -173,16 +173,16 @@ fun DetailsScreen(
                                 key(state.selectedExchange?.provider?.id, state.timeframe) {
                                     CandlestickChart(
                                         candles = state.candles,
-                                        modifier = Modifier.fillMaxSize(),
+                                        liveCount = state.liveCount,
+                                        timeframe = state.timeframe,
+                                        canLoadOlder = state.chartCanLoadOlder,
                                         onLoadOlder = viewModel::loadOlderCandles,
-                                        onLoadNewer = viewModel::loadNewerCandles,
-                                        canLoadOlder = state.chartCanLoadOlder && !state.chartLoadingMore,
-                                        canLoadNewer = state.chartCanLoadNewer && !state.chartLoadingMore,
+                                        modifier = Modifier.fillMaxSize(),
                                     )
                                 }
 
-                                // догрузка более старой страницы идёт у левого края
-                                if (state.chartLoadingMore) {
+                                // догрузка идёт у левого края — там же, куда листает пользователь
+                                if (state.chartLoadingOlder) {
                                     CircularProgressIndicator(
                                         modifier =
                                             Modifier

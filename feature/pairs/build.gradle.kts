@@ -57,7 +57,6 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.paging.common)
-    implementation(libs.vico.compose.m3)
 
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
