@@ -41,6 +41,7 @@ import com.cryptocompare.pairs.ui.screens.detailScreen.components.ExchangeInfoCa
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.ExchangeSelector
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.SpreadBar
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.TimeframeSelector
+import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.viewmodel.detailViewModel.DetailsViewModel
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.OverlineType
@@ -168,14 +169,28 @@ fun DetailsScreen(
                                     color = MaterialTheme.colorScheme.textSecondary,
                                 )
 
-                            else ->
+                            else -> {
                                 key(state.selectedExchange?.provider?.id, state.timeframe) {
                                     CandlestickChart(
                                         candles = state.candles,
+                                        liveCount = state.liveCount,
                                         timeframe = state.timeframe,
+                                        canLoadOlder = state.chartCanLoadOlder,
+                                        onLoadOlder = viewModel::loadOlderCandles,
                                         modifier = Modifier.fillMaxSize(),
                                     )
                                 }
+
+                                // догрузка идёт у левого края — там же, куда листает пользователь
+                                if (state.chartLoadingOlder) {
+                                    CircularProgressIndicator(
+                                        modifier =
+                                            Modifier
+                                                .align(Alignment.CenterStart)
+                                                .size(PairsConstants.Chart.loadMoreIndicatorSize),
+                                    )
+                                }
+                            }
                         }
                     }
 

@@ -271,16 +271,15 @@ class DetailsViewModelTest {
         }
 
     @Test
-    fun `chart history is requested once per exchange and timeframe at full depth`() =
+    fun `the first chart page is requested once per exchange and timeframe`() =
         runTest {
             val history = historyUseCaseMock(defaultHistory())
 
             val vm = makeVm(history = history)
             runCurrent()
 
-            // одна страница на всю глубину: догружать нечего, ряд дальше не меняется
             coVerify(exactly = 1) {
-                history.invoke(1, "btcusdt", any(), PairsConstants.Chart.HISTORY_LIMIT, 0)
+                history.invoke(1, "btcusdt", any(), PairsConstants.Chart.PAGE_LIMIT, 0)
             }
 
             vm.onExchangeSelected(1)
@@ -289,7 +288,68 @@ class DetailsViewModelTest {
             runCurrent()
 
             // возврат на прежнюю биржу берёт свечи из памяти, а не из сети
-            coVerify(exactly = 1) { history.invoke(1, "btcusdt", any(), any(), any()) }
+            coVerify(exactly = 1) { history.invoke(1, "btcusdt", any(), any(), 0) }
+            assertEquals(defaultHistory().size, vm.uiState.value.candles.size)
+        }
+
+    @Test
+    fun `an older page is prepended and the next offset skips what is loaded`() =
+        runTest {
+            val initial = listOf(candle(3000L, close = 30.0), candle(4000L, close = 40.0))
+            val older = listOf(candle(1000L, close = 10.0), candle(2000L, close = 20.0))
+            val history = mockk<GetTickerHistoryUseCase>()
+            coEvery { history.invoke(1, "btcusdt", any(), any(), 0) } returns Result.success(initial)
+            coEvery { history.invoke(1, "btcusdt", any(), any(), 2) } returns Result.success(older)
+
+            val vm = makeVm(history = history)
+            runCurrent()
+            assertEquals(2, vm.uiState.value.candles.size)
+
+            vm.loadOlderCandles()
+            runCurrent()
+
+            val candles = vm.uiState.value.candles
+            assertEquals(4, candles.size)
+            assertEquals(1000L, candles.first().timeMillis)
+            assertEquals(4000L, candles.last().timeMillis)
+            assertFalse(vm.uiState.value.chartLoadingOlder)
+            assertTrue(vm.uiState.value.chartCanLoadOlder)
+        }
+
+    @Test
+    fun `an empty older page stops the paging`() =
+        runTest {
+            val history = mockk<GetTickerHistoryUseCase>()
+            coEvery { history.invoke(any(), any(), any(), any(), 0) } returns
+                Result.success(listOf(candle(4000L, close = 40.0)))
+            coEvery { history.invoke(any(), any(), any(), any(), 1) } returns Result.success(emptyList())
+
+            val vm = makeVm(history = history)
+            runCurrent()
+            assertTrue(vm.uiState.value.chartCanLoadOlder)
+
+            vm.loadOlderCandles()
+            runCurrent()
+
+            assertFalse(vm.uiState.value.chartCanLoadOlder)
+            // дальше просить бессмысленно — второй раз в сеть не идём
+            vm.loadOlderCandles()
+            runCurrent()
+            coVerify(exactly = 1) { history.invoke(any(), any(), any(), any(), 1) }
+        }
+
+    @Test
+    fun `a live tick that opens a bar is counted separately from server candles`() =
+        runTest {
+            val vm = makeVm()
+            runCurrent()
+
+            // тик уходит в существующий бар: живых свечей не прибавляется
+            events.emit(tick(priceSell = 106.0, priceBuy = 104.0))
+            advanceTimeBy(PairsConstants.DetailScreen.LIVE_PRICE_INTERVAL_MS + 1)
+            runCurrent()
+
+            assertEquals(0, vm.uiState.value.liveCount)
             assertEquals(defaultHistory().size, vm.uiState.value.candles.size)
         }
 

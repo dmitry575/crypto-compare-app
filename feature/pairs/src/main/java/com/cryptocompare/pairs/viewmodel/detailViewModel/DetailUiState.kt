@@ -10,9 +10,20 @@ data class DetailUiState(
     val error: String? = null,
     val exchanges: List<ProviderDetail> = emptyList(),
     val selectedExchangeIndex: Int = 0,
+    /** Загруженная история графика, от старых свечей к новым. */
     val candles: List<Candle> = emptyList(),
-    /** Грузим историю графика (провайдер/масштаб сменились). */
+    /**
+     * Сколько баров в хвосте [candles] дорисовал живой тик поверх серверных.
+     * По ним график считает абсолютный индекс свечи, который не съезжает при
+     * догрузке истории.
+     */
+    val liveCount: Int = 0,
+    /** Грузим первую страницу графика (провайдер/масштаб сменились). */
     val chartLoading: Boolean = false,
+    /** Догружаем более старую страницу истории. */
+    val chartLoadingOlder: Boolean = false,
+    /** Есть ли что грузить глубже в историю. */
+    val chartCanLoadOlder: Boolean = false,
     val timeframe: ChartTimeframe = ChartTimeframe.DEFAULT,
 ) {
     val selectedExchange: ProviderDetail?
