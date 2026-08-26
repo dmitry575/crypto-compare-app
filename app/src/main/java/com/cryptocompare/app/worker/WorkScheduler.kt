@@ -17,7 +17,7 @@ object WorkScheduler {
             Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
         val refreshRequest =
-            PeriodicWorkRequestBuilder<RefreshCatalogWorker>(1, TimeUnit.DAYS)
+            PeriodicWorkRequestBuilder<RefreshCatalogWorker>(20, TimeUnit.MINUTES)
                 .setConstraints(constraints)
                 .build()
 
