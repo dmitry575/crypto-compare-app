@@ -1,18 +1,19 @@
 package com.cryptocompare.pairs.ui.screens.detailScreen.components
 
+import androidx.compose.animation.core.snap
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onSizeChanged
 import com.cryptocompare.helpers.toPriceString
 import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.pairs.util.PairsConstants
+import com.cryptocompare.pairs.util.VisibleXRangeItemPlacer
+import com.cryptocompare.pairs.util.chartPriceRange
 import com.cryptocompare.ui.theme.chartNegative
 import com.cryptocompare.ui.theme.chartPositive
 import com.cryptocompare.ui.theme.textSecondary
@@ -22,10 +23,10 @@ import com.patrykandpatrick.vico.compose.cartesian.Scroll
 import com.patrykandpatrick.vico.compose.cartesian.Zoom
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.compose.cartesian.data.CandlestickCartesianLayerModel
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModel
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianLayerRangeProvider
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
-import com.patrykandpatrick.vico.compose.cartesian.data.candlestickSeries
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberCandlestickCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
@@ -33,141 +34,69 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.compose.common.ProvideVicoTheme
 import com.patrykandpatrick.vico.compose.common.VicoTheme
 import com.patrykandpatrick.vico.compose.m3.common.rememberM3VicoTheme
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withTimeoutOrNull
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Свечной график одной биржи. Ряд свечей неизменен всё время жизни графика —
+ * история приходит одним запросом, — поэтому кадру не от чего прыгать: двигается
+ * только последний, живой бар. Ось Y подстраивается под видимый кадр.
+ */
 @Composable
 fun CandlestickChart(
     candles: List<Candle>,
     timeframe: ChartTimeframe,
     modifier: Modifier = Modifier,
-    onLoadOlder: () -> Unit = {},
-    onLoadNewer: () -> Unit = {},
-    canLoadOlder: Boolean = false,
-    canLoadNewer: Boolean = false,
 ) {
-    val modelProducer = remember { CartesianChartModelProducer() }
-    val scrollState = rememberVicoScrollState(initialScroll = Scroll.Absolute.End)
-    // minZoom/maxZoom у vico ограничивают КОЭФФИЦИЕНТ зума, а он обратен числу видимых
-    // свечей: Zoom.x(N) тем больше, чем меньше N. Поэтому нижней границе зума
-    // соответствует максимум свечей в кадре, а верхней — минимум. Перепутать местами
-    // нельзя: vico требует maxZoom >= minZoom и роняет экран на первом кадре.
+    if (candles.isEmpty()) return
+
+    // Модель собираем сами, без CartesianChartModelProducer: он применяет данные
+    // асинхронной транзакцией и только в ней пересчитывает диапазоны осей. Ось Y
+    // из-за этого отставала от кадра, и на отъехавшем участке свечи уходили за её
+    // границы — график выглядел пустым. Прямая модель пересчитывает диапазоны в
+    // той же композиции, что и смена данных либо кадра.
+    val model = remember(candles) { candles.toCandlestickModel() }
+
+    // видимый диапазон X отдаёт сам vico при отрисовке подписей оси
+    var visibleXRange by remember { mutableStateOf<ClosedFloatingPointRange<Double>?>(null) }
+    val timeItemPlacer =
+        remember {
+            VisibleXRangeItemPlacer(HorizontalAxis.ItemPlacer.aligned()) { visibleXRange = it }
+        }
+
+    val priceRange = remember(candles, visibleXRange) { candles.chartPriceRange(visibleXRange) }
+    val priceStep = priceRange.step
+    val rangeProvider =
+        remember(priceRange) {
+            CartesianLayerRangeProvider.fixed(minY = priceRange.min, maxY = priceRange.max)
+        }
+    // шаг задаём сами: подписи тогда стоят на кратных ему круглых ценах и не
+    // пересчитываются на каждом кадре скролла
+    val priceItemPlacer = remember(priceStep) { VerticalAxis.ItemPlacer.step({ priceStep }) }
+
+    // Границы зума ОБЯЗАТЕЛЬНО запоминаем: Zoom.x(...) — фабрика, каждый вызов даёт
+    // новый объект, а rememberVicoZoomState держит границы ключами rememberSaveable.
+    // Незапомненные — состояние зума пересоздаётся на каждой рекомпозиции (живой бар
+    // рекомпозит график дважды в секунду) и откатывается к начальному: со стороны это
+    // и выглядит как «зум не работает». Zoom.max(..., Zoom.Content) не даёт отдалиться
+    // дальше, чем влезает весь ряд, — иначе короткая история сжимается в угол.
     val zoomState =
         rememberVicoZoomState(
             zoomEnabled = true,
-            initialZoom = Zoom.x(PairsConstants.Chart.VISIBLE_CANDLES.toDouble()),
-            minZoom = Zoom.x(PairsConstants.Chart.MAX_VISIBLE_CANDLES.toDouble()),
-            maxZoom = Zoom.x(PairsConstants.Chart.MIN_VISIBLE_CANDLES.toDouble()),
+            initialZoom = remember { visibleCandlesZoom(PairsConstants.Chart.VISIBLE_CANDLES) },
+            minZoom = remember { visibleCandlesZoom(PairsConstants.Chart.MAX_VISIBLE_CANDLES) },
+            maxZoom = remember { visibleCandlesZoom(PairsConstants.Chart.MIN_VISIBLE_CANDLES) },
+        )
+    // те же ключи-ловушки: у rememberVicoScrollState дефолтный spring() создаётся
+    // заново на каждый вызов. Автоскролла тут нет, спек нужен лишь стабильный
+    val scrollState =
+        rememberVicoScrollState(
+            initialScroll = Scroll.Absolute.End,
+            autoScrollAnimationSpec = remember { snap() },
         )
 
-    // ширину графика меряем для порога догрузки у краёв
-    val viewportWidth = remember { mutableIntStateOf(0) }
-    // прошлая раскладка — по ней при догрузке считаем сдвиг индексов, чтобы сохранить кадр
-    val previousCandles = remember { mutableStateOf<List<Candle>?>(null) }
-    // пока не встали на свежий край — не префетчим (иначе на открытии сразу грузим старое)
-    val didInitialScroll = remember { mutableStateOf(false) }
-
-    // Модель пересобираем ТОЛЬКО при смене данных — не на скролл/зум. Пересборка во
-    // время жеста ломала зум, дёргала кадр и размазывала подписи оси Y.
-    LaunchedEffect(candles) {
-        if (candles.isEmpty()) return@LaunchedEffect
-
-        val previous = previousCandles.value
-        // на сколько сдвинулись индексы слева: + свечи дописаны слева, − левый край выгружен
-        val shift = frontShift(previous, candles)
-        val grew = previous != null && candles.size > previous.size
-        previousCandles.value = candles
-        val maxScrollBefore = scrollState.maxValue
-
-        modelProducer.runTransaction {
-            candlestickSeries(
-                x = candles.indices.toList(),
-                opening = candles.map { it.open },
-                closing = candles.map { it.close },
-                low = candles.map { it.low },
-                high = candles.map { it.high },
-            )
-        }
-
-        // догрузка слева / выгрузка края → сдвигаем кадр на число свечей, чтобы вид не
-        // прыгнул (первую раскладку обрабатывает автоскролл к свежему краю). Если объём
-        // вырос — ждём пересчёта предела скролла, иначе сдвиг упрётся в старый максимум.
-        if (shift != 0 && didInitialScroll.value) {
-            if (shift > 0 && grew) {
-                withTimeoutOrNull(PairsConstants.Chart.SCROLL_ANCHOR_TIMEOUT_MS) {
-                    snapshotFlow { scrollState.maxValue }.first { it > maxScrollBefore }
-                }
-            }
-            scrollState.scroll(Scroll.Relative.x(shift.toDouble()))
-        }
-    }
-
-    // встаём на свежий край после первой раскладки с данными: initialScroll=End мог
-    // отработать ещё на пустой модели (данные приезжают асинхронно)
-    LaunchedEffect(Unit) {
-        withTimeoutOrNull(PairsConstants.Chart.SCROLL_ANCHOR_TIMEOUT_MS) {
-            snapshotFlow { scrollState.maxValue }.first { it > 0f }
-        }
-        scrollState.scroll(Scroll.Absolute.End)
-        didInitialScroll.value = true
-    }
-
-    // текущая ширина свечи в пикселях (учитывает зум) и видимый диапазон индексов —
-    // по нему считаем и шкалу Y, и близость к краям окна для догрузки
-    val contentWidth = scrollState.maxValue + viewportWidth.intValue.toFloat()
-    val laidOut = viewportWidth.intValue > 0 && contentWidth > 0f && candles.isNotEmpty()
-    val pxPerCandle = if (laidOut) contentWidth / candles.size else 0f
-    val firstVisible =
-        if (laidOut) (scrollState.value / pxPerCandle).toInt().coerceIn(0, candles.lastIndex) else 0
-    val lastVisible =
-        if (laidOut) {
-            (firstVisible + (viewportWidth.intValue / pxPerCandle).toInt() + 1)
-                .coerceIn(firstVisible, candles.lastIndex)
-        } else {
-            candles.lastIndex.coerceAtLeast(0)
-        }
-
-    // догрузку у краёв ловим по позиции скролла. Запас — несколько свечей от края (в
-    // пикселях текущего зума), а НЕ целый экран: иначе на коротком ряде «у края»
-    // оказывается сразу весь кадр и страницы грузятся без остановки.
-    val prefetchMargin = pxPerCandle * PairsConstants.Chart.PREFETCH_MARGIN_CANDLES
-    val atOldEdge = laidOut && didInitialScroll.value && scrollState.value <= prefetchMargin
-    val atNewEdge =
-        laidOut && didInitialScroll.value && scrollState.value >= scrollState.maxValue - prefetchMargin
-
-    LaunchedEffect(canLoadOlder && atOldEdge) {
-        if (canLoadOlder && atOldEdge) onLoadOlder()
-    }
-    LaunchedEffect(canLoadNewer && atNewEdge) {
-        if (canLoadNewer && atNewEdge) onLoadNewer()
-    }
-
-    // Ось Y — по видимому кадру, а не по всему окну: иначе далёкая по цене свеча из
-    // глубины (памп/дамп на 10x) сплющивает текущие свечи в тонкую ленту. У vico
-    // rangeProvider применяется только на транзакции модели (гонять её на каждый скролл
-    // нельзя — ломается зум), поэтому шкала подстраивается под кадр при смене данных,
-    // в т.ч. при догрузке страницы. Без fixed ось Y начинается с нуля.
-    val rangeProvider =
-        remember(candles, firstVisible, lastVisible) {
-            val slice = candles.subList(firstVisible, (lastVisible + 1).coerceAtMost(candles.size))
-            if (slice.isEmpty()) {
-                CartesianLayerRangeProvider.auto()
-            } else {
-                val low = slice.minOf { it.low }
-                val high = slice.maxOf { it.high }
-                val padding =
-                    ((high - low) * PairsConstants.Chart.RANGE_PADDING)
-                        .takeIf { it > 0.0 } ?: (high * PairsConstants.Chart.RANGE_PADDING)
-                CartesianLayerRangeProvider.fixed(minY = low - padding, maxY = high + padding)
-            }
-        }
-
     val priceFormatter = remember { CartesianValueFormatter { _, value, _ -> value.toPriceString() } }
-    val priceItemPlacer =
-        remember { VerticalAxis.ItemPlacer.count({ PairsConstants.Chart.PRICE_LABEL_COUNT }) }
     val timeFormatter =
         remember(candles, timeframe) {
             val labelFormat = SimpleDateFormat(timeframe.labelPattern(), Locale.US)
@@ -205,17 +134,40 @@ fun CandlestickChart(
                             valueFormatter = priceFormatter,
                             itemPlacer = priceItemPlacer,
                         ),
-                    bottomAxis = HorizontalAxis.rememberBottom(valueFormatter = timeFormatter),
+                    bottomAxis =
+                        HorizontalAxis.rememberBottom(
+                            valueFormatter = timeFormatter,
+                            itemPlacer = timeItemPlacer,
+                        ),
                 ),
-            modelProducer = modelProducer,
-            modifier = modifier.onSizeChanged { viewportWidth.intValue = it.width },
+            model = model,
+            modifier = modifier,
             scrollState = scrollState,
             zoomState = zoomState,
-            // данные при прокрутке не меняются, анимировать нечего
-            animationSpec = null,
         )
     }
 }
+
+// x свечи — её индекс в ряду: по времени немаркетные периоды растянули бы ось пустотой
+private fun List<Candle>.toCandlestickModel(): CartesianChartModel =
+    CartesianChartModel(
+        listOf(
+            CandlestickCartesianLayerModel
+                .partial(
+                    opening = map { it.open },
+                    closing = map { it.close },
+                    low = map { it.low },
+                    high = map { it.high },
+                ).complete(),
+        ),
+    )
+
+/**
+ * Зум, при котором в кадре [candles] свечей, но не мельче, чем весь ряд целиком:
+ * Zoom.x задаёт КОЭФФИЦИЕНТ, и на истории короче запрошенного кадра он уводит
+ * свечи в угол пустого поля.
+ */
+private fun visibleCandlesZoom(candles: Int): Zoom = Zoom.max(Zoom.x(candles.toDouble()), Zoom.Content)
 
 // внутри дня подписываем датой и временем, на дневных/недельных — датой с годом
 private fun ChartTimeframe.labelPattern(): String =
@@ -233,21 +185,3 @@ private fun formatCandleLabel(
     } else {
         ""
     }
-
-// сдвиг левого края окна между раскладками: >0 — свечи дописаны слева (догрузка
-// старой страницы), <0 — левый край выгружен (окно поехало к настоящему)
-private fun frontShift(
-    previous: List<Candle>?,
-    current: List<Candle>,
-): Int {
-    if (previous.isNullOrEmpty() || current.isEmpty()) return 0
-
-    val prevFirstTime = previous.first().timeMillis
-    val idxInCurrent = current.indexOfFirst { it.timeMillis == prevFirstTime }
-    if (idxInCurrent >= 0) return idxInCurrent
-
-    // прежняя первая свеча выгружена слева — считаем, сколько свечей ушло
-    val currentFirstTime = current.first().timeMillis
-    val idxInPrevious = previous.indexOfFirst { it.timeMillis == currentFirstTime }
-    return if (idxInPrevious >= 0) -idxInPrevious else 0
-}

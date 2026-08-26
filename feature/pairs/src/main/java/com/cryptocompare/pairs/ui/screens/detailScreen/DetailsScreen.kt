@@ -41,7 +41,6 @@ import com.cryptocompare.pairs.ui.screens.detailScreen.components.ExchangeInfoCa
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.ExchangeSelector
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.SpreadBar
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.TimeframeSelector
-import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.viewmodel.detailViewModel.DetailsViewModel
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.OverlineType
@@ -151,7 +150,7 @@ fun DetailsScreen(
 
                     // Свечной график выбранной биржи — во всю ширину. key(биржа, масштаб)
                     // пересоздаёт график при их смене: скролл/зум сбрасываются на свежий
-                    // край, а история одной биржи только копится (догрузка слева).
+                    // край. История биржи приходит одним запросом и дальше не меняется.
                     Box(
                         modifier =
                             Modifier
@@ -169,29 +168,14 @@ fun DetailsScreen(
                                     color = MaterialTheme.colorScheme.textSecondary,
                                 )
 
-                            else -> {
+                            else ->
                                 key(state.selectedExchange?.provider?.id, state.timeframe) {
                                     CandlestickChart(
                                         candles = state.candles,
                                         timeframe = state.timeframe,
                                         modifier = Modifier.fillMaxSize(),
-                                        onLoadOlder = viewModel::loadOlderCandles,
-                                        onLoadNewer = viewModel::loadNewerCandles,
-                                        canLoadOlder = state.chartCanLoadOlder && !state.chartLoadingMore,
-                                        canLoadNewer = state.chartCanLoadNewer && !state.chartLoadingMore,
                                     )
                                 }
-
-                                // догрузка более старой страницы идёт у левого края
-                                if (state.chartLoadingMore) {
-                                    CircularProgressIndicator(
-                                        modifier =
-                                            Modifier
-                                                .align(Alignment.CenterStart)
-                                                .size(PairsConstants.Chart.loadMoreIndicatorSize),
-                                    )
-                                }
-                            }
                         }
                     }
 

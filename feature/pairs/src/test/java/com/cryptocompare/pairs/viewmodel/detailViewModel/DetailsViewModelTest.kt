@@ -271,44 +271,46 @@ class DetailsViewModelTest {
         }
 
     @Test
-    fun `loading older candles prepends the page sorted from oldest to newest`() =
+    fun `chart history is requested once per exchange and timeframe at full depth`() =
         runTest {
-            val initial = listOf(candle(3000L, close = 30.0), candle(4000L, close = 40.0))
-            val older = listOf(candle(1000L, close = 10.0), candle(2000L, close = 20.0))
-            val history = mockk<GetTickerHistoryUseCase>()
-            coEvery { history.invoke(1, "btcusdt", any(), any(), 0) } returns Result.success(initial)
-            coEvery { history.invoke(1, "btcusdt", any(), any(), 2) } returns Result.success(older)
+            val history = historyUseCaseMock(defaultHistory())
 
             val vm = makeVm(history = history)
             runCurrent()
-            assertEquals(2, vm.uiState.value.candles.size)
 
-            vm.loadOlderCandles()
+            // одна страница на всю глубину: догружать нечего, ряд дальше не меняется
+            coVerify(exactly = 1) {
+                history.invoke(1, "btcusdt", any(), PairsConstants.Chart.HISTORY_LIMIT, 0)
+            }
+
+            vm.onExchangeSelected(1)
+            runCurrent()
+            vm.onExchangeSelected(0)
             runCurrent()
 
-            val candles = vm.uiState.value.candles
-            assertEquals(4, candles.size)
-            assertEquals(1000L, candles.first().timeMillis)
-            assertEquals(4000L, candles.last().timeMillis)
-            assertFalse(vm.uiState.value.chartLoadingMore)
+            // возврат на прежнюю биржу берёт свечи из памяти, а не из сети
+            coVerify(exactly = 1) { history.invoke(1, "btcusdt", any(), any(), any()) }
+            assertEquals(defaultHistory().size, vm.uiState.value.candles.size)
         }
 
     @Test
-    fun `an empty older page stops older paging`() =
+    fun `a failed history request leaves the screen usable`() =
         runTest {
-            val history = mockk<GetTickerHistoryUseCase>()
-            coEvery { history.invoke(any(), any(), any(), any(), 0) } returns
-                Result.success(listOf(candle(4000L, close = 40.0)))
-            coEvery { history.invoke(any(), any(), any(), any(), 1) } returns Result.success(emptyList())
+            val history =
+                mockk<GetTickerHistoryUseCase> {
+                    coEvery { this@mockk.invoke(any(), any(), any(), any(), any()) } returns
+                        Result.failure(IllegalStateException("boom"))
+                }
 
             val vm = makeVm(history = history)
             runCurrent()
-            assertTrue(vm.uiState.value.chartCanLoadOlder)
 
-            vm.loadOlderCandles()
-            runCurrent()
-
-            assertFalse(vm.uiState.value.chartCanLoadOlder)
+            val state = vm.uiState.value
+            assertFalse(state.chartLoading)
+            assertTrue(state.candles.isEmpty())
+            // биржи и цены остаются на экране, ошибка графика их не сносит
+            assertEquals(2, state.exchanges.size)
+            assertEquals(null, state.error)
         }
 
     @Test

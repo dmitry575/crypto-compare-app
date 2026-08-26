@@ -10,15 +10,13 @@ import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SubscribeSingleTickerUseCase
 import com.cryptocompare.helpers.toUserMessage
+import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
-import com.cryptocompare.pairs.util.ChartWindow
 import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.util.updateLastCandle
 import com.cryptocompare.pairs.util.withLivePrices
-import com.cryptocompare.pairs.util.withNewerPage
-import com.cryptocompare.pairs.util.withOlderPage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,7 +47,7 @@ class DetailsViewModel
          * выбранной бирже, поэтому ключ — пара providerId+timeframe; повторный
          * заход на тот же ключ не идёт в сеть. Кеша на диске нет — истории много.
          */
-        private val chartsByKey = mutableMapOf<ChartKey, ChartWindow>()
+        private val chartsByKey = mutableMapOf<ChartKey, List<Candle>>()
 
         /** Захватили ли подписку под этот экран — чтобы отпустить её ровно один раз. */
         private var subscriptionTakenOver = false
@@ -128,24 +126,21 @@ class DetailsViewModel
             // цены карточек двигаем всегда: у каждой биржи свой тик
             val exchanges = state.exchanges.withLivePrices(tick)
 
-            // последний бар графика двигает только тик выбранной биржи — по ней он
-            // и построен — и только пока окно стоит на живом крае (newestSkip == 0)
+            // последний бар графика двигает только тик выбранной биржи — по ней он и построен
             val selectedProviderId = state.selectedExchange?.provider?.id
             val key = selectedProviderId?.let { ChartKey(it, state.timeframe) }
-            val chart = key?.let { chartsByKey[it] }
-            if (key != null && chart != null && tick.providerId == selectedProviderId && chart.newestSkip == 0) {
+            val candles = key?.let { chartsByKey[it] }
+            if (key != null && candles != null && tick.providerId == selectedProviderId) {
                 // цена бара — середина спреда: priceSell это ask, priceBuy это bid
                 val midPrice = (tick.priceSell + tick.priceBuy) / 2.0
                 val updated =
                     updateLastCandle(
-                        candles = chart.candles,
+                        candles = candles,
                         price = midPrice,
                         timeframe = state.timeframe,
                         nowMillis = System.currentTimeMillis(),
                     )
-                // тик мог открыть новый бар — он живой, не серверный: учитываем в liveCount
-                chartsByKey[key] =
-                    chart.copy(candles = updated, liveCount = chart.liveCount + (updated.size - chart.candles.size))
+                chartsByKey[key] = updated
                 _uiState.update { it.copy(candles = updated, exchanges = exchanges) }
             } else {
                 _uiState.update { it.copy(exchanges = exchanges) }
@@ -168,7 +163,7 @@ class DetailsViewModel
                             }
                             // график строится по выбранной бирже (по умолчанию — первой в списке)
                             _uiState.value.selectedExchange?.provider?.id?.let { providerId ->
-                                loadInitialCandles(providerId, ticker, _uiState.value.timeframe)
+                                loadCandles(providerId, ticker, _uiState.value.timeframe)
                             }
                         },
                         onFailure = { error ->
@@ -190,7 +185,7 @@ class DetailsViewModel
                 _uiState.value.selectedExchange
                     ?.provider
                     ?.id ?: return
-            loadInitialCandles(providerId, _uiState.value.ticker, timeframe)
+            loadCandles(providerId, _uiState.value.ticker, timeframe)
         }
 
         fun onExchangeSelected(index: Int) {
@@ -201,143 +196,52 @@ class DetailsViewModel
                 _uiState.value.selectedExchange
                     ?.provider
                     ?.id ?: return
-            loadInitialCandles(providerId, _uiState.value.ticker, _uiState.value.timeframe)
+            loadCandles(providerId, _uiState.value.ticker, _uiState.value.timeframe)
         }
 
-        /** Первая страница графика для (биржа, масштаб): из кеша либо самые свежие свечи. */
-        private fun loadInitialCandles(
+        /**
+         * История графика для (биржа, масштаб) — одним запросом на всю глубину.
+         * Ряд после загрузки не меняется, поэтому кадру графика не от чего прыгать,
+         * а оси Y — не от чего отставать от свечей. Постраничная догрузка на ходу
+         * этого не давала: vico меряет скролл в пикселях от начала содержимого, и
+         * дописанная слева страница сдвигала кадр раньше, чем успевала доехать
+         * компенсация.
+         */
+        private fun loadCandles(
             providerId: Int,
             symbol: String,
             timeframe: ChartTimeframe,
         ) {
             val key = ChartKey(providerId, timeframe)
             chartsByKey[key]?.let { cached ->
-                emitChart(cached, loading = false)
+                emitChart(cached)
                 return
             }
 
-            _uiState.update {
-                it.copy(
-                    candles = emptyList(),
-                    chartLoading = true,
-                    chartLoadingMore = false,
-                    chartCanLoadOlder = false,
-                    chartCanLoadNewer = false,
-                )
-            }
-            viewModelScope.launch {
-                getTickerHistoryUseCase(providerId, symbol, timeframe, PairsConstants.Chart.PAGE_LIMIT, offset = 0)
-                    .onSuccess { candles ->
-                        val window = ChartWindow.initial(candles, PairsConstants.Chart.WINDOW_MAX_CANDLES)
-                        chartsByKey[key] = window
-                        if (isCurrentChart(providerId, timeframe)) emitChart(window, loading = false)
-                    }.onFailure { error ->
-                        // сбой графика не ломает экран: цены и биржи остаются доступны
-                        if (error is CancellationException) throw error
-                        if (isCurrentChart(providerId, timeframe)) _uiState.update { it.copy(chartLoading = false) }
-                    }
-            }
-        }
-
-        /**
-         * Догрузка более старой страницы (левый край окна) — вызывается графиком при
-         * прокрутке к левому краю. Свечи прибавляются слева, свежий край при
-         * переполнении окна выгружается; позицию сохраняет сам график.
-         */
-        fun loadOlderCandles() {
-            val key = currentChartKey() ?: return
-            val chart = chartsByKey[key] ?: return
-            if (!canPage(chart.canLoadOlder)) return
-
-            _uiState.update { it.copy(chartLoadingMore = true) }
+            _uiState.update { it.copy(candles = emptyList(), chartLoading = true) }
             viewModelScope.launch {
                 getTickerHistoryUseCase(
-                    key.providerId,
-                    _uiState.value.ticker,
-                    key.timeframe,
-                    PairsConstants.Chart.PAGE_LIMIT,
-                    offset = chart.oldestSkip,
-                ).onSuccess { older ->
-                    val current = chartsByKey[key] ?: return@onSuccess
-                    val updated = current.withOlderPage(older, PairsConstants.Chart.WINDOW_MAX_CANDLES)
-                    chartsByKey[key] = updated
-                    if (isCurrentChart(key.providerId, key.timeframe)) emitChart(updated, loading = false)
+                    providerId,
+                    symbol,
+                    timeframe,
+                    PairsConstants.Chart.HISTORY_LIMIT,
+                    offset = 0,
+                ).onSuccess { candles ->
+                    chartsByKey[key] = candles
+                    if (isCurrentChart(providerId, timeframe)) emitChart(candles)
                 }.onFailure { error ->
+                    // сбой графика не ломает экран: цены и биржи остаются доступны
                     if (error is CancellationException) throw error
-                    if (isCurrentChart(
-                            key.providerId,
-                            key.timeframe,
-                        )
-                    ) {
-                        _uiState.update { it.copy(chartLoadingMore = false) }
-                    }
+                    if (isCurrentChart(providerId, timeframe)) _uiState.update { it.copy(chartLoading = false) }
                 }
             }
         }
 
-        /**
-         * Догрузка более свежей страницы (правый край окна) — когда свежий край был
-         * подрезан и пользователь листает обратно к настоящему. Свечи прибавляются
-         * справа, старый край при переполнении окна выгружается.
-         */
-        fun loadNewerCandles() {
-            val key = currentChartKey() ?: return
-            val chart = chartsByKey[key] ?: return
-            if (!canPage(chart.canLoadNewer)) return
-
-            val offset = (chart.newestSkip - PairsConstants.Chart.PAGE_LIMIT).coerceAtLeast(0)
-            val limit = chart.newestSkip - offset
-
-            _uiState.update { it.copy(chartLoadingMore = true) }
-            viewModelScope.launch {
-                getTickerHistoryUseCase(key.providerId, _uiState.value.ticker, key.timeframe, limit, offset)
-                    .onSuccess { newer ->
-                        val current = chartsByKey[key] ?: return@onSuccess
-                        val updated = current.withNewerPage(newer, offset, PairsConstants.Chart.WINDOW_MAX_CANDLES)
-                        chartsByKey[key] = updated
-                        if (isCurrentChart(key.providerId, key.timeframe)) emitChart(updated, loading = false)
-                    }.onFailure { error ->
-                        if (error is CancellationException) throw error
-                        if (isCurrentChart(
-                                key.providerId,
-                                key.timeframe,
-                            )
-                        ) {
-                            _uiState.update { it.copy(chartLoadingMore = false) }
-                        }
-                    }
-            }
+        private fun emitChart(candles: List<Candle>) {
+            _uiState.update { it.copy(candles = candles, chartLoading = false) }
         }
 
-        private fun canPage(sideAllowed: Boolean): Boolean {
-            val state = _uiState.value
-            return sideAllowed && !state.chartLoading && !state.chartLoadingMore
-        }
-
-        private fun currentChartKey(): ChartKey? {
-            val providerId =
-                _uiState.value.selectedExchange
-                    ?.provider
-                    ?.id ?: return null
-            return ChartKey(providerId, _uiState.value.timeframe)
-        }
-
-        private fun emitChart(
-            window: ChartWindow,
-            loading: Boolean,
-        ) {
-            _uiState.update {
-                it.copy(
-                    candles = window.candles,
-                    chartLoading = loading,
-                    chartLoadingMore = false,
-                    chartCanLoadOlder = window.canLoadOlder,
-                    chartCanLoadNewer = window.canLoadNewer,
-                )
-            }
-        }
-
-        // пока страница ехала, пользователь мог сменить биржу или масштаб — тогда
+        // пока история ехала, пользователь мог сменить биржу или масштаб — тогда
         // результат уже не относится к тому, что на экране, и в state его не льём
         private fun isCurrentChart(
             providerId: Int,
