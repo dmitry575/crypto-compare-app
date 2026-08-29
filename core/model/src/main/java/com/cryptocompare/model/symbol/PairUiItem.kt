@@ -15,4 +15,6 @@ data class PairUiItem(
      * который ходит в отдельный эндпоинт. Считается в SQL вместе с min/max.
      */
     val spreadPercent: Double,
+    val volume24h: Double? = null,
+    val change24h: Double? = null,
 )

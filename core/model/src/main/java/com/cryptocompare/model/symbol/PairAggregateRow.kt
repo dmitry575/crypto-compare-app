@@ -9,4 +9,6 @@ data class PairAggregateRow(
     val maxPrice: Double,
     /** Разброс между биржами в процентах от минимальной цены. Считается в SQL. */
     val spreadPercent: Double,
+    val volume24h: Double? = null,
+    val change24h: Double? = null,
 )

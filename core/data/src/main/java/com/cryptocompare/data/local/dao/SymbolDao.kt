@@ -30,7 +30,9 @@ interface SymbolDao {
                 THEN (MAX(MAX(priceBuy, priceSell)) - MIN(MIN(priceBuy, priceSell)))
                      * 100.0 / MIN(MIN(priceBuy, priceSell))
                 ELSE 0
-            END AS spreadPercent
+            END AS spreadPercent,
+            AVG(change24h) AS change24h,
+            SUM(volume24h) AS volume24h
         FROM symbols
         WHERE ticker IS NOT NULL AND TRIM(ticker) != ''
             AND (:query = '' OR ticker LIKE '%' || :query || '%')
