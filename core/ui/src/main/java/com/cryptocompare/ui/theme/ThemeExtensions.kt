@@ -132,6 +132,20 @@ val ColorScheme.cryptoErrorSoft: Color
     @ReadOnlyComposable
     get() = if (LocalIsDarkTheme.current) DownSoftDark else DownSoftLight
 
+/**
+ * Цвет изменения цены за период. Знак приходит из
+ * `com.cryptocompare.helpers.priceChangeSign()`, чтобы цвет и подпись считались
+ * по одному порогу: иначе «0.00%» могло бы оказаться зелёным.
+ */
+@Composable
+@ReadOnlyComposable
+fun ColorScheme.priceChangeColor(sign: Int): Color =
+    when {
+        sign > 0 -> cryptoSuccess
+        sign < 0 -> cryptoError
+        else -> textSecondary
+    }
+
 /** Биржа принимает заявки. */
 val ColorScheme.statusActive: Color
     @Composable
