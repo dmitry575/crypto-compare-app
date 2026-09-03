@@ -12,6 +12,9 @@ fun SymbolEntity.toDomainFromEntity(): Symbol =
         providerId = providerId,
         priceSell = priceSell,
         priceBuy = priceBuy,
+        change24h = change24h,
+        quoteVolume24h = quoteVolume24h,
+        volume24h = volume24h,
     )
 
 fun SymbolDto.toEntityFromDto(syncedAtMillis: Long): SymbolEntity =
@@ -24,6 +27,9 @@ fun SymbolDto.toEntityFromDto(syncedAtMillis: Long): SymbolEntity =
         priceBuy = priceBuy,
         updatedAt = updatedAt,
         syncedAtMillis = syncedAtMillis,
+        change24h = change24h,
+        quoteVolume24h = quoteVolume24h,
+        volume24h = volume24h,
     )
 
 fun List<SymbolDto>.toEntityFromDto(syncedAtMillis: Long): List<SymbolEntity> =
@@ -41,6 +47,9 @@ fun SymbolDto.symbolToDomainFromDto(): Symbol =
         providerId = providerId,
         priceSell = priceSell,
         priceBuy = priceBuy,
+        change24h = change24h,
+        quoteVolume24h = quoteVolume24h,
+        volume24h = volume24h,
     )
 
 fun List<SymbolDto>.symbolToDomainFromDto(): List<Symbol> = map(SymbolDto::symbolToDomainFromDto)

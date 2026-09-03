@@ -27,4 +27,7 @@ data class SymbolEntity(
     val priceBuy: Double,
     val updatedAt: String,
     val syncedAtMillis: Long,
+    val volume24h: Double? = null,
+    val quoteVolume24h: Double? = null,
+    val change24h: Double? = null,
 )

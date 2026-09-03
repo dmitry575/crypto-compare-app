@@ -63,6 +63,13 @@ object Dimensions {
         val listItemSmall: Dp = 64.dp
         val listItem: Dp = 72.dp
 
+        /**
+         * Строка каталога с 24ч-статистикой: по две строки текста слева и справа.
+         * На шаг сетки больше [listItem] — впритык к 72dp контент обрезался бы
+         * при увеличенном системном шрифте.
+         */
+        val listItemStats: Dp = 80.dp
+
         val chip: Dp = 34.dp
         val divider: Dp = 1.dp
     }

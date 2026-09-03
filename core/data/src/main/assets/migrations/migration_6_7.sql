@@ -1,0 +1,3 @@
+ALTER TABLE symbols ADD COLUMN change24h REAL;
+ALTER TABLE symbols ADD COLUMN volume24h REAL;
+ALTER TABLE symbols ADD COLUMN quoteVolume24h REAL;

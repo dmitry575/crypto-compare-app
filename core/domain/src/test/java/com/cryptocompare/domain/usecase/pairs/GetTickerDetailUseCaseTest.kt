@@ -125,11 +125,63 @@ class GetTickerDetailUseCaseTest {
             assertTrue(detail.exchanges.isEmpty())
         }
 
+    @Test
+    fun `24h stats reach the exchange as they came`() =
+        runTest {
+            coEvery { repository.getSymbolsByTicker(TICKER) } returns
+                Result.success(
+                    listOf(
+                        symbol(
+                            id = 1,
+                            providerId = 10,
+                            volume24h = 1_250.5,
+                            quoteVolume24h = 98_750_000.0,
+                            change24h = -2.35,
+                        ),
+                    ),
+                )
+            coEvery { repository.getProviders() } returns Result.success(listOf(provider(10, "Binance")))
+
+            val exchange = useCase(TICKER).getOrThrow().exchanges.single()
+
+            assertEquals(1_250.5, exchange.volume24h!!, 0.0001)
+            assertEquals(98_750_000.0, exchange.quoteVolume24h!!, 0.0001)
+            assertEquals(-2.35, exchange.change24h!!, 0.0001)
+        }
+
+    @Test
+    fun `broken 24h numbers are dropped instead of reaching the formatters`() =
+        runTest {
+            coEvery { repository.getSymbolsByTicker(TICKER) } returns
+                Result.success(
+                    listOf(
+                        symbol(
+                            id = 1,
+                            providerId = 10,
+                            // отрицательного объёма не бывает, а NaN приезжает из кривого JSON
+                            volume24h = -1.0,
+                            quoteVolume24h = Double.NaN,
+                            change24h = Double.POSITIVE_INFINITY,
+                        ),
+                    ),
+                )
+            coEvery { repository.getProviders() } returns Result.success(listOf(provider(10, "Binance")))
+
+            val exchange = useCase(TICKER).getOrThrow().exchanges.single()
+
+            assertNull(exchange.volume24h)
+            assertNull(exchange.quoteVolume24h)
+            assertNull(exchange.change24h)
+        }
+
     private fun symbol(
         id: Long,
         providerId: Int,
         priceSell: Double = 1.0,
         priceBuy: Double = 1.0,
+        volume24h: Double? = null,
+        quoteVolume24h: Double? = null,
+        change24h: Double? = null,
     ) = Symbol(
         id = id,
         ticker = TICKER,
@@ -137,6 +189,9 @@ class GetTickerDetailUseCaseTest {
         providerId = providerId,
         priceSell = priceSell,
         priceBuy = priceBuy,
+        volume24h = volume24h,
+        quoteVolume24h = quoteVolume24h,
+        change24h = change24h,
     )
 
     private fun provider(

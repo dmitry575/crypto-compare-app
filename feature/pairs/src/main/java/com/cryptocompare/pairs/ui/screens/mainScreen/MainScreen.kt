@@ -205,7 +205,7 @@ fun MainScreen(
                     // ещё грузится или переключается фильтр — скелетоны, а не пустой экран
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val rowSpacing = Dimensions.Gap.sm
-                        val rowHeight = Dimensions.Height.listItemSmall
+                        val rowHeight = Dimensions.Height.listItemStats
                         val skeletonCount =
                             ceil((maxHeight + rowSpacing) / (rowHeight + rowSpacing))
                                 .toInt()
@@ -253,7 +253,7 @@ fun MainScreen(
                                 }
                                 PairRow(
                                     pair = pair,
-                                    rowHeight = Dimensions.Height.listItemSmall,
+                                    rowHeight = Dimensions.Height.listItemStats,
                                     isFavourite = pair.ticker in uiState.value.favouriteTickers,
                                     onFavouriteClick = { viewModel.onFavouriteClick(pair.ticker) },
                                     onClick = { onPairClick(pair.ticker) },

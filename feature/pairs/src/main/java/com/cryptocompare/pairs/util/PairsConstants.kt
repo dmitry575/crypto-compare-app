@@ -27,6 +27,9 @@ object PairsConstants {
         val skeletonSubtitleHeight: Dp = 12.dp
         val skeletonPriceWidth: Dp = 72.dp
         val skeletonPriceHeight: Dp = 16.dp
+
+        /** Заглушка под изменение за 24ч и плашку спреда — они шире цены. */
+        val skeletonChangeWidth: Dp = 104.dp
     }
 
     object Chart {
