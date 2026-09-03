@@ -13,6 +13,7 @@ fun SymbolEntity.toDomainFromEntity(): Symbol =
         priceSell = priceSell,
         priceBuy = priceBuy,
         change24h = change24h,
+        quoteVolume24h = quoteVolume24h,
         volume24h = volume24h,
     )
 
@@ -27,6 +28,7 @@ fun SymbolDto.toEntityFromDto(syncedAtMillis: Long): SymbolEntity =
         updatedAt = updatedAt,
         syncedAtMillis = syncedAtMillis,
         change24h = change24h,
+        quoteVolume24h = quoteVolume24h,
         volume24h = volume24h,
     )
 
@@ -46,6 +48,7 @@ fun SymbolDto.symbolToDomainFromDto(): Symbol =
         priceSell = priceSell,
         priceBuy = priceBuy,
         change24h = change24h,
+        quoteVolume24h = quoteVolume24h,
         volume24h = volume24h,
     )
 
