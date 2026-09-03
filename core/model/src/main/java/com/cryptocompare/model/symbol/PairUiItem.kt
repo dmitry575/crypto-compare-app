@@ -15,6 +15,8 @@ data class PairUiItem(
      * который ходит в отдельный эндпоинт. Считается в SQL вместе с min/max.
      */
     val spreadPercent: Double,
-    val volume24h: Double? = null,
+    /** Суммарный объём за 24ч в котируемом активе. Подробности — [PairAggregateRow]. */
+    val quoteVolume24h: Double? = null,
+    /** Изменение цены за 24ч, наибольшее по модулю среди бирж. */
     val change24h: Double? = null,
 )

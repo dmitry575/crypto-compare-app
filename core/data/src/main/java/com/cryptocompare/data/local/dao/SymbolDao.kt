@@ -31,8 +31,14 @@ interface SymbolDao {
                      * 100.0 / MIN(MIN(priceBuy, priceSell))
                 ELSE 0
             END AS spreadPercent,
-            AVG(change24h) AS change24h,
-            SUM(volume24h) AS volume24h
+            SUM(quoteVolume24h) AS quoteVolume24h,
+            -- изменение за 24ч берём наибольшее по модулю, а не среднее: биржа
+            -- с протухшими котировками весила бы в AVG столько же, сколько
+            -- основной рынок, и гасила бы реальное движение
+            CASE
+                WHEN ABS(MAX(change24h)) >= ABS(MIN(change24h)) THEN MAX(change24h)
+                ELSE MIN(change24h)
+            END AS change24h
         FROM symbols
         WHERE ticker IS NOT NULL AND TRIM(ticker) != ''
             AND (:query = '' OR ticker LIKE '%' || :query || '%')

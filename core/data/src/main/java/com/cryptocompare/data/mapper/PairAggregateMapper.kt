@@ -18,5 +18,5 @@ fun PairAggregateRow.toPairUiItem(): PairUiItem =
         maxPrice = maxPrice,
         spreadPercent = spreadPercent,
         change24h = change24h,
-        volume24h = volume24h,
+        quoteVolume24h = quoteVolume24h,
     )

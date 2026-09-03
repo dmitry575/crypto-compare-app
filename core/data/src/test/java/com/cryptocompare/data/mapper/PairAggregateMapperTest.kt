@@ -2,6 +2,7 @@ package com.cryptocompare.data.mapper
 
 import com.cryptocompare.model.symbol.PairAggregateRow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -12,6 +13,8 @@ class PairAggregateMapperTest {
         minPrice: Double = 100.0,
         maxPrice: Double = 110.0,
         spreadPercent: Double = 10.0,
+        quoteVolume24h: Double? = 98_750_000.0,
+        change24h: Double? = 2.35,
     ) = PairAggregateRow(
         ticker = "BTCUSDT",
         symbolIds = symbolIds,
@@ -19,6 +22,8 @@ class PairAggregateMapperTest {
         minPrice = minPrice,
         maxPrice = maxPrice,
         spreadPercent = spreadPercent,
+        quoteVolume24h = quoteVolume24h,
+        change24h = change24h,
     )
 
     @Test
@@ -63,5 +68,21 @@ class PairAggregateMapperTest {
         val item = row(symbolIds = "1,,abc,2").toPairUiItem()
 
         assertEquals(listOf(1L, 2L), item.symbolIds)
+    }
+
+    @Test
+    fun `24h stats pass through untouched`() {
+        val item = row().toPairUiItem()
+
+        assertEquals(98_750_000.0, item.quoteVolume24h!!, 0.0001)
+        assertEquals(2.35, item.change24h!!, 0.0001)
+    }
+
+    @Test
+    fun `missing 24h stats stay null`() {
+        val item = row(quoteVolume24h = null, change24h = null).toPairUiItem()
+
+        assertNull(item.quoteVolume24h)
+        assertNull(item.change24h)
     }
 }
