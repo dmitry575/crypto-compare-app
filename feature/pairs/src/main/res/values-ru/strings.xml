@@ -13,6 +13,9 @@
     <string name="pairs_add_to_favorites">В избранное</string>
     <string name="pairs_remove_from_favorites">Убрать из избранного</string>
 
+    <!-- Статистика за 24 часа -->
+    <string name="pairs_volume_24h">Об. %1$s</string>
+
     <!-- Детальный экран -->
     <string name="pair_detail_back">Назад</string>
     <string name="pair_detail_spread_title">Разброс между биржами</string>
@@ -27,6 +30,9 @@
     <string name="pair_detail_no_chart_data">Нет данных для графика</string>
     <string name="pair_detail_chart_source">Свечи выбранной биржи</string>
     <string name="pair_detail_exchange_section">Биржа</string>
+    <string name="pair_detail_change_24h">Изменение за 24ч</string>
+    <string name="pair_detail_volume_24h_quote">Объём за 24ч, котируемая</string>
+    <string name="pair_detail_volume_24h_base">Объём за 24ч, базовая</string>
 
     <!-- Масштабы графика -->
     <string name="timeframe_m15">15м</string>

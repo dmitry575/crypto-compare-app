@@ -68,13 +68,26 @@ fun PairRowSkeleton(
             )
         }
 
-        Box(
-            modifier =
-                Modifier
-                    .width(PairsConstants.MainScreen.skeletonPriceWidth)
-                    .height(PairsConstants.MainScreen.skeletonPriceHeight)
-                    .background(shimmer, shape),
-        )
+        // справа тоже две строки: цена и под ней изменение со спредом
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(Dimensions.Spacing.xxs),
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .width(PairsConstants.MainScreen.skeletonPriceWidth)
+                        .height(PairsConstants.MainScreen.skeletonPriceHeight)
+                        .background(shimmer, shape),
+            )
+            Box(
+                modifier =
+                    Modifier
+                        .width(PairsConstants.MainScreen.skeletonChangeWidth)
+                        .height(PairsConstants.MainScreen.skeletonSubtitleHeight)
+                        .background(shimmer, shape),
+            )
+        }
 
         Box(modifier = Modifier.size(Dimensions.TouchTarget.min))
     }

@@ -18,13 +18,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import com.cryptocompare.helpers.bidAskSpreadPercent
+import com.cryptocompare.helpers.toCompactVolumeString
+import com.cryptocompare.helpers.util.PriceFormatConstants
 import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.pairs.R
+import com.cryptocompare.pairs.ui.components.Change24hLabel
 import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.ui.theme.Dimensions
+import com.cryptocompare.ui.theme.NumericType
 import com.cryptocompare.ui.theme.borderPrimary
 import com.cryptocompare.ui.theme.textSecondary
 import com.cryptocompare.ui.theme.textTertiary
@@ -112,24 +115,45 @@ fun ExchangeInfoCard(
             val ask = exchange.priceSell
             val bid = exchange.priceBuy
             if (ask != null && bid != null) {
-                val spreadPct = bidAskSpreadPercent(ask = ask, bid = bid)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
+                DetailStatRow(label = stringResource(R.string.pair_detail_spread)) {
                     Text(
-                        text = stringResource(R.string.pair_detail_spread),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.textSecondary,
-                    )
-                    Text(
-                        text = PairsConstants.DetailScreen.SPREAD_FORMAT.format(spreadPct),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
+                        text =
+                            PairsConstants.DetailScreen.SPREAD_FORMAT.format(
+                                bidAskSpreadPercent(ask = ask, bid = bid),
+                            ),
+                        style = NumericType.Caption,
                         color = MaterialTheme.colorScheme.textSecondary,
                     )
                 }
             }
+
+            // 24ч-статистика этой биржи, а не сводная по рынку: на разных биржах
+            // одна и та же пара живёт по-разному, и усреднение это скрывает
+            DetailStatRow(label = stringResource(R.string.pair_detail_change_24h)) {
+                Change24hLabel(change24h = exchange.change24h)
+            }
+            DetailStatRow(label = stringResource(R.string.pair_detail_volume_24h_quote)) {
+                VolumeValue(volume = exchange.quoteVolume24h)
+            }
+            DetailStatRow(label = stringResource(R.string.pair_detail_volume_24h_base)) {
+                VolumeValue(volume = exchange.volume24h)
+            }
         }
     }
+}
+
+/** Объём одной строкой: биржа может его не отдавать, тогда на месте числа прочерк. */
+@Composable
+private fun VolumeValue(volume: Double?) {
+    Text(
+        text = volume?.toCompactVolumeString() ?: PriceFormatConstants.NON_FINITE_PLACEHOLDER,
+        style = NumericType.Caption,
+        color =
+            if (volume == null) {
+                MaterialTheme.colorScheme.textTertiary
+            } else {
+                MaterialTheme.colorScheme.textSecondary
+            },
+        maxLines = 1,
+    )
 }
