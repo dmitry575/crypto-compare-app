@@ -74,13 +74,28 @@ fun MainScreen(
         (pairItems.loadState.refresh as? LoadState.Error)
             ?: (pairItems.loadState.append as? LoadState.Error)
 
-    // Пусто по-настоящему, только когда загрузка дошла до конца: endOfPaginationReached
-    // сбрасывается на время refresh, поэтому при переключении фильтра, пока список
-    // ещё догружается, «ничего не найдено» не мелькает — вместо него скелетоны.
+    // Фильтр, которому нечего показать по определению: звезда включена, а избранного
+    // нет ни одного. Каталог тут не поможет, сколько его ни догружай.
+    val filterMatchesNothing = uiState.value.onlyFavourite && uiState.value.favouriteTickers.isEmpty()
+
+    // Локальная выборка исчерпана: по тому, что уже лежит в Room, под фильтр не
+    // подходит ничего. Спрашиваем именно source, а не общий loadState: общий
+    // endOfPaginationReached становится истинным только когда домедиатор выкачает
+    // весь каталог, и до тех пор экран висел бы на скелетонах — пользователь всё это
+    // время думает, что грузится, хотя показывать уже нечего.
+    val localExhausted =
+        pairItems.loadState.source.refresh is LoadState.NotLoading &&
+            pairItems.loadState.source.append.endOfPaginationReached
+
+    // Но первую порцию всё же дожидаемся: на чистой установке Room пуст, и без этого
+    // «ничего не найдено» мелькало бы поверх ещё не приехавшего каталога. Догрузку
+    // следующих страниц (mediator.append) не ждём — она идёт фоном и может длиться
+    // сколько угодно, а ответ «под фильтр ничего не подходит» уже известен.
+    val firstFillInProgress = pairItems.loadState.mediator?.refresh is LoadState.Loading
+
     val isEmpty =
         pairItems.itemCount == 0 &&
-            pairItems.loadState.refresh is LoadState.NotLoading &&
-            pairItems.loadState.append.endOfPaginationReached
+            (filterMatchesNothing || (localExhausted && !firstFillInProgress))
 
     // первая загрузка провалилась и показывать нечего — не пустой экран, а ошибка с «Повторить»
     val firstLoadFailed = pagingError != null && pairItems.itemCount == 0
