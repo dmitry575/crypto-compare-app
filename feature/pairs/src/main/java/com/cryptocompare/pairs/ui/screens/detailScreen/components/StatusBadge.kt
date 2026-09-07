@@ -11,7 +11,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import com.cryptocompare.model.provider.ProviderStatus
+import com.cryptocompare.pairs.R
 import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.statusActive
@@ -26,11 +28,13 @@ fun StatusBadge(status: ProviderStatus) {
             ProviderStatus.None -> MaterialTheme.colorScheme.statusInactive
         }
     val label =
-        when (status) {
-            ProviderStatus.Enabled -> "Active"
-            ProviderStatus.Disables -> "Inactive"
-            ProviderStatus.None -> "Unknown"
-        }
+        stringResource(
+            when (status) {
+                ProviderStatus.Enabled -> R.string.pair_detail_status_active
+                ProviderStatus.Disables -> R.string.pair_detail_status_inactive
+                ProviderStatus.None -> R.string.pair_detail_status_unknown
+            },
+        )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Dimensions.Gap.xs),

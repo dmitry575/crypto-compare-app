@@ -26,6 +26,9 @@
     <string name="pair_detail_sell_on">Цена продажи на %1$s</string>
     <string name="pair_detail_spread_difference">Разница %1$s</string>
     <string name="pair_detail_unknown_exchange">неизвестно</string>
+    <string name="pair_detail_status_active">Работает</string>
+    <string name="pair_detail_status_inactive">Отключена</string>
+    <string name="pair_detail_status_unknown">Неизвестно</string>
     <string name="pair_detail_buy_price">Цена Ask</string>
     <string name="pair_detail_sell_price">Цена Bid</string>
     <string name="pair_detail_spread">Спред</string>

@@ -28,6 +28,9 @@
     <string name="pair_detail_sell_on">Sale price on %1$s</string>
     <string name="pair_detail_spread_difference">Difference %1$s</string>
     <string name="pair_detail_unknown_exchange">unknown</string>
+    <string name="pair_detail_status_active">Active</string>
+    <string name="pair_detail_status_inactive">Inactive</string>
+    <string name="pair_detail_status_unknown">Unknown</string>
     <string name="pair_detail_buy_price">Ask price</string>
     <string name="pair_detail_sell_price">Bid price</string>
     <string name="pair_detail_spread">Spread</string>
