@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -48,6 +49,7 @@ import com.cryptocompare.ui.theme.OverlineType
 import com.cryptocompare.ui.theme.bgPrimary
 import com.cryptocompare.ui.theme.textSecondary
 import com.cryptocompare.ui.theme.textTertiary
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +60,10 @@ fun DetailsScreen(
     val uiState = viewModel.uiState.collectAsStateWithLifecycle()
     val state = uiState.value
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    // строку берём заранее: stringResource нельзя звать из обработчика нажатия
+    val openFailedMessage = stringResource(R.string.pair_detail_open_failed)
 
     LaunchedEffect(state.error) {
         state.error?.let { snackbarHostState.showSnackbar(it) }
@@ -227,7 +233,13 @@ fun DetailsScreen(
 
                     // Карточка с информацией о бирже
                     state.selectedExchange?.let { exchange ->
-                        ExchangeInfoCard(exchange = exchange, modifier = contentPadding)
+                        ExchangeInfoCard(
+                            exchange = exchange,
+                            modifier = contentPadding,
+                            onOpenLinkFailed = {
+                                scope.launch { snackbarHostState.showSnackbar(openFailedMessage) }
+                            },
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(Dimensions.Spacing.md))

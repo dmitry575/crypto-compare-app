@@ -53,7 +53,7 @@ class DetailsViewModelTest {
         priceSell: Double?,
         priceBuy: Double?,
     ) = ProviderDetail(
-        provider = Provider(id = id, name = "provider$id", webSite = null, status = ProviderStatus.Enabled),
+        provider = Provider(id = id, name = "provider$id", referralUrl = null, status = ProviderStatus.Enabled),
         priceSell = priceSell,
         priceBuy = priceBuy,
     )

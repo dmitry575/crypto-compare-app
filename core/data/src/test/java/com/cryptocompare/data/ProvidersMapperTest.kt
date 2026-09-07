@@ -25,7 +25,7 @@ class ProvidersMapperTest {
 
         assertEquals(42, domain.id)
         assertEquals("Provider", domain.name)
-        assertEquals("https://example.com", domain.webSite)
+        assertEquals("https://example.com", domain.referralUrl)
         assertEquals(ProviderStatus.Enabled, domain.status)
     }
 

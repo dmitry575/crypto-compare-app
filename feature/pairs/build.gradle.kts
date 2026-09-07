@@ -66,6 +66,10 @@ dependencies {
     implementation(libs.androidx.paging.compose)
     ksp(libs.hilt.compiler)
 
+    // сам рендерер превью: ui-tooling-preview даёт только аннотацию @Preview,
+    // без ui-tooling панель в Android Studio не рисует ничего
+    debugImplementation(libs.androidx.compose.ui.tooling)
+
     testImplementation(project(":core:testing"))
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)

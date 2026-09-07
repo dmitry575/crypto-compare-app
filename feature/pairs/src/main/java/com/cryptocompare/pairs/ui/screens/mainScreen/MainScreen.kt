@@ -29,8 +29,11 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
@@ -42,9 +45,11 @@ import com.cryptocompare.pairs.ui.screens.mainScreen.components.EmptyState
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.ErrorState
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairRow
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairRowSkeleton
+import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairsFilterRow
+import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairsListLegend
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairsSearchField
+import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.viewmodel.mainViewModel.MainViewModel
-import com.cryptocompare.ui.components.AppSegmentedControl
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.bgCard
 import com.cryptocompare.ui.theme.bgPrimary
@@ -169,18 +174,25 @@ fun MainScreen(
                 onQueryChange = viewModel::onSearchQueryChange,
             )
 
+            // помещается ли объём в приглушённый ряд строки. Решается один раз на
+            // экран, а не в каждой строке: ширина у всех строк одна, а замер в
+            // строке означал бы субкомпозицию на каждый кадр прокрутки. Крупный
+            // системный шрифт растит ряд, а ширину экрана — нет, отсюда fontScale
+            val showVolumeInRow =
+                LocalConfiguration.current.screenWidthDp.dp >=
+                    PairsConstants.MainScreen.volumeInRowMinWidth * LocalDensity.current.fontScale
+
             // фильтр, а не настройка: тумблер с подписью читался как переключатель
             // режима приложения, хотя выбирают, что показывать
-            AppSegmentedControl(
-                options = listOf(false, true),
-                selected = uiState.value.onlyFavourite,
-                onSelect = viewModel::onOnlyFavouriteChange,
-                label = { onlyFavourite ->
-                    stringResource(
-                        if (onlyFavourite) R.string.pairs_filter_favorites else R.string.pairs_filter_all,
-                    )
-                },
+            PairsFilterRow(
+                onlyFavourite = uiState.value.onlyFavourite,
+                onOnlyFavouriteChange = viewModel::onOnlyFavouriteChange,
             )
+
+            // подписи к числам строки — один раз над списком: в самой строке на
+            // них нет места. Легенда стоит снаружи LazyColumn, потому что ниже
+            // индексы его видимых элементов сопоставляются тикерам для подписок
+            PairsListLegend(showVolume = showVolumeInRow)
 
             when {
                 firstLoadFailed -> {
@@ -219,7 +231,7 @@ fun MainScreen(
                                     .background(MaterialTheme.colorScheme.bgCard),
                         ) {
                             items(skeletonCount) {
-                                PairRowSkeleton(rowHeight = rowHeight)
+                                PairRowSkeleton(minRowHeight = rowHeight)
                             }
                         }
                     }
@@ -253,7 +265,8 @@ fun MainScreen(
                                 }
                                 PairRow(
                                     pair = pair,
-                                    rowHeight = Dimensions.Height.listItemStats,
+                                    minRowHeight = Dimensions.Height.listItemStats,
+                                    showVolume = showVolumeInRow,
                                     isFavourite = pair.ticker in uiState.value.favouriteTickers,
                                     onFavouriteClick = { viewModel.onFavouriteClick(pair.ticker) },
                                     onClick = { onPairClick(pair.ticker) },

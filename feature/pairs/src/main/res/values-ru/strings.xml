@@ -14,7 +14,9 @@
     <string name="pairs_remove_from_favorites">Убрать из избранного</string>
 
     <!-- Статистика за 24 часа -->
-    <string name="pairs_volume_24h">Об. %1$s</string>
+    <string name="pairs_legend_spread_volume">Спред · Объём</string>
+    <string name="pairs_legend_spread">Спред</string>
+    <string name="pairs_legend_price_change">Цена · 24ч</string>
 
     <!-- Детальный экран -->
     <string name="pair_detail_back">Назад</string>
@@ -24,6 +26,9 @@
     <string name="pair_detail_sell_on">Цена продажи на %1$s</string>
     <string name="pair_detail_spread_difference">Разница %1$s</string>
     <string name="pair_detail_unknown_exchange">неизвестно</string>
+    <string name="pair_detail_status_active">Работает</string>
+    <string name="pair_detail_status_inactive">Отключена</string>
+    <string name="pair_detail_status_unknown">Неизвестно</string>
     <string name="pair_detail_buy_price">Цена Ask</string>
     <string name="pair_detail_sell_price">Цена Bid</string>
     <string name="pair_detail_spread">Спред</string>
@@ -33,6 +38,9 @@
     <string name="pair_detail_change_24h">Изменение за 24ч</string>
     <string name="pair_detail_volume_24h_quote">Объём за 24ч, котируемая</string>
     <string name="pair_detail_volume_24h_base">Объём за 24ч, базовая</string>
+    <string name="pair_detail_open_on_exchange">Открыть на %1$s</string>
+    <string name="pair_detail_open_exchange_site">Открыть сайт биржи</string>
+    <string name="pair_detail_open_failed">Не удалось открыть ссылку</string>
 
     <!-- Масштабы графика -->
     <string name="timeframe_m15">15м</string>
