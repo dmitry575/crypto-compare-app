@@ -197,7 +197,7 @@ class GetTickerDetailUseCaseTest {
     private fun provider(
         id: Int,
         name: String?,
-    ) = Provider(id = id, name = name, webSite = null, status = ProviderStatus.Enabled)
+    ) = Provider(id = id, name = name, referralUrl = null, status = ProviderStatus.Enabled)
 
     private companion object {
         const val TICKER = "btcusdt"

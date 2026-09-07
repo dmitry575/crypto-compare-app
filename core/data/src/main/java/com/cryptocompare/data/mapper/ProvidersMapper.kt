@@ -9,7 +9,7 @@ fun ProviderEntity.toDomainFromEntity(): Provider =
     Provider(
         id = id,
         name = name,
-        webSite = website,
+        referralUrl = website,
         status = ProviderStatus.valueOf(status),
     )
 
