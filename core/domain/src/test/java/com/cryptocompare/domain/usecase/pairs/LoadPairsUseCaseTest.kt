@@ -4,6 +4,7 @@ import androidx.paging.PagingData
 import app.cash.turbine.test
 import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.domain.repository.TickerStreamRepository
+import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.PairUiItem
 import io.mockk.every
 import io.mockk.mockk
@@ -21,10 +22,10 @@ class LoadPairsUseCaseTest {
     @Test
     fun `opening the catalog also opens the price stream`() =
         runTest {
-            every { cryptoCompareRepository.getPairsPaged(any(), any(), any()) } returns
+            every { cryptoCompareRepository.getPairsPaged(any(), any(), any(), any()) } returns
                 flowOf(PagingData.empty())
 
-            useCase(query = "", onlyFavourite = false, favouriteTickers = emptySet())
+            useCase(query = "", onlyFavourite = false, favouriteTickers = emptySet(), direction = CatalogDirection.ANY)
 
             verify(exactly = 1) { tickerStreamRepository.connect() }
         }
@@ -34,22 +35,35 @@ class LoadPairsUseCaseTest {
         runTest {
             val favourites = setOf("btcusdt", "ethusdt")
             every {
-                cryptoCompareRepository.getPairsPaged("btc", true, favourites)
+                cryptoCompareRepository.getPairsPaged("btc", true, favourites, CatalogDirection.GAINERS)
             } returns flowOf(PagingData.empty())
 
-            val flow = useCase(query = "btc", onlyFavourite = true, favouriteTickers = favourites)
+            val flow =
+                useCase(
+                    query = "btc",
+                    onlyFavourite = true,
+                    favouriteTickers = favourites,
+                    direction = CatalogDirection.GAINERS,
+                )
 
             assertNotNull(flow)
-            verify(exactly = 1) { cryptoCompareRepository.getPairsPaged("btc", true, favourites) }
+            verify(
+                exactly = 1,
+            ) { cryptoCompareRepository.getPairsPaged("btc", true, favourites, CatalogDirection.GAINERS) }
         }
 
     @Test
     fun `paging flow from the repository is returned to the caller`() =
         runTest {
             val paging = PagingData.from(listOf(pair("btcusdt"), pair("ethusdt")))
-            every { cryptoCompareRepository.getPairsPaged(any(), any(), any()) } returns flowOf(paging)
+            every { cryptoCompareRepository.getPairsPaged(any(), any(), any(), any()) } returns flowOf(paging)
 
-            useCase(query = "", onlyFavourite = false, favouriteTickers = emptySet()).test {
+            useCase(
+                query = "",
+                onlyFavourite = false,
+                favouriteTickers = emptySet(),
+                direction = CatalogDirection.ANY,
+            ).test {
                 assertNotNull(awaitItem())
                 awaitComplete()
             }

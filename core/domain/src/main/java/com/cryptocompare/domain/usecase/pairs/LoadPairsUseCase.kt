@@ -3,6 +3,7 @@ package com.cryptocompare.domain.usecase.pairs
 import androidx.paging.PagingData
 import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.domain.repository.TickerStreamRepository
+import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.PairUiItem
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -17,6 +18,7 @@ class LoadPairsUseCase
             query: String,
             onlyFavourite: Boolean,
             favouriteTickers: Set<String>,
+            direction: CatalogDirection,
         ): Flow<PagingData<PairUiItem>> {
             tickerStreamRepository.connect()
 
@@ -24,6 +26,7 @@ class LoadPairsUseCase
                 query = query,
                 onlyFavourite = onlyFavourite,
                 favouriteTickers = favouriteTickers,
+                direction = direction,
             )
         }
     }

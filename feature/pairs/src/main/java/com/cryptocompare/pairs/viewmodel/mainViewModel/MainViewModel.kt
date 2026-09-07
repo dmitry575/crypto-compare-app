@@ -13,6 +13,7 @@ import com.cryptocompare.domain.usecase.pairs.SyncFavouriteTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.ToggleFavouriteTickerUseCase
 import com.cryptocompare.helpers.toUserMessage
+import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
@@ -72,13 +73,15 @@ class MainViewModel
                     .debounce { query -> if (query.isEmpty()) 0L else PairsConstants.MainScreen.SEARCH_DEBOUNCE_MS },
                 _uiState.map { it.onlyFavourite }.distinctUntilChanged(),
                 _uiState.map { it.favouriteTickers }.distinctUntilChanged(),
-            ) { query, onlyFavourite, favourites ->
+                _uiState.map { it.direction }.distinctUntilChanged(),
+            ) { query, onlyFavourite, favourites, direction ->
                 PairsFilter(
                     query = query,
                     onlyFavourite = onlyFavourite,
                     // the favourites set matters for the query only when the filter is
                     // on; dropping it otherwise keeps star taps from rebuilding the pager
                     favouriteTickers = if (onlyFavourite) favourites else emptySet(),
+                    direction = direction,
                 )
             }.distinctUntilChanged()
                 .flatMapLatest { filter ->
@@ -86,6 +89,7 @@ class MainViewModel
                         query = filter.query,
                         onlyFavourite = filter.onlyFavourite,
                         favouriteTickers = filter.favouriteTickers,
+                        direction = filter.direction,
                     )
                 }.cachedIn(viewModelScope)
 
@@ -109,6 +113,10 @@ class MainViewModel
 
         fun onOnlyFavouriteChange(enabled: Boolean) {
             _uiState.update { it.copy(onlyFavourite = enabled) }
+        }
+
+        fun onDirectionChange(direction: CatalogDirection) {
+            _uiState.update { it.copy(direction = direction) }
         }
 
         fun onVisibleTickersChange(visibleTickers: List<String>) {
@@ -198,5 +206,6 @@ class MainViewModel
             val query: String,
             val onlyFavourite: Boolean,
             val favouriteTickers: Set<String>,
+            val direction: CatalogDirection,
         )
     }
