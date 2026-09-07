@@ -1,6 +1,7 @@
 package com.cryptocompare.pairs.viewmodel.mainViewModel
 
 import com.cryptocompare.model.symbol.CatalogDirection
+import com.cryptocompare.model.symbol.CatalogSorting
 
 data class MainUiState(
     val searchQuery: String = "",
@@ -13,4 +14,5 @@ data class MainUiState(
      * растёт» — это ровно тот вопрос, ради которого избранное и заводят.
      */
     val direction: CatalogDirection = CatalogDirection.ANY,
+    val sorting: CatalogSorting = CatalogSorting(),
 )

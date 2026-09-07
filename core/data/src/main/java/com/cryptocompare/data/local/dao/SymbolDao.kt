@@ -5,7 +5,9 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.RawQuery
 import androidx.room.Transaction
+import androidx.sqlite.db.SupportSQLiteQuery
 import com.cryptocompare.data.local.entity.SymbolEntity
 import com.cryptocompare.model.symbol.PairAggregateRow
 
@@ -17,61 +19,18 @@ interface SymbolDao {
     @Query("SELECT * FROM symbols WHERE ticker=:ticker COLLATE NOCASE")
     suspend fun getByTicker(ticker: String): List<SymbolEntity>
 
-    @Query(
-        """
-        SELECT
-            UPPER(ticker) AS ticker,
-            GROUP_CONCAT(id) AS symbolIds,
-            GROUP_CONCAT(providerId) AS providerIds,
-            MIN(MIN(priceBuy, priceSell)) AS minPrice,
-            MAX(MAX(priceBuy, priceSell)) AS maxPrice,
-            CASE
-                WHEN MIN(MIN(priceBuy, priceSell)) > 0
-                THEN (MAX(MAX(priceBuy, priceSell)) - MIN(MIN(priceBuy, priceSell)))
-                     * 100.0 / MIN(MIN(priceBuy, priceSell))
-                ELSE 0
-            END AS spreadPercent,
-            SUM(quoteVolume24h) AS quoteVolume24h,
-            -- изменение за 24ч берём наибольшее по модулю, а не среднее: биржа
-            -- с протухшими котировками весила бы в AVG столько же, сколько
-            -- основной рынок, и гасила бы реальное движение
-            CASE
-                WHEN ABS(MAX(change24h)) >= ABS(MIN(change24h)) THEN MAX(change24h)
-                ELSE MIN(change24h)
-            END AS change24h
-        FROM symbols
-        WHERE ticker IS NOT NULL AND TRIM(ticker) != ''
-            AND (:query = '' OR ticker LIKE '%' || :query || '%')
-            AND (:onlyFavourite = 0 OR UPPER(ticker) IN (:favouriteTickers))
-        GROUP BY UPPER(ticker)
-        -- направление отбирается в HAVING, а не в WHERE: «растёт» — это свойство
-        -- пары целиком, а строки таблицы это отдельные биржи. Выражение повторено
-        -- дословно намеренно: имя change24h здесь означало бы колонку, а не
-        -- одноимённый результат агрегата, и фильтр молча брал бы чужое значение
-        HAVING :direction = 'ANY'
-            OR (
-                :direction = 'GAINERS' AND
-                CASE
-                    WHEN ABS(MAX(change24h)) >= ABS(MIN(change24h)) THEN MAX(change24h)
-                    ELSE MIN(change24h)
-                END > 0
-            )
-            OR (
-                :direction = 'LOSERS' AND
-                CASE
-                    WHEN ABS(MAX(change24h)) >= ABS(MIN(change24h)) THEN MAX(change24h)
-                    ELSE MIN(change24h)
-                END < 0
-            )
-        ORDER BY UPPER(ticker) ASC
-        """,
-    )
-    fun pagingPairs(
-        query: String,
-        onlyFavourite: Boolean,
-        favouriteTickers: List<String>,
-        direction: String,
-    ): PagingSource<Int, PairAggregateRow>
+    /**
+     * Каталог: одна строка на тикер, свёрнутая по всем биржам.
+     *
+     * Сырой запрос, а не `@Query`, потому что Room не подставляет `ORDER BY`
+     * параметром. Текст собирает [com.cryptocompare.data.local.query.PairsPagingQuery];
+     * там же объяснено, почему это безопасно.
+     *
+     * `observedEntities` обязателен: без него Room не узнает, что таблица
+     * изменилась, и список перестанет обновляться на тиках цен.
+     */
+    @RawQuery(observedEntities = [SymbolEntity::class])
+    fun pagingPairs(query: SupportSQLiteQuery): PagingSource<Int, PairAggregateRow>
 
     @Query("UPDATE symbols SET priceBuy = :priceBuy, priceSell = :priceSell WHERE id = :id")
     suspend fun updatePrice(

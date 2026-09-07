@@ -14,6 +14,8 @@ import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.ToggleFavouriteTickerUseCase
 import com.cryptocompare.helpers.toUserMessage
 import com.cryptocompare.model.symbol.CatalogDirection
+import com.cryptocompare.model.symbol.CatalogSort
+import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
@@ -74,7 +76,8 @@ class MainViewModel
                 _uiState.map { it.onlyFavourite }.distinctUntilChanged(),
                 _uiState.map { it.favouriteTickers }.distinctUntilChanged(),
                 _uiState.map { it.direction }.distinctUntilChanged(),
-            ) { query, onlyFavourite, favourites, direction ->
+                _uiState.map { it.sorting }.distinctUntilChanged(),
+            ) { query, onlyFavourite, favourites, direction, sorting ->
                 PairsFilter(
                     query = query,
                     onlyFavourite = onlyFavourite,
@@ -82,6 +85,7 @@ class MainViewModel
                     // on; dropping it otherwise keeps star taps from rebuilding the pager
                     favouriteTickers = if (onlyFavourite) favourites else emptySet(),
                     direction = direction,
+                    sorting = sorting,
                 )
             }.distinctUntilChanged()
                 .flatMapLatest { filter ->
@@ -90,6 +94,7 @@ class MainViewModel
                         onlyFavourite = filter.onlyFavourite,
                         favouriteTickers = filter.favouriteTickers,
                         direction = filter.direction,
+                        sorting = filter.sorting,
                     )
                 }.cachedIn(viewModelScope)
 
@@ -117,6 +122,28 @@ class MainViewModel
 
         fun onDirectionChange(direction: CatalogDirection) {
             _uiState.update { it.copy(direction = direction) }
+        }
+
+        /**
+         * Повторный выбор того же поля переворачивает порядок — так работает
+         * сортировка везде, где по заголовку кликают дважды.
+         *
+         * Новое поле берёт направление по умолчанию: имя по алфавиту, всё
+         * остальное — по убыванию. «Сортировать по объёму» означает «покажи
+         * самые крупные», а не «покажи мёртвые пары первыми».
+         */
+        fun onSortSelected(field: CatalogSort) {
+            _uiState.update { state ->
+                val current = state.sorting
+                val next =
+                    if (current.field == field) {
+                        current.copy(ascending = !current.ascending)
+                    } else {
+                        CatalogSorting(field = field, ascending = field == CatalogSort.NAME)
+                    }
+
+                state.copy(sorting = next)
+            }
         }
 
         fun onVisibleTickersChange(visibleTickers: List<String>) {
@@ -207,5 +234,6 @@ class MainViewModel
             val onlyFavourite: Boolean,
             val favouriteTickers: Set<String>,
             val direction: CatalogDirection,
+            val sorting: CatalogSorting,
         )
     }

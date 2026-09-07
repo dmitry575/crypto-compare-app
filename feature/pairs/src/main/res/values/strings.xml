@@ -9,6 +9,17 @@
     <string name="pairs_filter_gainers">Gainers</string>
     <string name="pairs_filter_losers">Losers</string>
     <string name="pairs_empty_direction">No pairs are moving that way right now</string>
+
+    <!-- Sorting -->
+    <string name="pairs_sort_title">Sort by</string>
+    <string name="pairs_sort_name">Name</string>
+    <string name="pairs_sort_price">Price</string>
+    <string name="pairs_sort_change">24h change</string>
+    <string name="pairs_sort_spread">Spread</string>
+    <string name="pairs_sort_volume">Volume</string>
+    <string name="pairs_sort_ascending">Ascending</string>
+    <string name="pairs_sort_descending">Descending</string>
+    <string name="pairs_open_sort">Sorting</string>
     <string name="pairs_clear_search">Clear search</string>
     <string name="pairs_spread">Spread between exchanges</string>
     <string name="pairs_empty_favorites">No favorites yet. Tap the star on a pair to keep it here.</string>

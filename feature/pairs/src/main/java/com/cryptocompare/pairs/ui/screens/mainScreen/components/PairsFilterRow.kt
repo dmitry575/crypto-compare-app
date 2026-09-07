@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Icon
@@ -15,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.cryptocompare.model.symbol.CatalogDirection
+import com.cryptocompare.model.symbol.CatalogSort
+import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.pairs.R
 import com.cryptocompare.ui.components.AppChipRow
 import com.cryptocompare.ui.components.AppFilterChip
@@ -41,6 +45,8 @@ internal fun PairsFilterRow(
     onDirectionChange: (CatalogDirection) -> Unit,
     onlyFavourite: Boolean,
     onOnlyFavouriteChange: (Boolean) -> Unit,
+    sorting: CatalogSorting,
+    onSortClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -48,8 +54,8 @@ internal fun PairsFilterRow(
         horizontalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // прокручивается только группа направления: она и будет расти, когда сюда
-        // приедут выбор бирж и сортировка
+        // прокручивается только эта группа: она и будет расти, когда сюда приедет
+        // выбор бирж
         AppChipRow(modifier = Modifier.weight(1f)) {
             CatalogDirection.entries.forEach { entry ->
                 AppFilterChip(
@@ -58,6 +64,26 @@ internal fun PairsFilterRow(
                     onClick = { onDirectionChange(entry) },
                 )
             }
+
+            // сортировка тоже чип, но открывает шторку: полей пять, у каждого два
+            // направления — в ленту такое не поместится
+            AppFilterChip(
+                label = stringResource(sorting.field.labelRes()),
+                selected = sorting.field != CatalogSort.NAME || !sorting.ascending,
+                onClick = onSortClick,
+                trailing = {
+                    Icon(
+                        imageVector =
+                            if (sorting.ascending) {
+                                Icons.Filled.ArrowUpward
+                            } else {
+                                Icons.Filled.ArrowDownward
+                            },
+                        contentDescription = null,
+                        modifier = Modifier.size(Dimensions.IconSize.sm),
+                    )
+                },
+            )
         }
 
         // избранное — другое измерение, поэтому стоит вне ленты и прижато к краю:
@@ -94,6 +120,8 @@ private fun PairsFilterRowPreview() {
             onDirectionChange = {},
             onlyFavourite = true,
             onOnlyFavouriteChange = {},
+            sorting = CatalogSorting(field = CatalogSort.VOLUME, ascending = false),
+            onSortClick = {},
             modifier = Modifier.padding(Dimensions.Padding.screen),
         )
     }

@@ -7,6 +7,17 @@
     <string name="pairs_filter_gainers">Растут</string>
     <string name="pairs_filter_losers">Падают</string>
     <string name="pairs_empty_direction">Сейчас таких пар нет</string>
+
+    <!-- Сортировка -->
+    <string name="pairs_sort_title">Сортировка</string>
+    <string name="pairs_sort_name">Название</string>
+    <string name="pairs_sort_price">Цена</string>
+    <string name="pairs_sort_change">Изменение</string>
+    <string name="pairs_sort_spread">Спред</string>
+    <string name="pairs_sort_volume">Объём</string>
+    <string name="pairs_sort_ascending">По возрастанию</string>
+    <string name="pairs_sort_descending">По убыванию</string>
+    <string name="pairs_open_sort">Сортировка</string>
     <string name="pairs_clear_search">Очистить поиск</string>
     <string name="pairs_spread">Разброс между биржами</string>
     <string name="pairs_empty_favorites">Пока пусто. Нажмите звёздочку у пары, чтобы добавить её сюда.</string>
