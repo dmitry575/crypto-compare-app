@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,9 +26,9 @@ import com.cryptocompare.ui.theme.shimmerBase
 @Composable
 fun PairRowSkeleton(
     modifier: Modifier = Modifier,
-    rowHeight: Dp? = null,
+    minRowHeight: Dp? = null,
 ) {
-    val rowModifier = if (rowHeight != null) modifier.height(rowHeight) else modifier
+    val rowModifier = if (minRowHeight != null) modifier.heightIn(min = minRowHeight) else modifier
     val shimmer = MaterialTheme.colorScheme.shimmerBase
     val shape = RoundedCornerShape(Dimensions.Radius.sm)
 
@@ -38,7 +40,6 @@ fun PairRowSkeleton(
                     horizontal = Dimensions.Padding.listItemHorizontal,
                     vertical = Dimensions.Padding.listItemVertical,
                 ),
-        horizontalArrangement = Arrangement.spacedBy(Dimensions.Gap.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -47,6 +48,8 @@ fun PairRowSkeleton(
                     .size(Dimensions.Crypto.pairBadge)
                     .background(shimmer, shape),
         )
+
+        Spacer(modifier = Modifier.width(Dimensions.Gap.md))
 
         Column(
             modifier = Modifier.weight(1f),
@@ -62,13 +65,15 @@ fun PairRowSkeleton(
             Box(
                 modifier =
                     Modifier
-                        .width(PairsConstants.MainScreen.skeletonSubtitleWidth)
+                        .width(PairsConstants.MainScreen.skeletonMetaWidth)
                         .height(PairsConstants.MainScreen.skeletonSubtitleHeight)
                         .background(shimmer, shape),
             )
         }
 
-        // справа тоже две строки: цена и под ней изменение со спредом
+        Spacer(modifier = Modifier.width(Dimensions.Gap.md))
+
+        // справа тоже две строки: цена и под ней изменение за 24ч
         Column(
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(Dimensions.Spacing.xxs),

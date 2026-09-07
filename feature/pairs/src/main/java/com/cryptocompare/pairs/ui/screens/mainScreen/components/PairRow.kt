@@ -1,13 +1,16 @@
 package com.cryptocompare.pairs.ui.screens.mainScreen.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
@@ -25,16 +28,22 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import com.cryptocompare.helpers.isNotableSpread
 import com.cryptocompare.helpers.parseTicker
 import com.cryptocompare.helpers.toCompactPriceString
 import com.cryptocompare.helpers.toCompactVolumeString
+import com.cryptocompare.helpers.toPercentString
 import com.cryptocompare.helpers.util.PriceFormatConstants
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.pairs.R
 import com.cryptocompare.pairs.ui.components.Change24hLabel
+import com.cryptocompare.pairs.util.PairsConstants
+import com.cryptocompare.ui.theme.CryptoCompareThemePreview
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.NumericType
+import com.cryptocompare.ui.theme.ThemePreviews
 import com.cryptocompare.ui.theme.textPrimary
 import com.cryptocompare.ui.theme.textTertiary
 
@@ -45,22 +54,34 @@ import com.cryptocompare.ui.theme.textTertiary
  * одно из другого в уме. Теперь видно цену и готовый спред — насколько широк
  * рынок по этой паре.
  *
- * 24ч-статистика разнесена по колонкам: объём слева под тикером отвечает на
- * «насколько это живой рынок», изменение справа под ценой — на «куда он идёт».
- * Оба числа приглушены относительно цены: цена здесь главная.
+ * Иерархия: цена главная, изменение за 24ч стоит прямо под ней и остаётся
+ * единственным цветным элементом строки. Спред и объём съезжают в один
+ * приглушённый ряд слева. Раньше изменение и плашка спреда стояли рядом — два
+ * процента одинакового вида, означающие совершенно разное.
+ *
+ * Бюджет ширин на 360dp. Внутри строки 296dp: 360 минус поля экрана 2×16 и
+ * паддинг строки 2×16. Из них значок 36, зазор 12, зазор 12, колонка цены ~76
+ * и звезда 48 — левой колонке остаётся ~112dp. Зазора перед звездой намеренно
+ * нет: у IconButton свои отступы вокруг иконки 24dp, просвет и так виден, а
+ * 12dp уходят туда, где их не хватало. Приглушённый ряд «0.42% · 98.75M» при
+ * 12sp занимает ~101dp, то есть влезает с запасом в 11dp и не более того.
+ *
+ * Кто соберётся ставить сюда спарклайн: он потребует ~44dp плюс зазор, и вместе
+ * с объёмом они уже не помещаются. Платить придётся объёмом.
  */
 @Composable
 fun PairRow(
     pair: PairUiItem,
     modifier: Modifier = Modifier,
-    rowHeight: Dp? = null,
+    minRowHeight: Dp? = null,
+    showVolume: Boolean = true,
     isFavourite: Boolean = false,
     onFavouriteClick: () -> Unit = {},
     onClick: () -> Unit = {},
 ) {
     val parts = remember(pair.ticker) { pair.ticker.parseTicker() }
     val base = parts?.first ?: pair.ticker
-    val rowModifier = if (rowHeight != null) modifier.height(rowHeight) else modifier
+    val rowModifier = if (minRowHeight != null) modifier.heightIn(min = minRowHeight) else modifier
 
     Row(
         modifier =
@@ -71,10 +92,11 @@ fun PairRow(
                     horizontal = Dimensions.Padding.listItemHorizontal,
                     vertical = Dimensions.Padding.listItemVertical,
                 ),
-        horizontalArrangement = Arrangement.spacedBy(Dimensions.Gap.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         PairBadge(base = base)
+
+        Spacer(modifier = Modifier.width(Dimensions.Gap.md))
 
         // числа бирж здесь нет: каталог отдаёт одну строку на тикер с общим
         // providerId, и любой такой счётчик всегда показывал бы единицу
@@ -89,21 +111,15 @@ fun PairRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            // объём в котируемом активе: «98.75M» у BTC/USDT и у SHIB/USDT
-            // означают одно и то же, в базовом сравнивать колонку было бы нечем
             Text(
-                text =
-                    stringResource(
-                        R.string.pairs_volume_24h,
-                        pair.quoteVolume24h?.toCompactVolumeString()
-                            ?: PriceFormatConstants.NON_FINITE_PLACEHOLDER,
-                    ),
+                text = marketLabel(pair, showVolume),
                 style = NumericType.Caption,
-                color = MaterialTheme.colorScheme.textTertiary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
+
+        Spacer(modifier = Modifier.width(Dimensions.Gap.md))
 
         Column(
             horizontalAlignment = Alignment.End,
@@ -114,14 +130,9 @@ fun PairRow(
                 style = NumericType.Small,
                 color = MaterialTheme.colorScheme.textPrimary,
                 maxLines = 1,
+                softWrap = false,
             )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(Dimensions.Gap.xs),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Change24hLabel(change24h = pair.change24h)
-                SpreadBadge(spreadPercent = pair.spreadPercent)
-            }
+            Change24hLabel(change24h = pair.change24h)
         }
 
         IconButton(
@@ -170,3 +181,100 @@ private fun tickerLabel(
         }
     }
 }
+
+/**
+ * Приглушённый ряд: спред, затем объём.
+ *
+ * Спред красится акцентом, только когда он заметный: зелёный и красный в
+ * приложении означают направление цены, а широкий рынок это не «подорожало».
+ * Ниже порога разброс тонет в комиссиях и уходит в приглушённый цвет.
+ *
+ * [showVolume] решается один раз на экран, а не построчно: ширина у всех строк
+ * одна, и объём, пропадающий от строки к строке, читался бы как сбой данных.
+ * Когда места нет, объём убирается целиком — «98.7…» это не число, а спред
+ * остаётся всегда.
+ */
+@Composable
+private fun marketLabel(
+    pair: PairUiItem,
+    showVolume: Boolean,
+): AnnotatedString {
+    val spreadColor =
+        if (pair.spreadPercent.isNotableSpread()) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.textTertiary
+        }
+    val mutedColor = MaterialTheme.colorScheme.textTertiary
+
+    return remember(pair.spreadPercent, pair.quoteVolume24h, showVolume, spreadColor, mutedColor) {
+        buildAnnotatedString {
+            withStyle(SpanStyle(color = spreadColor)) {
+                append(pair.spreadPercent.toPercentString())
+            }
+            if (showVolume) {
+                withStyle(SpanStyle(color = mutedColor)) {
+                    append(PairsConstants.MainScreen.META_SEPARATOR)
+                    append(
+                        pair.quoteVolume24h?.toCompactVolumeString()
+                            ?: PriceFormatConstants.NON_FINITE_PLACEHOLDER,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun PairRowPreview() {
+    PairRowPreviewContent(showVolume = true)
+}
+
+@Preview(name = "Узкий экран", widthDp = 320)
+@Preview(name = "Крупный шрифт", fontScale = 1.3f)
+@Composable
+private fun PairRowNarrowPreview() {
+    PairRowPreviewContent(showVolume = false)
+}
+
+@Composable
+private fun PairRowPreviewContent(showVolume: Boolean) {
+    CryptoCompareThemePreview(darkTheme = isSystemInDarkTheme()) {
+        Column {
+            previewPairs().forEach { pair ->
+                PairRow(
+                    pair = pair,
+                    minRowHeight = Dimensions.Height.listItemStats,
+                    showVolume = showVolume,
+                    isFavourite = pair.ticker == "ETHUSDT",
+                )
+            }
+        }
+    }
+}
+
+private fun previewPairs(): List<PairUiItem> =
+    listOf(
+        previewPair("BTCUSDT", 82_145.30, 0.42, 98_750_000.0, 2.35),
+        previewPair("ETHUSDT", 3_201.44, 0.03, 41_200_000.0, -1.2),
+        previewPair("SOLUSDT", 184.07, 0.0, null, null),
+        previewPair("1000SATSUSDT", 0.000000331, 1.18, 1_230_000_000_000.0, 0.0),
+    )
+
+private fun previewPair(
+    ticker: String,
+    price: Double,
+    spread: Double,
+    volume: Double?,
+    change: Double?,
+) = PairUiItem(
+    ticker = ticker,
+    symbolIds = emptyList(),
+    providerIds = emptyList(),
+    minPrice = price,
+    maxPrice = price,
+    spreadPercent = spread,
+    quoteVolume24h = volume,
+    change24h = change,
+)

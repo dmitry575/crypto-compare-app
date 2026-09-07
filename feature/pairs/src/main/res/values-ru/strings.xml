@@ -14,7 +14,9 @@
     <string name="pairs_remove_from_favorites">Убрать из избранного</string>
 
     <!-- Статистика за 24 часа -->
-    <string name="pairs_volume_24h">Об. %1$s</string>
+    <string name="pairs_legend_spread_volume">Спред · Объём</string>
+    <string name="pairs_legend_spread">Спред</string>
+    <string name="pairs_legend_price_change">Цена · 24ч</string>
 
     <!-- Детальный экран -->
     <string name="pair_detail_back">Назад</string>

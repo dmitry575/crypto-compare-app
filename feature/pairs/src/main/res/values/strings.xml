@@ -16,7 +16,9 @@
     <string name="pairs_remove_from_favorites">Remove from favorites</string>
 
     <!-- 24h market stats -->
-    <string name="pairs_volume_24h">Vol %1$s</string>
+    <string name="pairs_legend_spread_volume">Spread · Volume</string>
+    <string name="pairs_legend_spread">Spread</string>
+    <string name="pairs_legend_price_change">Price · 24h</string>
 
     <!-- Detail screen -->
     <string name="pair_detail_back">Back</string>

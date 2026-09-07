@@ -20,6 +20,20 @@ object PairsConstants {
         const val BADGE_MAX_CHARS = 4
         const val TICKER_PREFIX = "$"
 
+        /** Разделитель между спредом и объёмом в приглушённом ряду строки. */
+        const val META_SEPARATOR = " · "
+
+        /**
+         * Ниже этой ширины экрана приглушённый ряд не вмещает объём целиком, и
+         * строка показывает только спред.
+         *
+         * Считано от раскладки строки: на 360dp левой колонке достаётся ~112dp,
+         * а «0.42% · 98.75M» при 12sp занимает ~101dp. Запас в 11dp съедается
+         * примерно на 344dp. Значение домножается на fontScale — при крупном
+         * системном шрифте ряд растёт, а ширина экрана нет.
+         */
+        val volumeInRowMinWidth: Dp = 344.dp
+
         // размеры заглушек повторяют реальные строки, иначе список дёргается
         val skeletonTickerWidth: Dp = 96.dp
         val skeletonTickerHeight: Dp = 16.dp
@@ -28,8 +42,11 @@ object PairsConstants {
         val skeletonPriceWidth: Dp = 72.dp
         val skeletonPriceHeight: Dp = 16.dp
 
-        /** Заглушка под изменение за 24ч и плашку спреда — они шире цены. */
-        val skeletonChangeWidth: Dp = 104.dp
+        /** Заглушка под приглушённый ряд: спред и объём через разделитель. */
+        val skeletonMetaWidth: Dp = 88.dp
+
+        /** Заглушка под изменение за 24ч. */
+        val skeletonChangeWidth: Dp = 48.dp
     }
 
     object Chart {
