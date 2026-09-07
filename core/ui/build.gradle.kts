@@ -47,4 +47,8 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.core)
     implementation(project(":core:model"))
+
+    // сам рендерер превью: ui-tooling-preview даёт только аннотацию @Preview,
+    // без ui-tooling панель в Android Studio не рисует ничего
+    debugImplementation(libs.androidx.compose.ui.tooling)
 }
