@@ -6,6 +6,9 @@
     <string name="pairs_search_placeholder">Search pair</string>
     <string name="pairs_filter_all">All</string>
     <string name="pairs_filter_favorites">Favorites</string>
+    <string name="pairs_filter_gainers">Gainers</string>
+    <string name="pairs_filter_losers">Losers</string>
+    <string name="pairs_empty_direction">No pairs are moving that way right now</string>
     <string name="pairs_clear_search">Clear search</string>
     <string name="pairs_spread">Spread between exchanges</string>
     <string name="pairs_empty_favorites">No favorites yet. Tap the star on a pair to keep it here.</string>

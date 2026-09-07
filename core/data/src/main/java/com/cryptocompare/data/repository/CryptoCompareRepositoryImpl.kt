@@ -23,6 +23,7 @@ import com.cryptocompare.helpers.util.CryptoCompareRepositoryConstants
 import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.model.provider.Provider
+import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.symbol.Symbol
 import com.cryptocompare.model.ticker.TickerPrice
@@ -90,6 +91,7 @@ class CryptoCompareRepositoryImpl
             query: String,
             onlyFavourite: Boolean,
             favouriteTickers: Set<String>,
+            direction: CatalogDirection,
         ): Flow<PagingData<PairUiItem>> {
             val normalizedQuery = query.trim()
             val normalizedFavourites = favouriteTickers.map { it.trim().uppercase() }
@@ -111,6 +113,9 @@ class CryptoCompareRepositoryImpl
                         query = normalizedQuery,
                         onlyFavourite = onlyFavourite,
                         favouriteTickers = normalizedFavourites,
+                        // enum уходит в запрос именем: заводить TypeConverter ради
+                        // параметра, который в таблице не хранится, незачем
+                        direction = direction.name,
                     )
                 },
             ).flow.map { pagingData ->

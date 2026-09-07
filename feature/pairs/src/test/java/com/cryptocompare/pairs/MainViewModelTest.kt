@@ -9,6 +9,7 @@ import com.cryptocompare.domain.usecase.pairs.StreamDisconnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncFavouriteTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.ToggleFavouriteTickerUseCase
+import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
@@ -46,7 +47,7 @@ class MainViewModelTest {
         pagingFlow: Flow<PagingData<PairUiItem>> = flowOf(PagingData.empty()),
     ): LoadPairsUseCase =
         mockk {
-            every { this@mockk.invoke(any(), any(), any()) } returns pagingFlow
+            every { this@mockk.invoke(any(), any(), any(), any()) } returns pagingFlow
         }
 
     private fun observeTickerEventUseCaseMock(flow: Flow<TickerStreamEvent>): ObserveTickerEventUseCase =
@@ -129,7 +130,7 @@ class MainViewModelTest {
             advanceTimeBy(400)
             runCurrent()
 
-            coVerify { loadPairsUseCase.invoke("", false, emptySet()) }
+            coVerify { loadPairsUseCase.invoke("", false, emptySet(), CatalogDirection.ANY) }
             collectJob.cancel()
         }
 
@@ -147,7 +148,7 @@ class MainViewModelTest {
             advanceTimeBy(400)
             runCurrent()
 
-            coVerify { loadPairsUseCase.invoke("btc", false, emptySet()) }
+            coVerify { loadPairsUseCase.invoke("btc", false, emptySet(), CatalogDirection.ANY) }
             collectJob.cancel()
         }
 
@@ -333,6 +334,45 @@ class MainViewModelTest {
             yield()
 
             assertEquals("Favourite toggle error", vm.uiState.value.error)
+        }
+
+    @Test
+    fun `direction change rebuilds the pager and keeps the favourites filter`() =
+        runTest {
+            val loadPairsUseCase = loadPairsUseCaseMock()
+            val vm = makeVm(loadPairsUseCase = loadPairsUseCase)
+
+            val collectJob = launch { vm.pairs.collect {} }
+            advanceTimeBy(400)
+            runCurrent()
+
+            vm.onOnlyFavouriteChange(true)
+            vm.onDirectionChange(CatalogDirection.GAINERS)
+            advanceTimeBy(400)
+            runCurrent()
+
+            // измерения независимые: «избранное, которое растёт» должно доехать
+            // до use case обоими признаками сразу, а не последним выбранным
+            coVerify { loadPairsUseCase.invoke("", true, any(), CatalogDirection.GAINERS) }
+            collectJob.cancel()
+        }
+
+    @Test
+    fun `onDirectionChange stores the direction`() =
+        runTest {
+            val vm = makeVm()
+
+            vm.onDirectionChange(CatalogDirection.LOSERS)
+
+            assertEquals(CatalogDirection.LOSERS, vm.uiState.value.direction)
+        }
+
+    @Test
+    fun `catalog starts with no direction filter`() =
+        runTest {
+            val vm = makeVm()
+
+            assertEquals(CatalogDirection.ANY, vm.uiState.value.direction)
         }
 
     @Test

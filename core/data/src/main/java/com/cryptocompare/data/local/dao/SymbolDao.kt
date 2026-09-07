@@ -44,6 +44,25 @@ interface SymbolDao {
             AND (:query = '' OR ticker LIKE '%' || :query || '%')
             AND (:onlyFavourite = 0 OR UPPER(ticker) IN (:favouriteTickers))
         GROUP BY UPPER(ticker)
+        -- направление отбирается в HAVING, а не в WHERE: «растёт» — это свойство
+        -- пары целиком, а строки таблицы это отдельные биржи. Выражение повторено
+        -- дословно намеренно: имя change24h здесь означало бы колонку, а не
+        -- одноимённый результат агрегата, и фильтр молча брал бы чужое значение
+        HAVING :direction = 'ANY'
+            OR (
+                :direction = 'GAINERS' AND
+                CASE
+                    WHEN ABS(MAX(change24h)) >= ABS(MIN(change24h)) THEN MAX(change24h)
+                    ELSE MIN(change24h)
+                END > 0
+            )
+            OR (
+                :direction = 'LOSERS' AND
+                CASE
+                    WHEN ABS(MAX(change24h)) >= ABS(MIN(change24h)) THEN MAX(change24h)
+                    ELSE MIN(change24h)
+                END < 0
+            )
         ORDER BY UPPER(ticker) ASC
         """,
     )
@@ -51,6 +70,7 @@ interface SymbolDao {
         query: String,
         onlyFavourite: Boolean,
         favouriteTickers: List<String>,
+        direction: String,
     ): PagingSource<Int, PairAggregateRow>
 
     @Query("UPDATE symbols SET priceBuy = :priceBuy, priceSell = :priceSell WHERE id = :id")

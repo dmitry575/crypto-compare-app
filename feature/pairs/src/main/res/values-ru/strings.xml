@@ -4,6 +4,9 @@
     <string name="pairs_search_placeholder">Поиск пары</string>
     <string name="pairs_filter_all">Все</string>
     <string name="pairs_filter_favorites">Избранное</string>
+    <string name="pairs_filter_gainers">Растут</string>
+    <string name="pairs_filter_losers">Падают</string>
+    <string name="pairs_empty_direction">Сейчас таких пар нет</string>
     <string name="pairs_clear_search">Очистить поиск</string>
     <string name="pairs_spread">Разброс между биржами</string>
     <string name="pairs_empty_favorites">Пока пусто. Нажмите звёздочку у пары, чтобы добавить её сюда.</string>
