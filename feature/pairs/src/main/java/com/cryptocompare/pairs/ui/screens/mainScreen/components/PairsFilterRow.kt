@@ -1,6 +1,9 @@
 package com.cryptocompare.pairs.ui.screens.mainScreen.components
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -8,6 +11,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.cryptocompare.model.symbol.CatalogDirection
@@ -39,19 +43,26 @@ internal fun PairsFilterRow(
     onOnlyFavouriteChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    AppChipRow(modifier = modifier) {
-        CatalogDirection.entries.forEach { entry ->
-            AppFilterChip(
-                label = stringResource(entry.labelRes()),
-                selected = entry == direction,
-                onClick = { onDirectionChange(entry) },
-            )
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // прокручивается только группа направления: она и будет расти, когда сюда
+        // приедут выбор бирж и сортировка
+        AppChipRow(modifier = Modifier.weight(1f)) {
+            CatalogDirection.entries.forEach { entry ->
+                AppFilterChip(
+                    label = stringResource(entry.labelRes()),
+                    selected = entry == direction,
+                    onClick = { onDirectionChange(entry) },
+                )
+            }
         }
 
-        // избранное — другое измерение, но отделять его просветом нельзя: лента
-        // прокручиваемая, к правому краю чип не прижать, и разрыв посреди ряда
-        // читается как незаполненное место. Измерение различает звезда и то,
-        // что чип горит одновременно с направлением
+        // избранное — другое измерение, поэтому стоит вне ленты и прижато к краю:
+        // внутри прокрутки его к правому краю не прижать, а болтающийся в середине
+        // ряда чип читается как незаполненное место
         AppFilterChip(
             label = stringResource(R.string.pairs_filter_favorites),
             selected = onlyFavourite,
