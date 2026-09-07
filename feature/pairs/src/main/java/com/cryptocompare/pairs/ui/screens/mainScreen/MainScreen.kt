@@ -45,11 +45,11 @@ import com.cryptocompare.pairs.ui.screens.mainScreen.components.EmptyState
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.ErrorState
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairRow
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairRowSkeleton
+import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairsFilterRow
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairsListLegend
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairsSearchField
 import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.viewmodel.mainViewModel.MainViewModel
-import com.cryptocompare.ui.components.AppSegmentedControl
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.bgCard
 import com.cryptocompare.ui.theme.bgPrimary
@@ -184,15 +184,9 @@ fun MainScreen(
 
             // фильтр, а не настройка: тумблер с подписью читался как переключатель
             // режима приложения, хотя выбирают, что показывать
-            AppSegmentedControl(
-                options = listOf(false, true),
-                selected = uiState.value.onlyFavourite,
-                onSelect = viewModel::onOnlyFavouriteChange,
-                label = { onlyFavourite ->
-                    stringResource(
-                        if (onlyFavourite) R.string.pairs_filter_favorites else R.string.pairs_filter_all,
-                    )
-                },
+            PairsFilterRow(
+                onlyFavourite = uiState.value.onlyFavourite,
+                onOnlyFavouriteChange = viewModel::onOnlyFavouriteChange,
             )
 
             // подписи к числам строки — один раз над списком: в самой строке на
