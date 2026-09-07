@@ -35,6 +35,9 @@
     <string name="pair_detail_change_24h">Изменение за 24ч</string>
     <string name="pair_detail_volume_24h_quote">Объём за 24ч, котируемая</string>
     <string name="pair_detail_volume_24h_base">Объём за 24ч, базовая</string>
+    <string name="pair_detail_open_on_exchange">Открыть на %1$s</string>
+    <string name="pair_detail_open_exchange_site">Открыть сайт биржи</string>
+    <string name="pair_detail_open_failed">Не удалось открыть ссылку</string>
 
     <!-- Масштабы графика -->
     <string name="timeframe_m15">15м</string>

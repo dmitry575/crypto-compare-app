@@ -6,11 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,6 +21,7 @@ import com.cryptocompare.helpers.util.PriceFormatConstants
 import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.pairs.R
 import com.cryptocompare.pairs.ui.components.Change24hLabel
+import com.cryptocompare.pairs.ui.components.ExchangeLinkButton
 import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.NumericType
@@ -36,6 +33,7 @@ import com.cryptocompare.ui.theme.textTertiary
 fun ExchangeInfoCard(
     exchange: ProviderDetail,
     modifier: Modifier = Modifier,
+    onOpenLinkFailed: () -> Unit = {},
 ) {
     Surface(
         modifier =
@@ -68,26 +66,6 @@ fun ExchangeInfoCard(
                 )
                 StatusBadge(status = exchange.provider.status)
             }
-
-            exchange.provider.webSite?.takeIf { it.isNotBlank() }?.let { website ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Dimensions.Gap.xs),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Language,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.textTertiary,
-                        modifier = Modifier.size(PairsConstants.DetailScreen.websiteIconSize),
-                    )
-                    Text(
-                        text = website,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.textTertiary,
-                    )
-                }
-            }
-
             HorizontalDivider(color = MaterialTheme.colorScheme.borderPrimary)
 
             Row(
@@ -138,6 +116,14 @@ fun ExchangeInfoCard(
             DetailStatRow(label = stringResource(R.string.pair_detail_volume_24h_base)) {
                 VolumeValue(volume = exchange.volume24h)
             }
+
+            // действие в подвале карточки: посреди статистики кнопка разрезала бы
+            // её, а здесь читается как вывод — вот где этой парой торгуют
+            ExchangeLinkButton(
+                exchangeName = exchange.provider.name,
+                referralUrl = exchange.provider.referralUrl,
+                onOpenFailed = onOpenLinkFailed,
+            )
         }
     }
 }

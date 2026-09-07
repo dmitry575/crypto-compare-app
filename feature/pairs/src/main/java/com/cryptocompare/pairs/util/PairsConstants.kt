@@ -148,7 +148,6 @@ object PairsConstants {
         const val LIVE_PRICE_INTERVAL_MS = 500L
 
         val statusDotSize: Dp = 8.dp
-        val websiteIconSize: Dp = 14.dp
         val labelGap: Dp = 2.dp
     }
 }

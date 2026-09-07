@@ -37,6 +37,9 @@
     <string name="pair_detail_change_24h">24h change</string>
     <string name="pair_detail_volume_24h_quote">24h volume, quote asset</string>
     <string name="pair_detail_volume_24h_base">24h volume, base asset</string>
+    <string name="pair_detail_open_on_exchange">Open on %1$s</string>
+    <string name="pair_detail_open_exchange_site">Open exchange site</string>
+    <string name="pair_detail_open_failed">Couldn\'t open the link</string>
 
     <!-- Chart timeframes -->
     <string name="timeframe_m15">15m</string>

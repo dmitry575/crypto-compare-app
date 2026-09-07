@@ -1,6 +1,5 @@
 package com.cryptocompare.profile.ui.screens.profilescreen
 
-import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,9 +33,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cryptocompare.helpers.openExternalUrl
 import com.cryptocompare.helpers.util.AppConstants
 import com.cryptocompare.profile.R
 import com.cryptocompare.profile.ui.screens.profilescreen.components.LanguageSelector
@@ -213,12 +212,9 @@ fun ProfileScreen(
                         text = stringResource(R.string.profile_privacy_policy),
                         icon = Icons.Outlined.Policy,
                         onClick = {
-                            context.startActivity(
-                                Intent(
-                                    Intent.ACTION_VIEW,
-                                    AppConstants.PRIVACY_POLICY_URL.toUri(),
-                                ),
-                            )
+                            // общий опенер: проверяет схему и гасит отсутствие браузера,
+                            // из-за которого прежний startActivity ронял приложение
+                            context.openExternalUrl(AppConstants.PRIVACY_POLICY_URL)
                         },
                         enabled = !uiState.isLoading,
                     )
