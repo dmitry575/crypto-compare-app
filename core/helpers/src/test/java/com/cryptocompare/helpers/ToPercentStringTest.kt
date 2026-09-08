@@ -38,7 +38,10 @@ class ToPercentStringTest {
     }
 
     @Test
-    fun `notable spread ignores direction`() {
-        assertTrue((-0.5).isNotableSpread())
+    fun `notable spread requires a plus`() {
+        // широкий минус означает «продать дешевле, чем купить», и подсвечивать
+        // его как возможность нельзя — таких пар в каталоге большинство
+        assertFalse((-0.5).isNotableSpread())
+        assertFalse((-4.17).isNotableSpread())
     }
 }

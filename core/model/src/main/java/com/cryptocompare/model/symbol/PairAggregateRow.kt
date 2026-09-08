@@ -5,10 +5,16 @@ data class PairAggregateRow(
     val ticker: String,
     val symbolIds: String?,
     val providerIds: String?,
-    val minPrice: Double,
-    val maxPrice: Double,
-    /** Разброс между биржами в процентах от минимальной цены. Считается в SQL. */
-    val spreadPercent: Double,
+    /** Цена, по которой покупает пользователь: лучший ask среди бирж. */
+    val buyPrice: Double,
+    /** Цена, по которой продаёт пользователь: лучший bid среди бирж. */
+    val sellPrice: Double,
+    /**
+     * Спред в процентах от цены покупки, со знаком. Считается в SQL по той же
+     * формуле, что и на бэкенде; в норме отрицателен. `null` — цены нет,
+     * посчитать не из чего.
+     */
+    val spreadPercent: Double?,
     /**
      * Суммарный объём пары за 24ч в котируемом активе по всем биржам.
      *

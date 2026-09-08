@@ -27,7 +27,11 @@ fun Double.toPercentString(): String {
 }
 
 /**
- * Заметен ли разброс. Ниже порога разница между биржами тонет в комиссиях,
+ * Заметен ли спред. Ниже порога разница между биржами тонет в комиссиях,
  * и подсвечивать её как возможность нельзя.
+ *
+ * Сравнение без модуля: спред знаковый, и широкий **минус** — это не находка,
+ * а ровно обратное, продать дешевле, чем купить. С `abs()` такие пары
+ * подсвечивались бы наравне с настоящей возможностью, а их большинство.
  */
-fun Double.isNotableSpread(): Boolean = abs(this) >= PriceFormatConstants.NOTABLE_SPREAD_PERCENT
+fun Double.isNotableSpread(): Boolean = this >= PriceFormatConstants.NOTABLE_SPREAD_PERCENT

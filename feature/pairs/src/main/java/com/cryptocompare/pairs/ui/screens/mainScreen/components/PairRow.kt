@@ -51,8 +51,8 @@ import com.cryptocompare.ui.theme.textTertiary
  * Строка каталога.
  *
  * Колонок «Max/Min» больше нет: две цены одинакового веса заставляли вычитать
- * одно из другого в уме. Теперь видно цену и готовый спред — насколько широк
- * рынок по этой паре.
+ * одно из другого в уме. Теперь видно цену покупки и готовый спред — сколько
+ * выйдет, если купить на одной бирже и продать на другой.
  *
  * Иерархия: цена главная, изменение за 24ч стоит прямо под ней и остаётся
  * единственным цветным элементом строки. Спред и объём съезжают в один
@@ -63,8 +63,9 @@ import com.cryptocompare.ui.theme.textTertiary
  * паддинг строки 2×16. Из них значок 36, зазор 12, зазор 12, колонка цены ~76
  * и звезда 48 — левой колонке остаётся ~112dp. Зазора перед звездой намеренно
  * нет: у IconButton свои отступы вокруг иконки 24dp, просвет и так виден, а
- * 12dp уходят туда, где их не хватало. Приглушённый ряд «0.42% · 98.75M» при
- * 12sp занимает ~101dp, то есть влезает с запасом в 11dp и не более того.
+ * 12dp уходят туда, где их не хватало. Приглушённый ряд «−0.27% · 98.75M» при
+ * 12sp занимает ~108dp: спред знаковый, и минус съел ещё один знак, так что
+ * запаса осталось ~4dp. Ещё один символ сюда уже не влезет.
  *
  * Кто соберётся ставить сюда спарклайн: он потребует ~44dp плюс зазор, и вместе
  * с объёмом они уже не помещаются. Платить придётся объёмом.
@@ -125,8 +126,10 @@ fun PairRow(
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(Dimensions.Spacing.xxs),
         ) {
+            // цена покупки, а не максимум по всем котировкам: показываем то,
+            // что пользователь заплатит, и то же число, что и экран сравнения
             Text(
-                text = pair.maxPrice.toCompactPriceString(),
+                text = pair.buyPrice.toCompactPriceString(),
                 style = NumericType.Small,
                 color = MaterialTheme.colorScheme.textPrimary,
                 maxLines = 1,
@@ -185,9 +188,11 @@ private fun tickerLabel(
 /**
  * Приглушённый ряд: спред, затем объём.
  *
- * Спред красится акцентом, только когда он заметный: зелёный и красный в
- * приложении означают направление цены, а широкий рынок это не «подорожало».
- * Ниже порога разброс тонет в комиссиях и уходит в приглушённый цвет.
+ * Спред знаковый и в норме отрицательный — купить дороже, чем продать, это
+ * обычное состояние рынка. Акцентом красится только вышедший в плюс: зелёный и
+ * красный в приложении означают направление цены, а возможность заработать на
+ * разнице это не «подорожало». Ниже порога спред тонет в комиссиях и уходит в
+ * приглушённый цвет.
  *
  * [showVolume] решается один раз на экран, а не построчно: ширина у всех строк
  * одна, и объём, пропадающий от строки к строке, читался бы как сбой данных.
@@ -199,18 +204,19 @@ private fun marketLabel(
     pair: PairUiItem,
     showVolume: Boolean,
 ): AnnotatedString {
+    val spread = pair.spreadPercent
     val spreadColor =
-        if (pair.spreadPercent.isNotableSpread()) {
+        if (spread != null && spread.isNotableSpread()) {
             MaterialTheme.colorScheme.primary
         } else {
             MaterialTheme.colorScheme.textTertiary
         }
     val mutedColor = MaterialTheme.colorScheme.textTertiary
 
-    return remember(pair.spreadPercent, pair.quoteVolume24h, showVolume, spreadColor, mutedColor) {
+    return remember(spread, pair.quoteVolume24h, showVolume, spreadColor, mutedColor) {
         buildAnnotatedString {
             withStyle(SpanStyle(color = spreadColor)) {
-                append(pair.spreadPercent.toPercentString())
+                append(spread?.toPercentString() ?: PriceFormatConstants.NON_FINITE_PLACEHOLDER)
             }
             if (showVolume) {
                 withStyle(SpanStyle(color = mutedColor)) {
@@ -254,26 +260,27 @@ private fun PairRowPreviewContent(showVolume: Boolean) {
     }
 }
 
+/** Спреды подобраны как на живых данных: большинство в минусе, в плюсе редкий. */
 private fun previewPairs(): List<PairUiItem> =
     listOf(
-        previewPair("BTCUSDT", 82_145.30, 0.42, 98_750_000.0, 2.35),
-        previewPair("ETHUSDT", 3_201.44, 0.03, 41_200_000.0, -1.2),
-        previewPair("SOLUSDT", 184.07, 0.0, null, null),
-        previewPair("1000SATSUSDT", 0.000000331, 1.18, 1_230_000_000_000.0, 0.0),
+        previewPair("BTCUSDT", 82_145.30, -0.27, 98_750_000.0, 2.35),
+        previewPair("ETHUSDT", 3_201.44, -0.03, 41_200_000.0, -1.2),
+        previewPair("SOLUSDT", 184.07, 0.24, null, null),
+        previewPair("1000SATSUSDT", 0.000000331, null, 1_230_000_000_000.0, 0.0),
     )
 
 private fun previewPair(
     ticker: String,
     price: Double,
-    spread: Double,
+    spread: Double?,
     volume: Double?,
     change: Double?,
 ) = PairUiItem(
     ticker = ticker,
     symbolIds = emptyList(),
     providerIds = emptyList(),
-    minPrice = price,
-    maxPrice = price,
+    buyPrice = price,
+    sellPrice = price,
     spreadPercent = spread,
     quoteVolume24h = volume,
     change24h = change,

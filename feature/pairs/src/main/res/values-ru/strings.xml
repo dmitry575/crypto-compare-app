@@ -45,7 +45,6 @@
     <string name="pair_detail_status_unknown">Неизвестно</string>
     <string name="pair_detail_buy_price">Цена Ask</string>
     <string name="pair_detail_sell_price">Цена Bid</string>
-    <string name="pair_detail_spread">Спред</string>
     <string name="pair_detail_no_chart_data">Нет данных для графика</string>
     <string name="pair_detail_chart_source">Свечи выбранной биржи</string>
     <string name="pair_detail_exchange_section">Биржа</string>

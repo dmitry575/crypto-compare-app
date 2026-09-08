@@ -14,12 +14,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import com.cryptocompare.helpers.arbitragePercent
+import com.cryptocompare.helpers.isNotableSpread
 import com.cryptocompare.helpers.spreadPercent
 import com.cryptocompare.helpers.toPercentString
 import com.cryptocompare.helpers.toPriceString
@@ -31,46 +29,49 @@ import com.cryptocompare.ui.theme.OverlineType
 import com.cryptocompare.ui.theme.accentSoft
 import com.cryptocompare.ui.theme.bgCard
 import com.cryptocompare.ui.theme.borderPrimary
-import com.cryptocompare.ui.theme.cryptoError
-import com.cryptocompare.ui.theme.cryptoSuccess
 import com.cryptocompare.ui.theme.textPrimary
 import com.cryptocompare.ui.theme.textTertiary
-import kotlin.math.abs
 
 /**
- * Разброс цены между биржами — то, ради чего приложение и существует.
+ * Разница между биржами — то, ради чего приложение и существует.
  *
  * Раньше на этом месте стояли «Lowest ask» и «Highest bid» двумя колонками.
  * Числа брались с разных бирж и разного порядка, стояли рядом без связи между
  * собой и читались как поломка. Здесь у каждого края есть имя биржи, а снизу —
  * готовая разница: покупаешь слева, продаёшь справа.
+ *
+ * Величина та же, что в строке каталога, и считает её общий `spreadPercent`.
+ * Знак значим и в норме отрицателен — купить дороже, чем продать, это обычное
+ * состояние рынка. При единственной бирже формула вырождается в её собственный
+ * спред, отдельной ветки для этого не нужно.
+ *
+ * **Числу каталога оно при этом равно не всегда.** Здесь цены берутся из разбивки
+ * по биржам, а каталог получает готовую пару из best-выдачи, и наборы бирж у этих
+ * эндпоинтов разные: на BTCUSDT 2026-09-08 best-выдача выбрала биржи 19 и 23,
+ * которых в разбивке в тот момент не было вовсе. Сводить экраны к одному источнику —
+ * задача #19.
+ *
+ * Цвета краёв нейтральные. Зелёный на дешёвой стороне против красного на
+ * дорогой работал, пока разница считалась модулем; со знаком продажа сплошь и
+ * рядом оказывается ниже покупки, и градиент начинает врать. Выделяется только
+ * сам процент, и только когда он вышел в плюс.
  */
 @Composable
 internal fun SpreadBar(
     exchanges: List<ProviderDetail>,
     modifier: Modifier = Modifier,
 ) {
-    // priceSell — это ask, по нему пользователь покупает; priceBuy — bid, по нему продаёт
+    // priceSell — это ask, по нему пользователь покупает; priceBuy — bid, по нему продаёт.
+    // Здесь строки пришли с разбивки по биржам, где имена от лица биржи
     val cheapest = exchanges.minByOrNull { it.priceSell ?: it.priceBuy ?: Double.MAX_VALUE }
     val dearest = exchanges.maxByOrNull { it.priceBuy ?: it.priceSell ?: Double.MIN_VALUE }
 
     val buyPrice = cheapest?.let { it.priceSell ?: it.priceBuy } ?: return
     val sellPrice = dearest?.let { it.priceBuy ?: it.priceSell } ?: return
 
+    val percent = spreadPercent(buyPrice = buyPrice, sellPrice = sellPrice) ?: return
+    val difference = sellPrice - buyPrice
     val crossExchange = exchanges.size > 1
-
-    // Две разные величины, и путать их нельзя. При нескольких биржах это
-    // арбитраж — знак значим, отрицательный означает «заработать нельзя».
-    // При одной бирже это ширина рынка, и формула обязана совпадать с SQL
-    // из SymbolDao.pagingPairs(): иначе список показывает 1.16%,
-    // а этот экран -1.15% для той же пары.
-    val percent =
-        if (crossExchange) {
-            arbitragePercent(lowestAsk = buyPrice, highestBid = sellPrice)
-        } else {
-            spreadPercent(low = minOf(buyPrice, sellPrice), high = maxOf(buyPrice, sellPrice))
-        }
-    val difference = if (crossExchange) sellPrice - buyPrice else abs(sellPrice - buyPrice)
 
     Column(
         modifier =
@@ -112,15 +113,6 @@ internal fun SpreadBar(
                         stringResource(R.string.pair_detail_buy_price)
                     },
                 price = buyPrice.toPriceString(),
-                // цветом красим только арбитраж, где зелёный «дёшево» против
-                // красного «дорого» что-то значит. У бид-аска покупка наоборот
-                // выше продажи, и зелёный на большем числе только путал бы
-                color =
-                    if (crossExchange) {
-                        MaterialTheme.colorScheme.cryptoSuccess
-                    } else {
-                        MaterialTheme.colorScheme.textPrimary
-                    },
                 alignment = TextAlign.Start,
                 modifier = Modifier.weight(1f),
             )
@@ -132,12 +124,6 @@ internal fun SpreadBar(
                         stringResource(R.string.pair_detail_sell_price)
                     },
                 price = sellPrice.toPriceString(),
-                color =
-                    if (crossExchange) {
-                        MaterialTheme.colorScheme.cryptoError
-                    } else {
-                        MaterialTheme.colorScheme.textPrimary
-                    },
                 alignment = TextAlign.End,
                 modifier = Modifier.weight(1f),
             )
@@ -149,17 +135,7 @@ internal fun SpreadBar(
                     .fillMaxWidth()
                     .height(Dimensions.Crypto.spreadTrack)
                     .background(
-                        brush =
-                            if (crossExchange) {
-                                Brush.horizontalGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.cryptoSuccess,
-                                        MaterialTheme.colorScheme.cryptoError,
-                                    ),
-                                )
-                            } else {
-                                SolidColor(MaterialTheme.colorScheme.accentSoft)
-                            },
+                        color = MaterialTheme.colorScheme.accentSoft,
                         shape = RoundedCornerShape(Dimensions.Radius.full),
                     ),
             content = {},
@@ -182,7 +158,12 @@ internal fun SpreadBar(
             Text(
                 text = percent.toPercentString(),
                 style = NumericType.Medium,
-                color = MaterialTheme.colorScheme.textPrimary,
+                color =
+                    if (percent.isNotableSpread()) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.textPrimary
+                    },
             )
         }
     }
@@ -192,7 +173,6 @@ internal fun SpreadBar(
 private fun SpreadEnd(
     label: String,
     price: String,
-    color: androidx.compose.ui.graphics.Color,
     alignment: TextAlign,
     modifier: Modifier = Modifier,
 ) {
@@ -212,7 +192,7 @@ private fun SpreadEnd(
         Text(
             text = price,
             style = NumericType.Medium,
-            color = color,
+            color = MaterialTheme.colorScheme.textPrimary,
             textAlign = alignment,
             maxLines = 1,
             softWrap = false,

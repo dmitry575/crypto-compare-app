@@ -14,8 +14,8 @@ fun PairAggregateRow.toPairUiItem(): PairUiItem =
                 ?.filter { it > 0 }
                 ?.distinct()
                 .orEmpty(),
-        minPrice = minPrice,
-        maxPrice = maxPrice,
+        buyPrice = buyPrice,
+        sellPrice = sellPrice,
         spreadPercent = spreadPercent,
         change24h = change24h,
         quoteVolume24h = quoteVolume24h,

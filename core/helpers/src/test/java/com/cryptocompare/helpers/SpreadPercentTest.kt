@@ -1,6 +1,7 @@
 package com.cryptocompare.helpers
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -10,63 +11,55 @@ class SpreadPercentTest {
     private val ask = 2606.08
 
     @Test
-    fun `spread matches the SQL aggregate`() {
-        // SQL считает (max - min) * 100.0 / min — формула обязана совпадать,
-        // иначе список и детальный экран снова разойдутся
-        val expected = (ask - bid) * 100.0 / bid
+    fun `formula repeats the backend`() {
+        // серверный spreadPercent = (priceSell - priceBuy) / priceBuy * 100,
+        // где priceBuy — цена покупки. Сверено на живых данных: btcusdt
+        // 78955.42 / 78886.40 даёт 0.0875%, и бэкенд отдаёт ровно его
+        val expected = (78_955.42 - 78_886.40) * 100.0 / 78_886.40
 
-        assertEquals(expected, spreadPercent(low = bid, high = ask), 1e-9)
+        assertEquals(expected, spreadPercent(buyPrice = 78_886.40, sellPrice = 78_955.42)!!, 1e-9)
+        assertEquals("0.09%", spreadPercent(buyPrice = 78_886.40, sellPrice = 78_955.42)!!.toPercentString())
     }
 
     @Test
-    fun `spread is never negative`() {
-        assertTrue(spreadPercent(low = bid, high = ask) > 0)
-        // аргументы наоборот — вырожденный случай, но знака он давать не должен
-        assertEquals(0.0, spreadPercent(low = ask, high = ask), 1e-9)
+    fun `sign is kept and is negative in the normal case`() {
+        // купить по аску, продать по биду — обычное состояние рынка,
+        // и оно должно читаться как минус, а не как возможность
+        val value = spreadPercent(buyPrice = ask, sellPrice = bid)!!
+
+        assertTrue(value < 0)
+        assertEquals("-1.15%", value.toPercentString())
     }
 
     @Test
-    fun `zero and broken prices do not blow up`() {
-        assertEquals(0.0, spreadPercent(low = 0.0, high = 10.0), 1e-9)
-        assertEquals(0.0, spreadPercent(low = -1.0, high = 10.0), 1e-9)
-        assertEquals(0.0, spreadPercent(low = Double.NaN, high = 10.0), 1e-9)
-        assertEquals(0.0, spreadPercent(low = 1.0, high = Double.NaN), 1e-9)
+    fun `positive value means a real opportunity`() {
+        assertTrue(spreadPercent(buyPrice = 1_920.0, sellPrice = 2_361.0)!! > 0)
     }
 
     @Test
-    fun `arbitrage keeps its sign`() {
-        // одна биржа: бид ниже аска, заработать нельзя
-        assertTrue(arbitragePercent(lowestAsk = ask, highestBid = bid) < 0)
-        // разные биржи: бид одной выше аска другой
-        assertTrue(arbitragePercent(lowestAsk = 1920.0, highestBid = 2361.0) > 0)
+    fun `a single exchange degenerates to its own bid-ask`() {
+        // при одной бирже цены покупки и продажи — её собственные аск и бид,
+        // отдельной формулы для этого случая заводить не нужно
+        val single = spreadPercent(buyPrice = ask, sellPrice = bid)
+
+        assertEquals((bid - ask) * 100.0 / ask, single!!, 1e-9)
     }
 
     @Test
-    fun `bid-ask spread divides by the ask`() {
-        // формула карточки биржи: |ask - bid| / ask * 100 (знаменатель — аск,
-        // в отличие от spreadPercent, где делим на минимум)
-        val expected = (ask - bid) * 100.0 / ask
-
-        assertEquals(expected, bidAskSpreadPercent(ask = ask, bid = bid), 1e-9)
+    fun `equal prices give exactly zero`() {
+        assertEquals(0.0, spreadPercent(buyPrice = ask, sellPrice = ask)!!, 1e-9)
     }
 
     @Test
-    fun `bid-ask spread is never negative and survives broken prices`() {
-        assertTrue(bidAskSpreadPercent(ask = ask, bid = bid) > 0)
-        assertEquals(0.0, bidAskSpreadPercent(ask = 0.0, bid = 10.0), 1e-9)
-        assertEquals(0.0, bidAskSpreadPercent(ask = -1.0, bid = 10.0), 1e-9)
-        assertEquals(0.0, bidAskSpreadPercent(ask = Double.NaN, bid = 10.0), 1e-9)
-        assertEquals(0.0, bidAskSpreadPercent(ask = 10.0, bid = Double.NaN), 1e-9)
-    }
-
-    @Test
-    fun `the two measures no longer disagree on the same pair`() {
-        // 1.16% против -1.15% — ровно то расхождение, из-за которого
-        // и появились эти функции: величины разные, и путать их нельзя
-        val width = spreadPercent(low = bid, high = ask)
-        val arbitrage = arbitragePercent(lowestAsk = ask, highestBid = bid)
-
-        assertEquals("1.16%", width.toPercentString())
-        assertEquals("-1.15%", arbitrage.toPercentString())
+    fun `missing and broken prices give null, not zero`() {
+        // ноль означал бы «спреда нет», а это другое утверждение
+        assertNull(spreadPercent(buyPrice = null, sellPrice = 10.0))
+        assertNull(spreadPercent(buyPrice = 10.0, sellPrice = null))
+        assertNull(spreadPercent(buyPrice = 0.0, sellPrice = 10.0))
+        assertNull(spreadPercent(buyPrice = 10.0, sellPrice = 0.0))
+        assertNull(spreadPercent(buyPrice = -1.0, sellPrice = 10.0))
+        assertNull(spreadPercent(buyPrice = Double.NaN, sellPrice = 10.0))
+        assertNull(spreadPercent(buyPrice = 10.0, sellPrice = Double.NaN))
+        assertNull(spreadPercent(buyPrice = 10.0, sellPrice = Double.POSITIVE_INFINITY))
     }
 }

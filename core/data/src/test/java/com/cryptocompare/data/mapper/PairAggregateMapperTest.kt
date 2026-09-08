@@ -10,17 +10,17 @@ class PairAggregateMapperTest {
     private fun row(
         symbolIds: String? = "1,2",
         providerIds: String? = "10,20",
-        minPrice: Double = 100.0,
-        maxPrice: Double = 110.0,
-        spreadPercent: Double = 10.0,
+        buyPrice: Double = 100.0,
+        sellPrice: Double = 110.0,
+        spreadPercent: Double? = 10.0,
         quoteVolume24h: Double? = 98_750_000.0,
         change24h: Double? = 2.35,
     ) = PairAggregateRow(
         ticker = "BTCUSDT",
         symbolIds = symbolIds,
         providerIds = providerIds,
-        minPrice = minPrice,
-        maxPrice = maxPrice,
+        buyPrice = buyPrice,
+        sellPrice = sellPrice,
         spreadPercent = spreadPercent,
         quoteVolume24h = quoteVolume24h,
         change24h = change24h,
@@ -37,7 +37,9 @@ class PairAggregateMapperTest {
     @Test
     fun `spread comes through from the query`() {
         // считается в SQL, слой представления его не пересчитывает
-        assertEquals(10.0, row(spreadPercent = 10.0).toPairUiItem().spreadPercent, 0.0001)
+        assertEquals(10.0, row(spreadPercent = 10.0).toPairUiItem().spreadPercent!!, 0.0001)
+        assertEquals(-0.33, row(spreadPercent = -0.33).toPairUiItem().spreadPercent!!, 0.0001)
+        assertNull(row(spreadPercent = null).toPairUiItem().spreadPercent)
     }
 
     @Test

@@ -31,19 +31,36 @@ internal object PairsPagingQuery {
         END
         """
 
+    /**
+     * Цены и спред пары.
+     *
+     * В ленте каталога имена полей идут **от лица пользователя**: `priceBuy` —
+     * цена, по которой он покупает (лучший ask среди бирж), `priceSell` — по
+     * которой продаёт (лучший bid). В разбивке по биржам те же имена значат
+     * обратное — там они от лица биржи. Здесь строки только из каталога.
+     *
+     * Формула повторяет серверный `spreadPercent` дословно и сохраняет знак:
+     * в норме он отрицательный, потому что купить дороже, чем продать. Раньше
+     * тут стояло `(max - min) / min` по обоим полям сразу — это модуль, и 85%
+     * каталога показывали знак наоборот.
+     *
+     * Агрегатные функции нужны из-за `GROUP BY UPPER(ticker)`: у пары бывает
+     * несколько сетей, и строк на тикер может быть больше одной. Для единственной
+     * строки выражение тождественно `(priceSell - priceBuy) / priceBuy`.
+     *
+     * `ELSE` у `CASE` нет намеренно: без цены спред неизвестен, а не равен нулю.
+     */
     private const val SELECT_AND_FROM =
         """
         SELECT
             UPPER(ticker) AS ticker,
             GROUP_CONCAT(id) AS symbolIds,
             GROUP_CONCAT(providerId) AS providerIds,
-            MIN(MIN(priceBuy, priceSell)) AS minPrice,
-            MAX(MAX(priceBuy, priceSell)) AS maxPrice,
+            MIN(priceBuy) AS buyPrice,
+            MAX(priceSell) AS sellPrice,
             CASE
-                WHEN MIN(MIN(priceBuy, priceSell)) > 0
-                THEN (MAX(MAX(priceBuy, priceSell)) - MIN(MIN(priceBuy, priceSell)))
-                     * 100.0 / MIN(MIN(priceBuy, priceSell))
-                ELSE 0
+                WHEN MIN(priceBuy) > 0
+                THEN (MAX(priceSell) - MIN(priceBuy)) * 100.0 / MIN(priceBuy)
             END AS spreadPercent,
             SUM(quoteVolume24h) AS quoteVolume24h,
             $CHANGE_EXPRESSION AS change24h
@@ -112,7 +129,7 @@ internal object PairsPagingQuery {
         val column =
             when (sorting.field) {
                 CatalogSort.NAME -> "ticker"
-                CatalogSort.PRICE -> "maxPrice"
+                CatalogSort.PRICE -> "buyPrice"
                 CatalogSort.CHANGE -> "change24h"
                 CatalogSort.SPREAD -> "spreadPercent"
                 CatalogSort.VOLUME -> "quoteVolume24h"
@@ -120,7 +137,7 @@ internal object PairsPagingQuery {
 
         val nullsLast =
             when (sorting.field) {
-                CatalogSort.CHANGE, CatalogSort.VOLUME -> "($column IS NULL), "
+                CatalogSort.CHANGE, CatalogSort.VOLUME, CatalogSort.SPREAD -> "($column IS NULL), "
                 else -> ""
             }
 

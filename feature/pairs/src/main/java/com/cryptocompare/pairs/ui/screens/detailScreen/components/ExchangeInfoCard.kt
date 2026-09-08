@@ -15,14 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import com.cryptocompare.helpers.bidAskSpreadPercent
 import com.cryptocompare.helpers.toCompactVolumeString
 import com.cryptocompare.helpers.util.PriceFormatConstants
 import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.pairs.R
 import com.cryptocompare.pairs.ui.components.Change24hLabel
 import com.cryptocompare.pairs.ui.components.ExchangeLinkButton
-import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.NumericType
 import com.cryptocompare.ui.theme.borderPrimary
@@ -90,20 +88,9 @@ fun ExchangeInfoCard(
                 }
             }
 
-            val ask = exchange.priceSell
-            val bid = exchange.priceBuy
-            if (ask != null && bid != null) {
-                DetailStatRow(label = stringResource(R.string.pair_detail_spread)) {
-                    Text(
-                        text =
-                            PairsConstants.DetailScreen.SPREAD_FORMAT.format(
-                                bidAskSpreadPercent(ask = ask, bid = bid),
-                            ),
-                        style = NumericType.Caption,
-                        color = MaterialTheme.colorScheme.textSecondary,
-                    )
-                }
-            }
+            // Спреда этой биржи здесь нет: показывать пользователю ширину bid/ask
+            // одной площадки смысла нет, сравнивать он будет с другими биржами.
+            // Обе цены и так стоят выше, разница между ними видна.
 
             // 24ч-статистика этой биржи, а не сводная по рынку: на разных биржах
             // одна и та же пара живёт по-разному, и усреднение это скрывает

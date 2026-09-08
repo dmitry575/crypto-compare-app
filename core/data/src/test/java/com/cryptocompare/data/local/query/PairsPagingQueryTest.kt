@@ -37,27 +37,50 @@ class PairsPagingQueryTest {
         val ascending = build(sorting = CatalogSorting(CatalogSort.PRICE, ascending = true)).sql
         val descending = build(sorting = CatalogSorting(CatalogSort.PRICE, ascending = false)).sql
 
-        assertTrue(ascending.contains("maxPrice ASC"))
-        assertTrue(descending.contains("maxPrice DESC"))
+        assertTrue(ascending.contains("buyPrice ASC"))
+        assertTrue(descending.contains("buyPrice DESC"))
     }
 
     @Test
     fun `nullable fields push empty values to the end in both directions`() {
         // NULLS LAST появился в SQLite 3.30, то есть с API 30, а minSdk у нас 26
-        listOf(CatalogSort.CHANGE to "change24h", CatalogSort.VOLUME to "quoteVolume24h")
-            .forEach { (field, column) ->
-                listOf(true, false).forEach { ascending ->
-                    val sql = build(sorting = CatalogSorting(field, ascending)).sql
+        listOf(
+            CatalogSort.CHANGE to "change24h",
+            CatalogSort.VOLUME to "quoteVolume24h",
+            CatalogSort.SPREAD to "spreadPercent",
+        ).forEach { (field, column) ->
+            listOf(true, false).forEach { ascending ->
+                val sql = build(sorting = CatalogSorting(field, ascending)).sql
 
-                    assertTrue("$field/$ascending", sql.contains("($column IS NULL),"))
-                    assertFalse("NULLS LAST недоступен на minSdk 26", sql.contains("NULLS LAST"))
-                }
+                assertTrue("$field/$ascending", sql.contains("($column IS NULL),"))
+                assertFalse("NULLS LAST недоступен на minSdk 26", sql.contains("NULLS LAST"))
             }
+        }
+    }
+
+    @Test
+    fun `spread keeps its sign`() {
+        val sql = build().sql
+
+        // (продажа - покупка) / покупка, а не модуль разницы: раньше стояло
+        // (max - min) / min по обоим полям сразу, и 85% каталога показывали
+        // знак наоборот
+        assertTrue(sql.contains("(MAX(priceSell) - MIN(priceBuy)) * 100.0 / MIN(priceBuy)"))
+        assertFalse("модуль разницы вернулся", sql.contains("MAX(MAX(priceBuy, priceSell))"))
+    }
+
+    @Test
+    fun `no price means no spread, not a zero`() {
+        // ELSE 0 утверждал бы «спреда нет», хотя его просто не из чего считать
+        val sql = build().sql
+        val spreadCase = sql.substringAfter("CASE").substringBefore("END AS spreadPercent")
+
+        assertFalse("ELSE в выражении спреда", spreadCase.contains("ELSE"))
     }
 
     @Test
     fun `fields that are never null do not pay for a null check`() {
-        listOf(CatalogSort.NAME, CatalogSort.PRICE, CatalogSort.SPREAD).forEach { field ->
+        listOf(CatalogSort.NAME, CatalogSort.PRICE).forEach { field ->
             val sql = build(sorting = CatalogSorting(field, ascending = true)).sql
 
             assertFalse("лишняя проверка на NULL для $field", sql.contains("IS NULL),"))

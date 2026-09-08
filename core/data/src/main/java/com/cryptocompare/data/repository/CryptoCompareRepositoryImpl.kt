@@ -123,7 +123,7 @@ class CryptoCompareRepositoryImpl
                     )
                 },
             ).flow.map { pagingData ->
-                pagingData.filter { it.maxPrice > 0 && it.minPrice > 0 }.map { it.toPairUiItem() }
+                pagingData.filter { it.buyPrice > 0 && it.sellPrice > 0 }.map { it.toPairUiItem() }
             }
         }
 
