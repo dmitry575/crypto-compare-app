@@ -34,34 +34,21 @@ internal object PairsPagingQuery {
     /**
      * Цены и спред пары.
      *
-     * В ленте каталога имена полей идут **от лица пользователя**: `priceBuy` —
-     * цена, по которой он покупает (лучший ask среди бирж), `priceSell` — по
-     * которой продаёт (лучший bid). В разбивке по биржам те же имена значат
-     * обратное — там они от лица биржи. Здесь строки только из каталога.
+     * Спред больше не считается здесь — он приходит с бэкенда готовым, и там же
+     * отсеиваются протухшие котировки, которые иначе выигрывали бы сравнение.
+     * Приложение только выбирает лучшее по тикеру.
      *
-     * Формула повторяет серверный `spreadPercent` дословно и сохраняет знак:
-     * в норме он отрицательный, потому что купить дороже, чем продать. Раньше
-     * тут стояло `(max - min) / min` по обоим полям сразу — это модуль, и 85%
-     * каталога показывали знак наоборот.
-     *
-     * Агрегатные функции нужны из-за `GROUP BY UPPER(ticker)`: у пары бывает
-     * несколько сетей, и строк на тикер может быть больше одной. Для единственной
-     * строки выражение тождественно `(priceSell - priceBuy) / priceBuy`.
-     *
-     * `ELSE` у `CASE` нет намеренно: без цены спред неизвестен, а не равен нулю.
+     * Агрегаты нужны из-за `GROUP BY UPPER(ticker)`: одна пара может торговаться
+     * в нескольких сетях, и строк на тикер бывает больше одной. Для единственной
+     * строки все три `MIN`/`MAX` возвращают её собственные значения.
      */
     private const val SELECT_AND_FROM =
         """
         SELECT
             UPPER(ticker) AS ticker,
-            GROUP_CONCAT(id) AS symbolIds,
-            GROUP_CONCAT(providerId) AS providerIds,
-            MIN(priceBuy) AS buyPrice,
-            MAX(priceSell) AS sellPrice,
-            CASE
-                WHEN MIN(priceBuy) > 0
-                THEN (MAX(priceSell) - MIN(priceBuy)) * 100.0 / MIN(priceBuy)
-            END AS spreadPercent,
+            MIN(bestAskPrice) AS buyPrice,
+            MAX(bestBidPrice) AS sellPrice,
+            MAX(spreadPercent) AS spreadPercent,
             SUM(quoteVolume24h) AS quoteVolume24h,
             $CHANGE_EXPRESSION AS change24h
         FROM symbols

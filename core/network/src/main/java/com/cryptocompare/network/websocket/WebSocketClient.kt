@@ -6,6 +6,7 @@ import com.cryptocompare.network.dto.webSocketDTO.SocketDtoMessage
 import com.cryptocompare.network.dto.webSocketDTO.SocketInboundRawMessage
 import com.cryptocompare.network.dto.webSocketDTO.SocketOutboundMessage
 import com.cryptocompare.network.dto.webSocketDTO.dataTypes.ErrorData
+import com.cryptocompare.network.dto.webSocketDTO.dataTypes.SymbolBestPriceChangeData
 import com.cryptocompare.network.dto.webSocketDTO.dataTypes.SymbolPriceChangeData
 import com.cryptocompare.network.dto.webSocketDTO.dataTypes.TickerData
 import com.cryptocompare.network.dto.webSocketDTO.dataTypes.WelcomeData
@@ -298,6 +299,18 @@ class WebSocketClient
                             }.getOrNull()
                                 ?: return
                         SocketDtoMessage.SymbolPriceChange(parsedMessage.id, data = data)
+                    }
+
+                    MessageType.BEST_PRICE_CHANGE -> {
+                        val data =
+                            runCatching {
+                                gson.fromJson(
+                                    parsedMessage.data,
+                                    SymbolBestPriceChangeData::class.java,
+                                )
+                            }.getOrNull()
+                                ?: return
+                        SocketDtoMessage.SymbolBestPriceChange(parsedMessage.id, data = data)
                     }
 
                     MessageType.ERROR -> {

@@ -3,22 +3,17 @@ package com.cryptocompare.data.mapper
 import com.cryptocompare.model.symbol.PairAggregateRow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PairAggregateMapperTest {
     private fun row(
-        symbolIds: String? = "1,2",
-        providerIds: String? = "10,20",
         buyPrice: Double = 100.0,
-        sellPrice: Double = 110.0,
-        spreadPercent: Double? = 10.0,
+        sellPrice: Double = 99.0,
+        spreadPercent: Double? = -1.0,
         quoteVolume24h: Double? = 98_750_000.0,
         change24h: Double? = 2.35,
     ) = PairAggregateRow(
         ticker = "BTCUSDT",
-        symbolIds = symbolIds,
-        providerIds = providerIds,
         buyPrice = buyPrice,
         sellPrice = sellPrice,
         spreadPercent = spreadPercent,
@@ -27,49 +22,25 @@ class PairAggregateMapperTest {
     )
 
     @Test
-    fun `concatenated ids become lists`() {
-        val item = row().toPairUiItem()
+    fun `prices keep their sides`() {
+        // перепутанные местами покупка и продажа переворачивают знак спреда,
+        // а числа при этом выглядят правдоподобно — поймать можно только тестом
+        val item = row(buyPrice = 100.0, sellPrice = 99.0).toPairUiItem()
 
-        assertEquals(listOf(1L, 2L), item.symbolIds)
-        assertEquals(listOf(10, 20), item.providerIds)
+        assertEquals(100.0, item.buyPrice, 0.0001)
+        assertEquals(99.0, item.sellPrice, 0.0001)
     }
 
     @Test
-    fun `spread comes through from the query`() {
-        // считается в SQL, слой представления его не пересчитывает
-        assertEquals(10.0, row(spreadPercent = 10.0).toPairUiItem().spreadPercent!!, 0.0001)
+    fun `spread comes through from the query with its sign`() {
+        // считает бэкенд, слой представления его не пересчитывает
         assertEquals(-0.33, row(spreadPercent = -0.33).toPairUiItem().spreadPercent!!, 0.0001)
+        assertEquals(0.24, row(spreadPercent = 0.24).toPairUiItem().spreadPercent!!, 0.0001)
+    }
+
+    @Test
+    fun `missing spread stays null rather than becoming zero`() {
         assertNull(row(spreadPercent = null).toPairUiItem().spreadPercent)
-    }
-
-    @Test
-    fun `repeated providers collapse to distinct ones`() {
-        val item = row(providerIds = "10,10,20").toPairUiItem()
-
-        assertEquals(listOf(10, 20), item.providerIds)
-    }
-
-    @Test
-    fun `providers without an id are dropped`() {
-        // нулевой providerId в базе означает «биржа неизвестна»
-        val item = row(providerIds = "0,10,-1").toPairUiItem()
-
-        assertEquals(listOf(10), item.providerIds)
-    }
-
-    @Test
-    fun `missing ids give empty lists rather than a crash`() {
-        val item = row(symbolIds = null, providerIds = null).toPairUiItem()
-
-        assertTrue(item.symbolIds.isEmpty())
-        assertTrue(item.providerIds.isEmpty())
-    }
-
-    @Test
-    fun `garbage in the concatenation is skipped`() {
-        val item = row(symbolIds = "1,,abc,2").toPairUiItem()
-
-        assertEquals(listOf(1L, 2L), item.symbolIds)
     }
 
     @Test

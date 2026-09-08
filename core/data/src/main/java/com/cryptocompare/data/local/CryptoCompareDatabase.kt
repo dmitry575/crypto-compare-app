@@ -21,7 +21,7 @@ import com.cryptocompare.data.local.entity.SymbolEntity
         CatalogRemoteKeyEntity::class,
         PendingFavoriteOperationEntity::class,
     ],
-    version = 7,
+    version = 8,
     // схемы уезжают в core/data/schemas и коммитятся: без них Room не с чем
     // сверять миграцию, а MigrationTestHelper не может собрать старую базу
     exportSchema = true,

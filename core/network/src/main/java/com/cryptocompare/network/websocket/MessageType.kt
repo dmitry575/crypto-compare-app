@@ -7,6 +7,9 @@ enum class MessageType(
     SUBSCRIBE(1),
     UNSUBSCRIBE(2),
     PRICE_CHANGE(4),
+
+    /** Лучшая пара цен по тикеру, сведённая бэкендом по всем биржам. */
+    BEST_PRICE_CHANGE(5),
     ERROR(-1),
     ;
 

@@ -2,6 +2,7 @@ package com.cryptocompare.data.repository
 
 import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.domain.repository.TickerStreamRepository
+import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerConnectionState
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
@@ -79,6 +80,21 @@ class TickerStreamRepositoryImpl
                                     providerId = message.data.providerId,
                                     priceSell = message.data.priceSell,
                                     priceBuy = message.data.priceBuy,
+                                ),
+                        )
+
+                    is SocketDtoMessage.SymbolBestPriceChange ->
+                        TickerStreamEvent.TickerBestPriceChange(
+                            id = message.id,
+                            data =
+                                TickerBestPrice(
+                                    ticker = message.data.ticker,
+                                    symbolId = message.data.symbolId,
+                                    bestAskProviderId = message.data.bestAskProviderId,
+                                    bestAskPrice = message.data.bestAskPrice,
+                                    bestBidProviderId = message.data.bestBidProviderId,
+                                    bestBidPrice = message.data.bestBidPrice,
+                                    spreadPercent = message.data.spreadPercent,
                                 ),
                         )
 

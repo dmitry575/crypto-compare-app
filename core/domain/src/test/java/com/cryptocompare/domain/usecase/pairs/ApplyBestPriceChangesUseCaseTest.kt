@@ -1,7 +1,7 @@
 package com.cryptocompare.domain.usecase.pairs
 
 import com.cryptocompare.domain.repository.CryptoCompareRepository
-import com.cryptocompare.model.ticker.TickerPrice
+import com.cryptocompare.model.ticker.TickerBestPrice
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -10,9 +10,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class ApplyTickerPriceChangesUseCaseTest {
+class ApplyBestPriceChangesUseCaseTest {
     private val repository: CryptoCompareRepository = mockk()
-    private val useCase = ApplyTickerPriceChangesUseCase(repository)
+    private val useCase = ApplyBestPriceChangesUseCase(repository)
 
     @Test
     fun `empty batch never reaches the database`() =
@@ -22,38 +22,42 @@ class ApplyTickerPriceChangesUseCaseTest {
             val result = useCase(emptyList())
 
             assertTrue(result.isSuccess)
-            coVerify(exactly = 0) { repository.applyPriceUpdates(any()) }
+            coVerify(exactly = 0) { repository.applyBestPriceUpdates(any()) }
         }
 
     @Test
     fun `non empty batch is passed through as is`() =
         runTest {
-            val updates = listOf(price(symbolId = 1), price(symbolId = 2))
-            coEvery { repository.applyPriceUpdates(updates) } returns Result.success(Unit)
+            val updates = listOf(bestPrice(symbolId = 1), bestPrice(symbolId = 2))
+            coEvery { repository.applyBestPriceUpdates(updates) } returns Result.success(Unit)
 
             val result = useCase(updates)
 
             assertTrue(result.isSuccess)
-            coVerify(exactly = 1) { repository.applyPriceUpdates(updates) }
+            coVerify(exactly = 1) { repository.applyBestPriceUpdates(updates) }
         }
 
     @Test
     fun `repository failure is propagated`() =
         runTest {
-            coEvery { repository.applyPriceUpdates(any()) } returns Result.failure(IllegalStateException("db locked"))
+            coEvery {
+                repository.applyBestPriceUpdates(any())
+            } returns Result.failure(IllegalStateException("db locked"))
 
-            val result = useCase(listOf(price(symbolId = 1)))
+            val result = useCase(listOf(bestPrice(symbolId = 1)))
 
             assertTrue(result.isFailure)
             assertEquals("db locked", result.exceptionOrNull()?.message)
         }
 
-    private fun price(symbolId: Int) =
-        TickerPrice(
+    private fun bestPrice(symbolId: Long) =
+        TickerBestPrice(
             ticker = "btcusdt",
             symbolId = symbolId,
-            providerId = 1,
-            priceSell = 100.0,
-            priceBuy = 99.0,
+            bestAskProviderId = 18,
+            bestAskPrice = 100.0,
+            bestBidProviderId = 3,
+            bestBidPrice = 99.0,
+            spreadPercent = -1.0,
         )
 }

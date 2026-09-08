@@ -1,7 +1,7 @@
 package com.cryptocompare.pairs
 
 import androidx.paging.PagingData
-import com.cryptocompare.domain.usecase.pairs.ApplyTickerPriceChangesUseCase
+import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
 import com.cryptocompare.domain.usecase.pairs.LoadPairsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
@@ -13,6 +13,7 @@ import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSort
 import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.model.symbol.PairUiItem
+import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
 import com.cryptocompare.pairs.viewmodel.mainViewModel.MainViewModel
@@ -65,9 +66,9 @@ class MainViewModelTest {
     private fun streamDisconnectUseCaseMock(): StreamDisconnectUseCase =
         mockk { every { this@mockk.invoke() } just runs }
 
-    private fun applyTickerPriceChangesUseCaseMock(
+    private fun applyBestPriceChangesUseCaseMock(
         result: Result<Unit> = Result.success(Unit),
-    ): ApplyTickerPriceChangesUseCase = mockk { coEvery { this@mockk.invoke(any()) } returns result }
+    ): ApplyBestPriceChangesUseCase = mockk { coEvery { this@mockk.invoke(any()) } returns result }
 
     private fun observeFavoriteTickersUseCaseMock(flow: Flow<Set<String>>): ObserveFavouriteTickersUseCase =
         mockk { every { this@mockk.invoke() } returns flow }
@@ -88,7 +89,7 @@ class MainViewModelTest {
                 v.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
             },
         streamDisconnectUseCase: StreamDisconnectUseCase = streamDisconnectUseCaseMock(),
-        applyTickerPriceChangesUseCase: ApplyTickerPriceChangesUseCase = applyTickerPriceChangesUseCaseMock(),
+        applyBestPriceChangesUseCase: ApplyBestPriceChangesUseCase = applyBestPriceChangesUseCaseMock(),
         observeFavouriteTickersUseCase: ObserveFavouriteTickersUseCase =
             observeFavoriteTickersUseCaseMock(flowOf(emptySet())),
         toggleFavouriteTickerUseCase: ToggleFavouriteTickerUseCase = toggleFavoriteTickerUseCaseMock(),
@@ -99,16 +100,35 @@ class MainViewModelTest {
             syncVisibleTickersUseCase = syncVisibleTickersUseCase,
             streamDisconnectUseCase = streamDisconnectUseCase,
             observeTickerEventUseCase = observeTickerEventUseCase,
-            applyTickerPriceChangesUseCase = applyTickerPriceChangesUseCase,
+            applyBestPriceChangesUseCase = applyBestPriceChangesUseCase,
             observeFavouriteTickersUseCase = observeFavouriteTickersUseCase,
             toggleFavouriteTickerUseCase = toggleFavouriteTickerUseCase,
             syncFavouriteTickersUseCase = syncFavouriteTickersUseCase,
         )
 
+    /** Событие типа 5: лучшая пара по тикеру. Каталог слушает только его. */
+    private fun bestPriceChange(
+        symbolId: Long,
+        bestAskPrice: Double,
+        bestBidPrice: Double,
+        ticker: String = "btcusdt",
+    ) = TickerStreamEvent.TickerBestPriceChange(
+        id = "evt",
+        data =
+            TickerBestPrice(
+                ticker = ticker,
+                symbolId = symbolId,
+                bestAskProviderId = 18,
+                bestAskPrice = bestAskPrice,
+                bestBidProviderId = 3,
+                bestBidPrice = bestBidPrice,
+                spreadPercent = -1.0,
+            ),
+    )
+
+    /** Событие типа 4: котировка одной биржи. В каталог попадать не должно. */
     private fun priceChange(
         symbolId: Int,
-        priceBuy: Double,
-        priceSell: Double,
         ticker: String = "btcusdt",
     ) = TickerStreamEvent.TickerPriceChange(
         id = "evt",
@@ -117,8 +137,8 @@ class MainViewModelTest {
                 ticker = ticker,
                 symbolId = symbolId,
                 providerId = 1,
-                priceSell = priceSell,
-                priceBuy = priceBuy,
+                priceSell = 101.0,
+                priceBuy = 100.0,
             ),
     )
 
@@ -158,21 +178,23 @@ class MainViewModelTest {
     fun `price events are batched and applied once per flush interval`() =
         runTest {
             val events = MutableSharedFlow<TickerStreamEvent>(extraBufferCapacity = 8)
-            val applyUseCase = applyTickerPriceChangesUseCaseMock()
+            val applyUseCase = applyBestPriceChangesUseCaseMock()
             val vm =
                 makeVm(
                     observeTickerEventUseCase = observeTickerEventUseCaseMock(events),
-                    applyTickerPriceChangesUseCase = applyUseCase,
+                    applyBestPriceChangesUseCase = applyUseCase,
                 )
 
             runCurrent()
 
-            events.tryEmit(priceChange(symbolId = 1, priceBuy = 100.0, priceSell = 101.0))
-            events.tryEmit(priceChange(symbolId = 1, priceBuy = 110.0, priceSell = 111.0))
-            events.tryEmit(priceChange(symbolId = 2, priceBuy = 10.0, priceSell = 11.0, ticker = "ethusdt"))
+            events.tryEmit(bestPriceChange(symbolId = 1, bestAskPrice = 101.0, bestBidPrice = 100.0))
+            events.tryEmit(bestPriceChange(symbolId = 1, bestAskPrice = 111.0, bestBidPrice = 110.0))
+            events.tryEmit(
+                bestPriceChange(symbolId = 2, bestAskPrice = 11.0, bestBidPrice = 10.0, ticker = "ethusdt"),
+            )
             runCurrent()
 
-            val batchSlot = slot<List<TickerPrice>>()
+            val batchSlot = slot<List<TickerBestPrice>>()
             advanceTimeBy(600)
             runCurrent()
 
@@ -180,8 +202,8 @@ class MainViewModelTest {
             val batch = batchSlot.captured
             assertEquals(2, batch.size)
             // for the same symbol only the latest tick survives
-            assertEquals(110.0, batch.first { it.symbolId == 1 }.priceBuy, 0.0)
-            assertEquals(10.0, batch.first { it.symbolId == 2 }.priceBuy, 0.0)
+            assertEquals(110.0, batch.first { it.symbolId == 1L }.bestBidPrice, 0.0)
+            assertEquals(10.0, batch.first { it.symbolId == 2L }.bestBidPrice, 0.0)
 
             assertNull(vm.uiState.value.error)
         }
@@ -189,8 +211,8 @@ class MainViewModelTest {
     @Test
     fun `flush loop does nothing when no price events arrived`() =
         runTest {
-            val applyUseCase = applyTickerPriceChangesUseCaseMock()
-            makeVm(applyTickerPriceChangesUseCase = applyUseCase)
+            val applyUseCase = applyBestPriceChangesUseCaseMock()
+            makeVm(applyBestPriceChangesUseCase = applyUseCase)
 
             advanceTimeBy(2000)
             runCurrent()
@@ -205,14 +227,14 @@ class MainViewModelTest {
             val vm =
                 makeVm(
                     observeTickerEventUseCase = observeTickerEventUseCaseMock(events),
-                    applyTickerPriceChangesUseCase =
-                        applyTickerPriceChangesUseCaseMock(
+                    applyBestPriceChangesUseCase =
+                        applyBestPriceChangesUseCaseMock(
                             Result.failure(IllegalStateException("db write failed")),
                         ),
                 )
 
             runCurrent()
-            events.tryEmit(priceChange(symbolId = 1, priceBuy = 100.0, priceSell = 101.0))
+            events.tryEmit(bestPriceChange(symbolId = 1, bestAskPrice = 101.0, bestBidPrice = 100.0))
             advanceTimeBy(600)
             runCurrent()
 

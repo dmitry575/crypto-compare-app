@@ -59,32 +59,23 @@ class PairsPagingQueryTest {
     }
 
     @Test
-    fun `spread keeps its sign`() {
+    fun `spread is taken from the column, not recomputed`() {
         val sql = build().sql
 
-        // (продажа - покупка) / покупка, а не модуль разницы: раньше стояло
-        // (max - min) / min по обоим полям сразу, и 85% каталога показывали
-        // знак наоборот
-        assertTrue(sql.contains("(MAX(priceSell) - MIN(priceBuy)) * 100.0 / MIN(priceBuy)"))
-        assertFalse("модуль разницы вернулся", sql.contains("MAX(MAX(priceBuy, priceSell))"))
+        // считает бэкенд: там же отсеиваются протухшие котировки, которые
+        // иначе выигрывали бы сравнение и рисовали арбитраж на пустом месте
+        assertTrue(sql.contains("MAX(spreadPercent) AS spreadPercent"))
+        assertFalse("спред снова считается в SQL", sql.contains("* 100.0 /"))
     }
 
     @Test
-    fun `no price means no spread, not a zero`() {
-        // ELSE 0 утверждал бы «спреда нет», хотя его просто не из чего считать
+    fun `prices keep their sides`() {
         val sql = build().sql
-        val spreadCase = sql.substringAfter("CASE").substringBefore("END AS spreadPercent")
 
-        assertFalse("ELSE в выражении спреда", spreadCase.contains("ELSE"))
-    }
-
-    @Test
-    fun `fields that are never null do not pay for a null check`() {
-        listOf(CatalogSort.NAME, CatalogSort.PRICE).forEach { field ->
-            val sql = build(sorting = CatalogSorting(field, ascending = true)).sql
-
-            assertFalse("лишняя проверка на NULL для $field", sql.contains("IS NULL),"))
-        }
+        // покупка это минимальный ask, продажа — максимальный bid;
+        // перепутанные местами, они переворачивают знак спреда
+        assertTrue(sql.contains("MIN(bestAskPrice) AS buyPrice"))
+        assertTrue(sql.contains("MAX(bestBidPrice) AS sellPrice"))
     }
 
     @Test
@@ -123,7 +114,7 @@ class PairsPagingQueryTest {
     fun `direction is filtered in having because it is an aggregate`() {
         val sql = build().sql
 
-        // «растёт» — свойство пары целиком, а строки таблицы это отдельные биржи
+        // «растёт» — свойство пары целиком, а строк на тикер бывает несколько
         assertTrue(sql.contains("HAVING"))
         assertTrue(sql.indexOf("HAVING") > sql.indexOf("GROUP BY"))
     }

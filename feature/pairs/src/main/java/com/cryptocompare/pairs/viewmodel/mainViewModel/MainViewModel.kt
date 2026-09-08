@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
-import com.cryptocompare.domain.usecase.pairs.ApplyTickerPriceChangesUseCase
+import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
 import com.cryptocompare.domain.usecase.pairs.LoadPairsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
@@ -17,7 +17,7 @@ import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSort
 import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.model.symbol.PairUiItem
-import com.cryptocompare.model.ticker.TickerPrice
+import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
 import com.cryptocompare.pairs.util.PairsConstants
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,7 +46,7 @@ class MainViewModel
         private val syncVisibleTickersUseCase: SyncVisibleTickersUseCase,
         private val streamDisconnectUseCase: StreamDisconnectUseCase,
         private val observeTickerEventUseCase: ObserveTickerEventUseCase,
-        private val applyTickerPriceChangesUseCase: ApplyTickerPriceChangesUseCase,
+        private val applyBestPriceChangesUseCase: ApplyBestPriceChangesUseCase,
         private val observeFavouriteTickersUseCase: ObserveFavouriteTickersUseCase,
         private val syncFavouriteTickersUseCase: SyncFavouriteTickersUseCase,
         private val toggleFavouriteTickerUseCase: ToggleFavouriteTickerUseCase,
@@ -56,9 +56,12 @@ class MainViewModel
 
         private val subscribedTickers = mutableSetOf<String>()
 
-        // price updates from the socket are accumulated here and flushed to the
-        // database in batches, so the UI is not re-rendered on every single tick
-        private val pendingPriceUpdates = mutableMapOf<Int, TickerPrice>()
+        // Лучшие пары цен из сокета копятся здесь и уходят в базу пачками, чтобы
+        // UI не перерисовывался на каждый тик. Ключ — symbolId, он у тикера один,
+        // и это ровно та причина, по которой сюда нельзя пускать событие типа 4:
+        // котировки всех бирж легли бы под один ключ, и в каталог попадала бы
+        // последняя тикнувшая биржа вместо разницы между биржами.
+        private val pendingPriceUpdates = mutableMapOf<Long, TickerBestPrice>()
         private val pendingPricesLock = Any()
 
         // guarded by pendingPricesLock; cleared in the SAME critical section that
@@ -163,7 +166,7 @@ class MainViewModel
             viewModelScope.launch {
                 try {
                     observeTickerEventUseCase().collect { event ->
-                        if (event is TickerStreamEvent.TickerPriceChange) {
+                        if (event is TickerStreamEvent.TickerBestPriceChange) {
                             synchronized(pendingPricesLock) {
                                 pendingPriceUpdates[event.data.symbolId] = event.data
                             }
@@ -202,7 +205,7 @@ class MainViewModel
                             pendingPriceUpdates.values.toList().also { pendingPriceUpdates.clear() }
                         }
 
-                    applyTickerPriceChangesUseCase(batch).onFailure { exception ->
+                    applyBestPriceChangesUseCase(batch).onFailure { exception ->
                         _uiState.update { it.copy(error = exception.toUserMessage()) }
                     }
                 }

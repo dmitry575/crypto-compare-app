@@ -2,17 +2,20 @@ package com.cryptocompare.data
 
 import com.cryptocompare.data.local.CryptoCompareDatabase
 import com.cryptocompare.data.local.dao.ProviderDao
+import com.cryptocompare.data.local.dao.SymbolBestPriceUpdate
 import com.cryptocompare.data.local.dao.SymbolDao
 import com.cryptocompare.data.local.entity.ProviderEntity
 import com.cryptocompare.data.repository.CryptoCompareRepositoryImpl
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.model.provider.Provider
 import com.cryptocompare.model.provider.ProviderStatus
-import com.cryptocompare.model.ticker.TickerPrice
+import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.network.api.CryptoCompareApi
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.GetProvidersResponse
+import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.GetSymbolsBestPriceResponse
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.GetSymbolsResponse
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.ProviderDto
+import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.SymbolBestPriceDto
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.SymbolDto
 import com.cryptocompare.network.dto.apiDTO.klinesDTO.GetKlinesResponse
 import com.cryptocompare.network.dto.apiDTO.klinesDTO.KlineEntryDto
@@ -58,6 +61,42 @@ class CryptoCompareRepositoryImplTest {
         updatedAt = "",
     )
 
+    /** Строка каталога: лучшая пара цен по тикеру, стороны с разных бирж. */
+    private fun bestPriceDto(
+        id: Long,
+        ticker: String,
+        bestAskPrice: Double = 101.0,
+        bestBidPrice: Double = 99.0,
+        bestAskProviderId: Int? = 18,
+        bestBidProviderId: Int? = 3,
+        spreadPercent: Double? = -1.98,
+    ) = SymbolBestPriceDto(
+        id = id,
+        ticker = ticker,
+        symbol = ticker.uppercase(),
+        bestAskProviderId = bestAskProviderId,
+        bestAskPrice = bestAskPrice,
+        bestBidProviderId = bestBidProviderId,
+        bestBidPrice = bestBidPrice,
+        spreadPercent = spreadPercent,
+        bestAskUpdatedAt = null,
+        bestBidUpdatedAt = null,
+        updatedAt = "",
+    )
+
+    private fun bestPrice(
+        symbolId: Long,
+        ticker: String,
+    ) = TickerBestPrice(
+        ticker = ticker,
+        symbolId = symbolId,
+        bestAskProviderId = 18,
+        bestAskPrice = 105.0,
+        bestBidProviderId = 3,
+        bestBidPrice = 100.0,
+        spreadPercent = -4.76,
+    )
+
     private fun createRepo(
         api: CryptoCompareApi = mockk(),
         symbolDao: SymbolDao = mockk(),
@@ -88,7 +127,7 @@ class CryptoCompareRepositoryImplTest {
             coEvery { providerDao.getLastUpdate() } returns 0L
             coEvery { providerDao.syncProviders(any()) } returns Unit
 
-            coEvery { api.getProviders() } returns
+            coEvery { api.getProviders(skip = 0, rows = 500) } returns
                 GetProvidersResponse(
                     errorCode = 0,
                     errorMsgs = null,
@@ -105,7 +144,7 @@ class CryptoCompareRepositoryImplTest {
             assertEquals(ProviderStatus.Enabled, providers[0].status)
             assertEquals(2, providers[1].id)
             assertEquals(null, providers[1].name)
-            coVerify(exactly = 1) { api.getProviders() }
+            coVerify(exactly = 1) { api.getProviders(skip = 0, rows = 500) }
         }
 
     @Test
@@ -125,7 +164,7 @@ class CryptoCompareRepositoryImplTest {
 
             assertTrue(result.isSuccess)
             assertEquals(1, result.getOrThrow().size)
-            coVerify(exactly = 0) { api.getProviders() }
+            coVerify(exactly = 0) { api.getProviders(skip = 0, rows = 500) }
         }
 
     @Test
@@ -140,7 +179,7 @@ class CryptoCompareRepositoryImplTest {
             coEvery { providerDao.getLastUpdate() } returns 0L
             coEvery { providerDao.syncProviders(any()) } returns Unit
 
-            coEvery { api.getProviders() } returns
+            coEvery { api.getProviders(skip = 0, rows = 500) } returns
                 GetProvidersResponse(
                     errorCode = 0,
                     errorMsgs = null,
@@ -164,7 +203,7 @@ class CryptoCompareRepositoryImplTest {
             coEvery { providerDao.getAll() } returnsMany listOf(emptyList(), emptyList())
             coEvery { providerDao.getLastUpdate() } returns 0L
 
-            coEvery { api.getProviders() } returns
+            coEvery { api.getProviders(skip = 0, rows = 500) } returns
                 GetProvidersResponse(
                     errorCode = 10,
                     errorMsgs = listOf("E1", "E2"),
@@ -190,7 +229,7 @@ class CryptoCompareRepositoryImplTest {
             coEvery { providerDao.getAll() } returnsMany listOf(emptyList(), emptyList())
             coEvery { providerDao.getLastUpdate() } returns 0L
 
-            coEvery { api.getProviders() } returns
+            coEvery { api.getProviders(skip = 0, rows = 500) } returns
                 GetProvidersResponse(
                     errorCode = 1,
                     errorMsgs = null,
@@ -219,7 +258,7 @@ class CryptoCompareRepositoryImplTest {
                 )
             coEvery { providerDao.getLastUpdate() } returns 0L
 
-            coEvery { api.getProviders() } throws IllegalStateException("boom")
+            coEvery { api.getProviders(skip = 0, rows = 500) } throws IllegalStateException("boom")
 
             val result = repo.getProviders()
 
@@ -237,7 +276,7 @@ class CryptoCompareRepositoryImplTest {
 
             coEvery { providerDao.getAll() } returns emptyList()
             coEvery { providerDao.getLastUpdate() } returns 0L
-            coEvery { api.getProviders() } throws CancellationException("cancel")
+            coEvery { api.getProviders(skip = 0, rows = 500) } throws CancellationException("cancel")
 
             repo.getProviders()
         }
@@ -259,29 +298,29 @@ class CryptoCompareRepositoryImplTest {
             coEvery { providerDao.getLastUpdate() } returns 0L
             coEvery { providerDao.syncProviders(any()) } returns Unit
 
-            coEvery { api.getProviders() } returns
+            coEvery { api.getProviders(skip = 0, rows = 500) } returns
                 GetProvidersResponse(
                     errorCode = 0,
                     errorMsgs = null,
                     providers = listOf(providerDto(1), providerDto(2)),
                 )
 
-            coEvery { api.getSymbols(skip = 0, rows = 25) } returns
-                GetSymbolsResponse(
+            coEvery { api.getSymbols(skip = 0, rows = 500) } returns
+                GetSymbolsBestPriceResponse(
                     errorCode = 0,
                     errorMsgs = null,
-                    symbols = listOf(symbolDto(11L, "btcusdt")),
+                    symbols = listOf(bestPriceDto(11L, "btcusdt")),
                 )
 
-            coEvery { api.getSymbols(skip = 25, rows = 25) } returns
-                GetSymbolsResponse(
+            coEvery { api.getSymbols(skip = 500, rows = 500) } returns
+                GetSymbolsBestPriceResponse(
                     errorCode = 0,
                     errorMsgs = null,
-                    symbols = listOf(symbolDto(21L, "ethusdt")),
+                    symbols = listOf(bestPriceDto(21L, "ethusdt")),
                 )
 
-            coEvery { api.getSymbols(skip = 50, rows = 25) } returns
-                GetSymbolsResponse(
+            coEvery { api.getSymbols(skip = 1000, rows = 500) } returns
+                GetSymbolsBestPriceResponse(
                     errorCode = 0,
                     errorMsgs = null,
                     symbols = emptyList(),
@@ -294,7 +333,7 @@ class CryptoCompareRepositoryImplTest {
         }
 
     @Test
-    fun `refreshCatalog normalizes providerId 0 to 1`() =
+    fun `refreshCatalog drops rows without a price`() =
         runTest(dispatcher) {
             val api = mockk<CryptoCompareApi>()
             val symbolDao = mockk<SymbolDao>(relaxed = true)
@@ -305,22 +344,29 @@ class CryptoCompareRepositoryImplTest {
             coEvery { providerDao.getLastUpdate() } returns 0L
             coEvery { providerDao.syncProviders(any()) } returns Unit
 
-            coEvery { api.getProviders() } returns
+            coEvery { api.getProviders(skip = 0, rows = 500) } returns
                 GetProvidersResponse(
                     errorCode = 0,
                     errorMsgs = null,
                     providers = listOf(providerDto(1)),
                 )
 
-            coEvery { api.getSymbols(skip = 0, rows = 25) } returns
-                GetSymbolsResponse(
+            // подстановки providerId здесь больше нет: она подписывала каждую
+            // строку каталога первой биржей подряд ради внешнего ключа
+            coEvery { api.getSymbols(skip = 0, rows = 500) } returns
+                GetSymbolsBestPriceResponse(
                     errorCode = 0,
                     errorMsgs = null,
-                    symbols = listOf(symbolDto(11L, "btcusdt", providerId = 0)),
+                    symbols =
+                        listOf(
+                            bestPriceDto(11L, "btcusdt"),
+                            bestPriceDto(12L, "deadusdt", bestAskPrice = 0.0),
+                            bestPriceDto(13L, "goneusdt", bestBidPrice = 0.0),
+                        ),
                 )
 
-            coEvery { api.getSymbols(skip = 25, rows = 25) } returns
-                GetSymbolsResponse(
+            coEvery { api.getSymbols(skip = 500, rows = 500) } returns
+                GetSymbolsBestPriceResponse(
                     errorCode = 0,
                     errorMsgs = null,
                     symbols = emptyList(),
@@ -330,7 +376,13 @@ class CryptoCompareRepositoryImplTest {
 
             assertTrue(result.isSuccess)
             coVerify(exactly = 1) {
-                symbolDao.syncSymbols(withArg { assertEquals(1, it.single().providerId) })
+                symbolDao.syncSymbols(
+                    withArg { symbols ->
+                        assertEquals(listOf(11L), symbols.map { it.id })
+                        assertEquals(18, symbols.single().bestAskProviderId)
+                        assertEquals(3, symbols.single().bestBidProviderId)
+                    },
+                )
             }
         }
 
@@ -358,35 +410,6 @@ class CryptoCompareRepositoryImplTest {
             assertTrue(result.isSuccess)
             assertEquals(listOf(3, 4), result.getOrThrow().map { it.providerId })
             coVerify(exactly = 0) { symbolDao.getByTicker(any()) }
-        }
-
-    @Test
-    fun `getSymbolsByTicker falls back to cache when api fails`() =
-        runTest(dispatcher) {
-            val api = mockk<CryptoCompareApi>()
-            val symbolDao = mockk<SymbolDao>()
-            val providerDao = mockk<ProviderDao>()
-            val repo = createRepo(api, symbolDao, providerDao)
-
-            coEvery { api.getSymbolsByTicker("btcusdt") } throws java.net.SocketTimeoutException("timeout")
-            coEvery { symbolDao.getByTicker("btcusdt") } returns
-                listOf(
-                    com.cryptocompare.data.local.entity.SymbolEntity(
-                        id = 1L,
-                        ticker = "btcusdt",
-                        symbol = "btc/usdt",
-                        providerId = 1,
-                        priceSell = 101.0,
-                        priceBuy = 99.0,
-                        updatedAt = "",
-                        syncedAtMillis = 100L,
-                    ),
-                )
-
-            val result = repo.getSymbolsByTicker("btcusdt")
-
-            assertTrue(result.isSuccess)
-            assertEquals(1, result.getOrThrow().size)
         }
 
     private fun kline(
@@ -505,66 +528,53 @@ class CryptoCompareRepositoryImplTest {
         }
 
     @Test
-    fun `applyPriceUpdates writes batch to dao`() =
+    fun `applyBestPriceUpdates writes batch to dao`() =
         runTest(dispatcher) {
             val api = mockk<CryptoCompareApi>()
             val symbolDao = mockk<SymbolDao>(relaxed = true)
             val providerDao = mockk<ProviderDao>()
             val repo = createRepo(api, symbolDao, providerDao)
 
-            val updates =
-                listOf(
-                    TickerPrice(
-                        ticker = "btcusdt",
-                        symbolId = 11,
-                        providerId = 1,
-                        priceSell = 105.0,
-                        priceBuy = 100.0,
-                    ),
-                    TickerPrice(
-                        ticker = "ethusdt",
-                        symbolId = 21,
-                        providerId = 1,
-                        priceSell = 12.0,
-                        priceBuy = 11.0,
-                    ),
-                )
+            val updates = listOf(bestPrice(11L, "btcusdt"), bestPrice(21L, "ethusdt"))
 
-            val result = repo.applyPriceUpdates(updates)
+            val result = repo.applyBestPriceUpdates(updates)
 
             assertTrue(result.isSuccess)
             coVerify(exactly = 1) {
-                symbolDao.updatePrices(
+                symbolDao.updateBestPrices(
                     listOf(
-                        Triple(11L, 100.0, 105.0),
-                        Triple(21L, 11.0, 12.0),
+                        SymbolBestPriceUpdate(
+                            id = 11L,
+                            bestAskPrice = 105.0,
+                            bestAskProviderId = 18,
+                            bestBidPrice = 100.0,
+                            bestBidProviderId = 3,
+                            spreadPercent = -4.76,
+                        ),
+                        SymbolBestPriceUpdate(
+                            id = 21L,
+                            bestAskPrice = 105.0,
+                            bestAskProviderId = 18,
+                            bestBidPrice = 100.0,
+                            bestBidProviderId = 3,
+                            spreadPercent = -4.76,
+                        ),
                     ),
                 )
             }
         }
 
     @Test
-    fun `applyPriceUpdates returns failure when dao throws`() =
+    fun `applyBestPriceUpdates returns failure when dao throws`() =
         runTest(dispatcher) {
             val api = mockk<CryptoCompareApi>()
             val symbolDao = mockk<SymbolDao>()
             val providerDao = mockk<ProviderDao>()
             val repo = createRepo(api, symbolDao, providerDao)
 
-            coEvery { symbolDao.updatePrices(any()) } throws IllegalStateException("db is closed")
+            coEvery { symbolDao.updateBestPrices(any()) } throws IllegalStateException("db is closed")
 
-            val result =
-                repo.applyPriceUpdates(
-                    listOf(
-                        TickerPrice(
-                            ticker = "btcusdt",
-                            symbolId = 11,
-                            providerId = 1,
-                            priceSell = 105.0,
-                            priceBuy = 100.0,
-                        ),
-                    ),
-                )
+            val result = repo.applyBestPriceUpdates(listOf(bestPrice(11L, "btcusdt")))
 
             assertTrue(result.isFailure)
             assertEquals("db is closed", result.exceptionOrNull()!!.message)

@@ -99,8 +99,8 @@ fun PairRow(
 
         Spacer(modifier = Modifier.width(Dimensions.Gap.md))
 
-        // числа бирж здесь нет: каталог отдаёт одну строку на тикер с общим
-        // providerId, и любой такой счётчик всегда показывал бы единицу
+        // числа бирж здесь нет: каталог отдаёт одну строку на тикер, а бирж
+        // у неё ровно две — своя на покупку и своя на продажу
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(Dimensions.Spacing.xxs),
@@ -277,8 +277,6 @@ private fun previewPair(
     change: Double?,
 ) = PairUiItem(
     ticker = ticker,
-    symbolIds = emptyList(),
-    providerIds = emptyList(),
     buyPrice = price,
     sellPrice = price,
     spreadPercent = spread,
