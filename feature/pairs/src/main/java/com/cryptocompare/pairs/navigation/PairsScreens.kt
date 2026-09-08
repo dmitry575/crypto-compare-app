@@ -10,4 +10,8 @@ sealed class PairsScreens(
     object DetailsScreen : PairsScreens("details?ticker={ticker}") {
         fun createRoute(ticker: String): String = "details?ticker=${URLEncoder.encode(ticker, "UTF-8")}"
     }
+
+    object ComparisonScreen : PairsScreens("comparison?ticker={ticker}") {
+        fun createRoute(ticker: String): String = "comparison?ticker=${URLEncoder.encode(ticker, "UTF-8")}"
+    }
 }

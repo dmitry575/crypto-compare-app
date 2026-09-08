@@ -10,4 +10,6 @@ data class ProviderDetail(
     val quoteVolume24h: Double? = null,
     /** Изменение цены за 24ч на этой бирже, в процентах. */
     val change24h: Double? = null,
+    /** Когда биржа отдала котировку, в миллисекундах эпохи. Подробности — `Symbol`. */
+    val quotedAtMillis: Long? = null,
 )

@@ -29,6 +29,7 @@ class GetTickerDetailUseCase
                                 volume24h = symbol.volume24h.sanitizeVolume(),
                                 quoteVolume24h = symbol.quoteVolume24h.sanitizeVolume(),
                                 change24h = symbol.change24h?.takeIf { it.isFinite() },
+                                quotedAtMillis = symbol.quotedAtMillis,
                             )
                         }.sortedBy { it.provider.name?.lowercase() }
 

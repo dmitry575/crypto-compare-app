@@ -54,6 +54,23 @@
     <string name="pair_detail_open_on_exchange">Открыть на %1$s</string>
     <string name="pair_detail_open_exchange_site">Открыть сайт биржи</string>
     <string name="pair_detail_open_failed">Не удалось открыть ссылку</string>
+    <string name="pair_detail_open_comparison">Сравнить биржи</string>
+
+    <!-- Экран сравнения бирж -->
+    <string name="pair_comparison_title">Сравнение · %1$s</string>
+    <string name="pair_comparison_buy_label">Купить на</string>
+    <string name="pair_comparison_sell_label">Продать на</string>
+    <string name="pair_comparison_no_profit">Продать дешевле, чем купить</string>
+    <string name="pair_comparison_no_best">Лучшие цены недоступны</string>
+    <string name="pair_comparison_exchanges">Биржи · %1$d</string>
+    <string name="pair_comparison_buy">Покупка</string>
+    <string name="pair_comparison_sell">Продажа</string>
+    <string name="pair_comparison_stale">цена устарела</string>
+    <string name="pair_comparison_best_buy">лучшая цена покупки</string>
+    <string name="pair_comparison_best_sell">лучшая цена продажи</string>
+    <string name="pair_comparison_single_exchange">Пара торгуется на одной бирже — сравнивать не с чем</string>
+    <string name="pair_comparison_empty">Нет котировок по этой паре</string>
+    <string name="pair_comparison_retry">Повторить</string>
 
     <!-- Масштабы графика -->
     <string name="timeframe_m15">15м</string>
