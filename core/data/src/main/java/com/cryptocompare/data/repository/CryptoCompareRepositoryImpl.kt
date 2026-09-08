@@ -7,7 +7,9 @@ import androidx.paging.filter
 import androidx.paging.map
 import com.cryptocompare.data.local.CryptoCompareDatabase
 import com.cryptocompare.data.local.dao.ProviderDao
+import com.cryptocompare.data.local.dao.SymbolBestPriceUpdate
 import com.cryptocompare.data.local.dao.SymbolDao
+import com.cryptocompare.data.local.entity.ProviderEntity
 import com.cryptocompare.data.local.entity.SymbolEntity
 import com.cryptocompare.data.local.query.PairsPagingQuery
 import com.cryptocompare.data.mapper.normalizeSymbols
@@ -28,7 +30,7 @@ import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.symbol.Symbol
-import com.cryptocompare.model.ticker.TickerPrice
+import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.network.api.CryptoCompareApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -69,17 +71,39 @@ class CryptoCompareRepositoryImpl
                     }
             }
 
-        // update providers
+        /**
+         * Справочник бирж целиком, страницами.
+         *
+         * Без `rows` эндпоинт отдаёт десять штук, и приложение знало десять бирж
+         * из тридцати одной. Всё, что не нашлось в справочнике, молча выпадало
+         * с детального экрана — там биржа без провайдера отбрасывается.
+         */
         private suspend fun refreshProviders(): List<Provider> {
             val syncedAtMillis = System.currentTimeMillis()
-            val response = cryptoCompareApi.getProviders()
+            val providers = mutableListOf<ProviderEntity>()
+            var skip = 0
 
-            if (response.errorCode != 0) {
-                val message = response.errorMsgs?.joinToString("\n") ?: "Unknown error"
-                throw IllegalStateException(message)
+            while (true) {
+                val response =
+                    cryptoCompareApi.getProviders(
+                        skip = skip,
+                        rows = CryptoCompareRepositoryConstants.PROVIDERS_IN_ROW,
+                    )
+
+                if (response.errorCode != 0) {
+                    val message = response.errorMsgs?.joinToString("\n") ?: "Unknown error"
+                    throw IllegalStateException(message)
+                }
+
+                val page = response.providers.orEmpty()
+                if (page.isEmpty()) break
+
+                providers += page.toEntityFromDto(syncedAtMillis)
+                skip += page.size
+
+                if (page.size < CryptoCompareRepositoryConstants.PROVIDERS_IN_ROW) break
             }
 
-            val providers = response.providers.orEmpty().toEntityFromDto(syncedAtMillis)
             providerDao.syncProviders(providers)
             return providers.toDomainFromEntity()
         }
@@ -123,13 +147,19 @@ class CryptoCompareRepositoryImpl
                     )
                 },
             ).flow.map { pagingData ->
-                pagingData.filter { it.maxPrice > 0 && it.minPrice > 0 }.map { it.toPairUiItem() }
+                pagingData.filter { it.buyPrice > 0 && it.sellPrice > 0 }.map { it.toPairUiItem() }
             }
         }
 
-        // per-exchange rows live only on the network: the catalog collapses a
-        // ticker to one row, so the API is the source of truth here and the
-        // local cache is just an offline fallback
+        /**
+         * Котировки по биржам: только из сети.
+         *
+         * Оффлайн-подмены из локальной таблицы здесь больше нет. Каталог хранит
+         * строку на тикер с лучшей парой цен, где стороны взяты с **разных**
+         * бирж, — выдавать её за котировку одной биржи нельзя. Пока такая
+         * подмена существовала, экран без сети показывал одну выдуманную биржу
+         * с ценами, которых у неё нет.
+         */
         override suspend fun getSymbolsByTicker(ticker: String): Result<List<Symbol>> =
             withContext(ioDispatcher) {
                 runCatching {
@@ -145,9 +175,6 @@ class CryptoCompareRepositoryImpl
                     if (error is CancellationException) {
                         throw error
                     }
-                }.recoverCatching { error ->
-                    val cached = symbolDao.getByTicker(ticker).toDomainFromEntity()
-                    cached.ifEmpty { throw error }
                 }
             }
 
@@ -185,12 +212,19 @@ class CryptoCompareRepositoryImpl
                 }
             }
 
-        override suspend fun applyPriceUpdates(updates: List<TickerPrice>): Result<Unit> =
+        override suspend fun applyBestPriceUpdates(updates: List<TickerBestPrice>): Result<Unit> =
             withContext(ioDispatcher) {
                 runCatching {
-                    symbolDao.updatePrices(
+                    symbolDao.updateBestPrices(
                         updates.map { update ->
-                            Triple(update.symbolId.toLong(), update.priceBuy, update.priceSell)
+                            SymbolBestPriceUpdate(
+                                id = update.symbolId,
+                                bestAskPrice = update.bestAskPrice,
+                                bestAskProviderId = update.bestAskProviderId,
+                                bestBidPrice = update.bestBidPrice,
+                                bestBidProviderId = update.bestBidProviderId,
+                                spreadPercent = update.spreadPercent,
+                            )
                         },
                     )
                 }.onFailure { error ->

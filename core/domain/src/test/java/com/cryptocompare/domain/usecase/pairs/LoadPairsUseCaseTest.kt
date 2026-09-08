@@ -95,10 +95,8 @@ class LoadPairsUseCaseTest {
     private fun pair(ticker: String) =
         PairUiItem(
             ticker = ticker,
-            symbolIds = listOf(1L),
-            providerIds = listOf(1),
-            minPrice = 1.0,
-            maxPrice = 2.0,
-            spreadPercent = 100.0,
+            buyPrice = 2.0,
+            sellPrice = 1.0,
+            spreadPercent = -50.0,
         )
 }

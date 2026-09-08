@@ -3,6 +3,7 @@ package com.cryptocompare.network.api
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.GetProviderResponse
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.GetProvidersResponse
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.GetSymbolResponse
+import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.GetSymbolsBestPriceResponse
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.GetSymbolsResponse
 import com.cryptocompare.network.dto.apiDTO.klinesDTO.GetKlinesResponse
 import retrofit2.http.GET
@@ -39,11 +40,13 @@ interface CryptoCompareApi {
         @Query("rows") rows: Int? = null,
     ): GetSymbolsResponse
 
+    // Лента каталога: строка на тикер с лучшей парой цен, сведённой по биржам.
+    // Форма ответа отличается от разбивки по биржам — см. SymbolBestPriceDto.
     @GET("symbols")
     suspend fun getSymbols(
         @Query("skip") skip: Int? = null,
         @Query("rows") rows: Int? = null,
-    ): GetSymbolsResponse
+    ): GetSymbolsBestPriceResponse
 
     @GET("symbols/{id}")
     suspend fun getSymbol(

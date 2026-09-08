@@ -23,6 +23,15 @@ sealed interface TickerStreamEvent {
         val data: TickerPrice,
     ) : TickerStreamEvent
 
+    /**
+     * Лучшая пара цен по тикеру. Каталог обновляется только этим событием:
+     * [TickerPriceChange] несёт котировку одной биржи и лучшую пару затирает.
+     */
+    data class TickerBestPriceChange(
+        override val id: String,
+        val data: TickerBestPrice,
+    ) : TickerStreamEvent
+
     data class Error(
         override val id: String,
         val errorCode: Int,

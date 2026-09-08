@@ -31,20 +31,24 @@ internal object PairsPagingQuery {
         END
         """
 
+    /**
+     * Цены и спред пары.
+     *
+     * Спред больше не считается здесь — он приходит с бэкенда готовым, и там же
+     * отсеиваются протухшие котировки, которые иначе выигрывали бы сравнение.
+     * Приложение только выбирает лучшее по тикеру.
+     *
+     * Агрегаты нужны из-за `GROUP BY UPPER(ticker)`: одна пара может торговаться
+     * в нескольких сетях, и строк на тикер бывает больше одной. Для единственной
+     * строки все три `MIN`/`MAX` возвращают её собственные значения.
+     */
     private const val SELECT_AND_FROM =
         """
         SELECT
             UPPER(ticker) AS ticker,
-            GROUP_CONCAT(id) AS symbolIds,
-            GROUP_CONCAT(providerId) AS providerIds,
-            MIN(MIN(priceBuy, priceSell)) AS minPrice,
-            MAX(MAX(priceBuy, priceSell)) AS maxPrice,
-            CASE
-                WHEN MIN(MIN(priceBuy, priceSell)) > 0
-                THEN (MAX(MAX(priceBuy, priceSell)) - MIN(MIN(priceBuy, priceSell)))
-                     * 100.0 / MIN(MIN(priceBuy, priceSell))
-                ELSE 0
-            END AS spreadPercent,
+            MIN(bestAskPrice) AS buyPrice,
+            MAX(bestBidPrice) AS sellPrice,
+            MAX(spreadPercent) AS spreadPercent,
             SUM(quoteVolume24h) AS quoteVolume24h,
             $CHANGE_EXPRESSION AS change24h
         FROM symbols
@@ -112,7 +116,7 @@ internal object PairsPagingQuery {
         val column =
             when (sorting.field) {
                 CatalogSort.NAME -> "ticker"
-                CatalogSort.PRICE -> "maxPrice"
+                CatalogSort.PRICE -> "buyPrice"
                 CatalogSort.CHANGE -> "change24h"
                 CatalogSort.SPREAD -> "spreadPercent"
                 CatalogSort.VOLUME -> "quoteVolume24h"
@@ -120,7 +124,7 @@ internal object PairsPagingQuery {
 
         val nullsLast =
             when (sorting.field) {
-                CatalogSort.CHANGE, CatalogSort.VOLUME -> "($column IS NULL), "
+                CatalogSort.CHANGE, CatalogSort.VOLUME, CatalogSort.SPREAD -> "($column IS NULL), "
                 else -> ""
             }
 

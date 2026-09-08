@@ -32,17 +32,45 @@ interface SymbolDao {
     @RawQuery(observedEntities = [SymbolEntity::class])
     fun pagingPairs(query: SupportSQLiteQuery): PagingSource<Int, PairAggregateRow>
 
-    @Query("UPDATE symbols SET priceBuy = :priceBuy, priceSell = :priceSell WHERE id = :id")
-    suspend fun updatePrice(
+    /**
+     * Лучшая пара цен по тикеру из сокета.
+     *
+     * Пишется только событием типа 5. Тик отдельной биржи (тип 4) сюда попадать
+     * не должен: его `symbolId` общий на весь тикер, поэтому каждая биржа
+     * затирала бы строку своими ценами, и каталог показывал бы bid/ask той,
+     * которая тикнула последней, вместо разницы между биржами.
+     */
+    @Query(
+        """
+        UPDATE symbols
+        SET bestAskPrice = :bestAskPrice,
+            bestAskProviderId = :bestAskProviderId,
+            bestBidPrice = :bestBidPrice,
+            bestBidProviderId = :bestBidProviderId,
+            spreadPercent = :spreadPercent
+        WHERE id = :id
+        """,
+    )
+    suspend fun updateBestPrice(
         id: Long,
-        priceBuy: Double,
-        priceSell: Double,
+        bestAskPrice: Double,
+        bestAskProviderId: Int?,
+        bestBidPrice: Double,
+        bestBidProviderId: Int?,
+        spreadPercent: Double?,
     )
 
     @Transaction
-    suspend fun updatePrices(updates: List<Triple<Long, Double, Double>>) {
-        updates.forEach { (id, priceBuy, priceSell) ->
-            updatePrice(id = id, priceBuy = priceBuy, priceSell = priceSell)
+    suspend fun updateBestPrices(updates: List<SymbolBestPriceUpdate>) {
+        updates.forEach { update ->
+            updateBestPrice(
+                id = update.id,
+                bestAskPrice = update.bestAskPrice,
+                bestAskProviderId = update.bestAskProviderId,
+                bestBidPrice = update.bestBidPrice,
+                bestBidProviderId = update.bestBidProviderId,
+                spreadPercent = update.spreadPercent,
+            )
         }
     }
 

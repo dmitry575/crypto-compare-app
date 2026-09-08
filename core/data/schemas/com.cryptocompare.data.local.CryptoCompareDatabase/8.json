@@ -1,0 +1,263 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 8,
+    "identityHash": "0ada6b5fa6e90e4528976cef84db7747",
+    "entities": [
+      {
+        "tableName": "symbols",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `ticker` TEXT, `symbol` TEXT, `bestAskProviderId` INTEGER, `bestAskPrice` REAL NOT NULL, `bestBidProviderId` INTEGER, `bestBidPrice` REAL NOT NULL, `spreadPercent` REAL, `bestAskUpdatedAt` TEXT, `bestBidUpdatedAt` TEXT, `updatedAt` TEXT NOT NULL, `syncedAtMillis` INTEGER NOT NULL, `volume24h` REAL, `quoteVolume24h` REAL, `change24h` REAL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ticker",
+            "columnName": "ticker",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "symbol",
+            "columnName": "symbol",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "bestAskProviderId",
+            "columnName": "bestAskProviderId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "bestAskPrice",
+            "columnName": "bestAskPrice",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bestBidProviderId",
+            "columnName": "bestBidProviderId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "bestBidPrice",
+            "columnName": "bestBidPrice",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "spreadPercent",
+            "columnName": "spreadPercent",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "bestAskUpdatedAt",
+            "columnName": "bestAskUpdatedAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "bestBidUpdatedAt",
+            "columnName": "bestBidUpdatedAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncedAtMillis",
+            "columnName": "syncedAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "volume24h",
+            "columnName": "volume24h",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "quoteVolume24h",
+            "columnName": "quoteVolume24h",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "change24h",
+            "columnName": "change24h",
+            "affinity": "REAL"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_symbols_bestAskProviderId",
+            "unique": false,
+            "columnNames": [
+              "bestAskProviderId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_symbols_bestAskProviderId` ON `${TABLE_NAME}` (`bestAskProviderId`)"
+          },
+          {
+            "name": "index_symbols_bestBidProviderId",
+            "unique": false,
+            "columnNames": [
+              "bestBidProviderId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_symbols_bestBidProviderId` ON `${TABLE_NAME}` (`bestBidProviderId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "providers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT, `website` TEXT, `status` TEXT NOT NULL, `syncedAtMillis` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "website",
+            "columnName": "website",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncedAtMillis",
+            "columnName": "syncedAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "favourite_tickers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`userId` TEXT NOT NULL, `ticker` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`userId`, `ticker`))",
+        "fields": [
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ticker",
+            "columnName": "ticker",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "userId",
+            "ticker"
+          ]
+        }
+      },
+      {
+        "tableName": "catalog_remote_key",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `nextSkip` INTEGER NOT NULL, `endReached` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nextSkip",
+            "columnName": "nextSkip",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endReached",
+            "columnName": "endReached",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "pending_favourite_operations",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`userId` TEXT NOT NULL, `ticker` TEXT NOT NULL, `operation` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`userId`, `ticker`))",
+        "fields": [
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ticker",
+            "columnName": "ticker",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "operation",
+            "columnName": "operation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "userId",
+            "ticker"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0ada6b5fa6e90e4528976cef84db7747')"
+    ]
+  }
+}

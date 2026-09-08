@@ -37,31 +37,45 @@ class PairsPagingQueryTest {
         val ascending = build(sorting = CatalogSorting(CatalogSort.PRICE, ascending = true)).sql
         val descending = build(sorting = CatalogSorting(CatalogSort.PRICE, ascending = false)).sql
 
-        assertTrue(ascending.contains("maxPrice ASC"))
-        assertTrue(descending.contains("maxPrice DESC"))
+        assertTrue(ascending.contains("buyPrice ASC"))
+        assertTrue(descending.contains("buyPrice DESC"))
     }
 
     @Test
     fun `nullable fields push empty values to the end in both directions`() {
         // NULLS LAST появился в SQLite 3.30, то есть с API 30, а minSdk у нас 26
-        listOf(CatalogSort.CHANGE to "change24h", CatalogSort.VOLUME to "quoteVolume24h")
-            .forEach { (field, column) ->
-                listOf(true, false).forEach { ascending ->
-                    val sql = build(sorting = CatalogSorting(field, ascending)).sql
+        listOf(
+            CatalogSort.CHANGE to "change24h",
+            CatalogSort.VOLUME to "quoteVolume24h",
+            CatalogSort.SPREAD to "spreadPercent",
+        ).forEach { (field, column) ->
+            listOf(true, false).forEach { ascending ->
+                val sql = build(sorting = CatalogSorting(field, ascending)).sql
 
-                    assertTrue("$field/$ascending", sql.contains("($column IS NULL),"))
-                    assertFalse("NULLS LAST недоступен на minSdk 26", sql.contains("NULLS LAST"))
-                }
+                assertTrue("$field/$ascending", sql.contains("($column IS NULL),"))
+                assertFalse("NULLS LAST недоступен на minSdk 26", sql.contains("NULLS LAST"))
             }
+        }
     }
 
     @Test
-    fun `fields that are never null do not pay for a null check`() {
-        listOf(CatalogSort.NAME, CatalogSort.PRICE, CatalogSort.SPREAD).forEach { field ->
-            val sql = build(sorting = CatalogSorting(field, ascending = true)).sql
+    fun `spread is taken from the column, not recomputed`() {
+        val sql = build().sql
 
-            assertFalse("лишняя проверка на NULL для $field", sql.contains("IS NULL),"))
-        }
+        // считает бэкенд: там же отсеиваются протухшие котировки, которые
+        // иначе выигрывали бы сравнение и рисовали арбитраж на пустом месте
+        assertTrue(sql.contains("MAX(spreadPercent) AS spreadPercent"))
+        assertFalse("спред снова считается в SQL", sql.contains("* 100.0 /"))
+    }
+
+    @Test
+    fun `prices keep their sides`() {
+        val sql = build().sql
+
+        // покупка это минимальный ask, продажа — максимальный bid;
+        // перепутанные местами, они переворачивают знак спреда
+        assertTrue(sql.contains("MIN(bestAskPrice) AS buyPrice"))
+        assertTrue(sql.contains("MAX(bestBidPrice) AS sellPrice"))
     }
 
     @Test
@@ -100,7 +114,7 @@ class PairsPagingQueryTest {
     fun `direction is filtered in having because it is an aggregate`() {
         val sql = build().sql
 
-        // «растёт» — свойство пары целиком, а строки таблицы это отдельные биржи
+        // «растёт» — свойство пары целиком, а строк на тикер бывает несколько
         assertTrue(sql.contains("HAVING"))
         assertTrue(sql.indexOf("HAVING") > sql.indexOf("GROUP BY"))
     }

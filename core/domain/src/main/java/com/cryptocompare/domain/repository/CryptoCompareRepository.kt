@@ -8,7 +8,7 @@ import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.symbol.Symbol
-import com.cryptocompare.model.ticker.TickerPrice
+import com.cryptocompare.model.ticker.TickerBestPrice
 import kotlinx.coroutines.flow.Flow
 
 interface CryptoCompareRepository {
@@ -37,7 +37,7 @@ interface CryptoCompareRepository {
         offset: Int,
     ): Result<List<Candle>>
 
-    suspend fun applyPriceUpdates(updates: List<TickerPrice>): Result<Unit>
+    suspend fun applyBestPriceUpdates(updates: List<TickerBestPrice>): Result<Unit>
 
     suspend fun refreshCatalog(): Result<Unit>
 }

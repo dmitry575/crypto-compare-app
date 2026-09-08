@@ -56,6 +56,15 @@ SQLite не умеет `ALTER TABLE ... DROP COLUMN` и смену типа: ч�
 | 1–3 | до появления экспортированных схем; миграций в репозитории нет |
 | 4 | `symbols` пересоздана с `updatedAt` и `syncedAtMillis` (`migration_3_4.sql`) |
 | 5 | добавлена `catalog_remote_key` для `RemoteMediator` (`migration_4_5.sql`) |
+| 6 | добавлена `pending_favourite_operations` — очередь оффлайн-правок избранного (`migration_5_6.sql`) |
+| 7 | в `symbols` добавлены `change24h`, `volume24h`, `quoteVolume24h` (`migration_6_7.sql`) |
+| 8 | `symbols` пересоздана под лучшую пару цен: вместо одного `providerId` и `priceSell`/`priceBuy` — `bestAskProviderId`/`bestAskPrice`, `bestBidProviderId`/`bestBidPrice`, `spreadPercent` и время каждой стороны; внешний ключ на `providers` снят (`migration_7_8.sql`) |
+
+Версия 8 пересоздаёт `symbols` без переливки данных: это кеш каталога, он
+перекачивается с бэкенда, а форма строки поменялась целиком — старые
+`priceSell`/`priceBuy` означали не то же самое. Заодно чистится
+`catalog_remote_key`, иначе `RemoteMediator` продолжил бы докачивать каталог
+с середины в пустую таблицу. `favourite_tickers` миграция не трогает.
 
 Схема экспортируется начиная с версии 5 — она и есть точка отсчёта. Пути с
 устройств, где база осталась версии 1–3, не покрыты: там миграции нет, и Room
