@@ -5,6 +5,7 @@ import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.model.provider.Provider
 import com.cryptocompare.model.symbol.CatalogDirection
+import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.symbol.Symbol
 import com.cryptocompare.model.ticker.TickerPrice
@@ -18,6 +19,7 @@ interface CryptoCompareRepository {
         onlyFavourite: Boolean,
         favouriteTickers: Set<String>,
         direction: CatalogDirection,
+        sorting: CatalogSorting,
     ): Flow<PagingData<PairUiItem>>
 
     suspend fun getSymbolsByTicker(ticker: String): Result<List<Symbol>>

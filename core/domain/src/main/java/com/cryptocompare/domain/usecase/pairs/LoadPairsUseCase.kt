@@ -4,6 +4,7 @@ import androidx.paging.PagingData
 import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.domain.repository.TickerStreamRepository
 import com.cryptocompare.model.symbol.CatalogDirection
+import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.model.symbol.PairUiItem
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -19,6 +20,7 @@ class LoadPairsUseCase
             onlyFavourite: Boolean,
             favouriteTickers: Set<String>,
             direction: CatalogDirection,
+            sorting: CatalogSorting,
         ): Flow<PagingData<PairUiItem>> {
             tickerStreamRepository.connect()
 
@@ -27,6 +29,7 @@ class LoadPairsUseCase
                 onlyFavourite = onlyFavourite,
                 favouriteTickers = favouriteTickers,
                 direction = direction,
+                sorting = sorting,
             )
         }
     }

@@ -24,7 +24,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +52,7 @@ import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairRowSkeleton
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairsFilterRow
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairsListLegend
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairsSearchField
+import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairsSortSheet
 import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.viewmodel.mainViewModel.MainViewModel
 import com.cryptocompare.ui.theme.Dimensions
@@ -104,6 +108,10 @@ fun MainScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // состояние шторки живёт в экране, а не во ViewModel: это не часть фильтра,
+    // а то, открыт ли сейчас диалог
+    var showSortSheet by remember { mutableStateOf(false) }
+
     LaunchedEffect(lazyList, viewModel, pairItems) {
         snapshotFlow {
             if (pairItems.itemCount == 0) {
@@ -126,7 +134,7 @@ fun MainScreen(
     // только на реальное переключение фильтра: LaunchedEffect отрабатывает и при
     // возврате на экран, из-за чего список прыгал в начало
     LaunchedEffect(lazyList) {
-        snapshotFlow { uiState.value.onlyFavourite to uiState.value.direction }
+        snapshotFlow { Triple(uiState.value.onlyFavourite, uiState.value.direction, uiState.value.sorting) }
             .drop(1)
             .collect { lazyList.scrollToItem(0) }
     }
@@ -205,7 +213,20 @@ fun MainScreen(
                 onDirectionChange = viewModel::onDirectionChange,
                 onlyFavourite = uiState.value.onlyFavourite,
                 onOnlyFavouriteChange = viewModel::onOnlyFavouriteChange,
+                sorting = uiState.value.sorting,
+                onSortClick = { showSortSheet = true },
             )
+
+            if (showSortSheet) {
+                PairsSortSheet(
+                    sorting = uiState.value.sorting,
+                    onSortSelected = { field ->
+                        viewModel.onSortSelected(field)
+                        showSortSheet = false
+                    },
+                    onDismiss = { showSortSheet = false },
+                )
+            }
 
             // подписи к числам строки — один раз над списком: в самой строке на
             // них нет места. Легенда стоит снаружи LazyColumn, потому что ниже

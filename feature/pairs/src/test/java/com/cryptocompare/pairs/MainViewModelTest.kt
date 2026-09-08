@@ -10,6 +10,8 @@ import com.cryptocompare.domain.usecase.pairs.SyncFavouriteTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.ToggleFavouriteTickerUseCase
 import com.cryptocompare.model.symbol.CatalogDirection
+import com.cryptocompare.model.symbol.CatalogSort
+import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
@@ -47,7 +49,7 @@ class MainViewModelTest {
         pagingFlow: Flow<PagingData<PairUiItem>> = flowOf(PagingData.empty()),
     ): LoadPairsUseCase =
         mockk {
-            every { this@mockk.invoke(any(), any(), any(), any()) } returns pagingFlow
+            every { this@mockk.invoke(any(), any(), any(), any(), any()) } returns pagingFlow
         }
 
     private fun observeTickerEventUseCaseMock(flow: Flow<TickerStreamEvent>): ObserveTickerEventUseCase =
@@ -130,7 +132,7 @@ class MainViewModelTest {
             advanceTimeBy(400)
             runCurrent()
 
-            coVerify { loadPairsUseCase.invoke("", false, emptySet(), CatalogDirection.ANY) }
+            coVerify { loadPairsUseCase.invoke("", false, emptySet(), CatalogDirection.ANY, CatalogSorting()) }
             collectJob.cancel()
         }
 
@@ -148,7 +150,7 @@ class MainViewModelTest {
             advanceTimeBy(400)
             runCurrent()
 
-            coVerify { loadPairsUseCase.invoke("btc", false, emptySet(), CatalogDirection.ANY) }
+            coVerify { loadPairsUseCase.invoke("btc", false, emptySet(), CatalogDirection.ANY, CatalogSorting()) }
             collectJob.cancel()
         }
 
@@ -353,7 +355,69 @@ class MainViewModelTest {
 
             // измерения независимые: «избранное, которое растёт» должно доехать
             // до use case обоими признаками сразу, а не последним выбранным
-            coVerify { loadPairsUseCase.invoke("", true, any(), CatalogDirection.GAINERS) }
+            coVerify { loadPairsUseCase.invoke("", true, any(), CatalogDirection.GAINERS, CatalogSorting()) }
+            collectJob.cancel()
+        }
+
+    @Test
+    fun `picking the same field twice flips the order`() =
+        runTest {
+            val vm = makeVm()
+
+            vm.onSortSelected(CatalogSort.VOLUME)
+            val first = vm.uiState.value.sorting
+            vm.onSortSelected(CatalogSort.VOLUME)
+            val second = vm.uiState.value.sorting
+
+            assertEquals(CatalogSort.VOLUME, first.field)
+            assertEquals(false, first.ascending)
+            assertEquals(true, second.ascending)
+        }
+
+    @Test
+    fun `a new field starts with the order people expect from it`() =
+        runTest {
+            val vm = makeVm()
+
+            // «по объёму» значит «самые крупные сверху», а не «мёртвые пары сверху»
+            vm.onSortSelected(CatalogSort.VOLUME)
+            assertEquals(false, vm.uiState.value.sorting.ascending)
+
+            vm.onSortSelected(CatalogSort.NAME)
+            assertEquals(true, vm.uiState.value.sorting.ascending)
+        }
+
+    @Test
+    fun `catalog starts sorted by name ascending`() =
+        runTest {
+            val vm = makeVm()
+
+            assertEquals(CatalogSorting(CatalogSort.NAME, ascending = true), vm.uiState.value.sorting)
+        }
+
+    @Test
+    fun `sorting reaches the load use case`() =
+        runTest {
+            val loadPairsUseCase = loadPairsUseCaseMock()
+            val vm = makeVm(loadPairsUseCase = loadPairsUseCase)
+
+            val collectJob = launch { vm.pairs.collect {} }
+            advanceTimeBy(400)
+            runCurrent()
+
+            vm.onSortSelected(CatalogSort.SPREAD)
+            advanceTimeBy(400)
+            runCurrent()
+
+            coVerify {
+                loadPairsUseCase.invoke(
+                    "",
+                    false,
+                    emptySet(),
+                    CatalogDirection.ANY,
+                    CatalogSorting(CatalogSort.SPREAD, ascending = false),
+                )
+            }
             collectJob.cancel()
         }
 

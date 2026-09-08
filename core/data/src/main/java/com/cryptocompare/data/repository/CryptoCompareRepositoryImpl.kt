@@ -9,6 +9,7 @@ import com.cryptocompare.data.local.CryptoCompareDatabase
 import com.cryptocompare.data.local.dao.ProviderDao
 import com.cryptocompare.data.local.dao.SymbolDao
 import com.cryptocompare.data.local.entity.SymbolEntity
+import com.cryptocompare.data.local.query.PairsPagingQuery
 import com.cryptocompare.data.mapper.normalizeSymbols
 import com.cryptocompare.data.mapper.symbolToDomainFromDto
 import com.cryptocompare.data.mapper.toCandles
@@ -24,6 +25,7 @@ import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.model.provider.Provider
 import com.cryptocompare.model.symbol.CatalogDirection
+import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.symbol.Symbol
 import com.cryptocompare.model.ticker.TickerPrice
@@ -92,6 +94,7 @@ class CryptoCompareRepositoryImpl
             onlyFavourite: Boolean,
             favouriteTickers: Set<String>,
             direction: CatalogDirection,
+            sorting: CatalogSorting,
         ): Flow<PagingData<PairUiItem>> {
             val normalizedQuery = query.trim()
             val normalizedFavourites = favouriteTickers.map { it.trim().uppercase() }
@@ -110,12 +113,13 @@ class CryptoCompareRepositoryImpl
                     ),
                 pagingSourceFactory = {
                     symbolDao.pagingPairs(
-                        query = normalizedQuery,
-                        onlyFavourite = onlyFavourite,
-                        favouriteTickers = normalizedFavourites,
-                        // enum уходит в запрос именем: заводить TypeConverter ради
-                        // параметра, который в таблице не хранится, незачем
-                        direction = direction.name,
+                        PairsPagingQuery.build(
+                            query = normalizedQuery,
+                            onlyFavourite = onlyFavourite,
+                            favouriteTickers = normalizedFavourites,
+                            direction = direction,
+                            sorting = sorting,
+                        ),
                     )
                 },
             ).flow.map { pagingData ->
