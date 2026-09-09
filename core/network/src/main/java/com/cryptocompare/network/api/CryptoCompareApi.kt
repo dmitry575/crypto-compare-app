@@ -57,4 +57,11 @@ interface CryptoCompareApi {
     suspend fun getSymbolsByTicker(
         @Path("ticker") ticker: String,
     ): GetSymbolsResponse
+
+    // Лучшая пара цен по тикеру, уже отфильтрованная бэкендом от протухших
+    // котировок. Строк бывает несколько — по одной на сеть, в которой торгуется пара.
+    @GET("symbols/ticker/best/{ticker}")
+    suspend fun getBestPricesByTicker(
+        @Path("ticker") ticker: String,
+    ): GetSymbolsBestPriceResponse
 }

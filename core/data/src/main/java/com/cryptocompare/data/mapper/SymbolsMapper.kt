@@ -2,8 +2,10 @@ package com.cryptocompare.data.mapper
 
 import com.cryptocompare.data.local.entity.SymbolEntity
 import com.cryptocompare.model.symbol.Symbol
+import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.SymbolBestPriceDto
 import com.cryptocompare.network.dto.apiDTO.cryptoCompareDTO.SymbolDto
+import java.time.Instant
 
 /**
  * Строка каталога с бэкенда в строку локальной таблицы.
@@ -47,6 +49,30 @@ fun SymbolDto.symbolToDomainFromDto(): Symbol =
         change24h = change24h,
         quoteVolume24h = quoteVolume24h,
         volume24h = volume24h,
+        quotedAtMillis = updatedAt.toEpochMillisOrNull(),
     )
 
+/**
+ * Время котировки в миллисекундах эпохи.
+ *
+ * `null`, если разобрать не вышло: бэкенд на неторгуемых парах присылает
+ * `0001-01-01T00:00:00` без зоны, и это не время, а отсутствие времени.
+ */
+private fun String?.toEpochMillisOrNull(): Long? =
+    this?.let { raw -> runCatching { Instant.parse(raw).toEpochMilli() }.getOrNull() }
+
 fun List<SymbolDto>.symbolToDomainFromDto(): List<Symbol> = map(SymbolDto::symbolToDomainFromDto)
+
+/** Лучшая пара цен по тикеру: та же форма, что приходит по сокету событием типа 5. */
+fun SymbolBestPriceDto.toTickerBestPrice(): TickerBestPrice =
+    TickerBestPrice(
+        ticker = ticker.orEmpty(),
+        symbolId = id,
+        bestAskProviderId = bestAskProviderId,
+        bestAskPrice = bestAskPrice,
+        bestBidProviderId = bestBidProviderId,
+        bestBidPrice = bestBidPrice,
+        spreadPercent = spreadPercent,
+    )
+
+fun List<SymbolBestPriceDto>.toTickerBestPrice(): List<TickerBestPrice> = map(SymbolBestPriceDto::toTickerBestPrice)

@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun DetailsScreen(
     onBack: () -> Unit,
+    onCompareClick: (String) -> Unit,
     viewModel: DetailsViewModel = hiltViewModel(),
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle()
@@ -141,10 +142,13 @@ fun DetailsScreen(
                             .padding(vertical = Dimensions.Padding.screenVertical),
                     verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.lg),
                 ) {
-                    // Разброс между биржами — главный элемент экрана
+                    // Разброс между биржами — главный элемент экрана, и он же
+                    // вход в сравнение: блок показывает выжимку того же экрана,
+                    // поэтому переход читается как «подробнее», а не как новая функция
                     SpreadBar(
                         exchanges = state.exchanges,
                         modifier = contentPadding,
+                        onClick = { onCompareClick(state.ticker) },
                     )
 
                     // Масштаб графика: он стоит вплотную над графиком, потому что

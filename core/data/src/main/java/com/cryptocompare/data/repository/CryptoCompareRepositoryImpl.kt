@@ -19,6 +19,7 @@ import com.cryptocompare.data.mapper.toDomainFromEntity
 import com.cryptocompare.data.mapper.toEntityFromDto
 import com.cryptocompare.data.mapper.toKlineInterval
 import com.cryptocompare.data.mapper.toPairUiItem
+import com.cryptocompare.data.mapper.toTickerBestPrice
 import com.cryptocompare.data.paging.SymbolsRemoteMediator
 import com.cryptocompare.data.util.DataConstants
 import com.cryptocompare.domain.repository.CryptoCompareRepository
@@ -205,6 +206,24 @@ class CryptoCompareRepositoryImpl
                     }
 
                     response.toCandles()
+                }.onFailure { error ->
+                    if (error is CancellationException) {
+                        throw error
+                    }
+                }
+            }
+
+        override suspend fun getBestPricesByTicker(ticker: String): Result<List<TickerBestPrice>> =
+            withContext(ioDispatcher) {
+                runCatching {
+                    val response = cryptoCompareApi.getBestPricesByTicker(ticker)
+
+                    if (response.errorCode != 0) {
+                        val message = response.errorMsgs?.joinToString("\n") ?: "Unknown error"
+                        throw IllegalStateException(message)
+                    }
+
+                    response.symbols.orEmpty().toTickerBestPrice()
                 }.onFailure { error ->
                     if (error is CancellationException) {
                         throw error

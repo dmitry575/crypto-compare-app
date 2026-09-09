@@ -6,6 +6,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
+import com.cryptocompare.pairs.ui.screens.comparisonScreen.ComparisonScreen
 import com.cryptocompare.pairs.ui.screens.detailScreen.DetailsScreen
 import com.cryptocompare.pairs.ui.screens.mainScreen.MainScreen
 import com.cryptocompare.pairs.util.PairsConstants
@@ -41,7 +42,25 @@ fun NavGraphBuilder.pairsNavigation(
                     },
                 ),
         ) {
-            DetailsScreen(onBack = { navController.popBackStack() })
+            DetailsScreen(
+                onBack = { navController.popBackStack() },
+                onCompareClick = { ticker ->
+                    navController.navigate(PairsScreens.ComparisonScreen.createRoute(ticker))
+                },
+            )
+        }
+
+        composable(
+            route = PairsScreens.ComparisonScreen.route,
+            arguments =
+                listOf(
+                    navArgument(PairsConstants.Navigation.TICKER_ARG) {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                ),
+        ) {
+            ComparisonScreen(onBack = { navController.popBackStack() })
         }
     }
 }

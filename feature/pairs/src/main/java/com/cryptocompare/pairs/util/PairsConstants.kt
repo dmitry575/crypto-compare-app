@@ -49,6 +49,26 @@ object PairsConstants {
         val skeletonChangeWidth: Dp = 48.dp
     }
 
+    object ComparisonScreen {
+        /** Тики идут десятками в секунду; в состояние уходит последний за интервал. */
+        const val LIVE_PRICE_INTERVAL_MS = 500L
+
+        /**
+         * После скольких секунд котировка считается протухшей и приглушается.
+         *
+         * Повторяет `BestPriceMaxQuoteAgeSeconds` бэкенда: он с этим же порогом
+         * не пускает такие котировки в лучшую пару. Разбивка по биржам приходит
+         * **без** фильтра, поэтому на экране застрявшая цена выглядела бы самой
+         * выгодной — на btcusdt 2026-09-08 такая стояла два часа.
+         */
+        const val STALE_QUOTE_SECONDS = 300L
+
+        /** Колонки цен: шире имени биржи не нужны, а уже — обрезают число. */
+        val priceColumnWidth: Dp = 88.dp
+
+        const val MILLIS_IN_SECOND = 1_000L
+    }
+
     object Chart {
         /** Запас по вертикали, чтобы свечи не упирались в края кадра. */
         const val RANGE_PADDING = 0.05

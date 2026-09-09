@@ -37,6 +37,12 @@ interface CryptoCompareRepository {
         offset: Int,
     ): Result<List<Candle>>
 
+    /**
+     * Лучшая пара цен по тикеру, отфильтрованная бэкендом от протухших котировок.
+     * Строк бывает несколько — по одной на сеть, в которой торгуется пара.
+     */
+    suspend fun getBestPricesByTicker(ticker: String): Result<List<TickerBestPrice>>
+
     suspend fun applyBestPriceUpdates(updates: List<TickerBestPrice>): Result<Unit>
 
     suspend fun refreshCatalog(): Result<Unit>

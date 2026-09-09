@@ -2,18 +2,24 @@ package com.cryptocompare.pairs.ui.screens.detailScreen.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,6 +66,7 @@ import com.cryptocompare.ui.theme.textTertiary
 internal fun SpreadBar(
     exchanges: List<ProviderDetail>,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     // priceSell — это ask, по нему пользователь покупает; priceBuy — bid, по нему продаёт.
     // Здесь строки пришли с разбивки по биржам, где имена от лица биржи
@@ -77,6 +84,8 @@ internal fun SpreadBar(
         modifier =
             modifier
                 .fillMaxWidth()
+                .clip(RoundedCornerShape(Dimensions.Radius.card))
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
                 .background(
                     color = MaterialTheme.colorScheme.bgCard,
                     shape = RoundedCornerShape(Dimensions.Radius.card),
@@ -87,18 +96,34 @@ internal fun SpreadBar(
                 ).padding(Dimensions.Padding.cardLarge),
         verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.md),
     ) {
-        Text(
-            text =
-                stringResource(
-                    if (crossExchange) {
-                        R.string.pair_detail_spread_title
-                    } else {
-                        R.string.pair_detail_spread_title_single
-                    },
-                ),
-            style = OverlineType,
-            color = MaterialTheme.colorScheme.textTertiary,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text =
+                    stringResource(
+                        if (crossExchange) {
+                            R.string.pair_detail_spread_title
+                        } else {
+                            R.string.pair_detail_spread_title_single
+                        },
+                    ),
+                style = OverlineType,
+                color = MaterialTheme.colorScheme.textTertiary,
+            )
+            // шеврон, только когда блок ведёт дальше: без него карточка выглядит
+            // кликабельной там, где никуда не ведёт
+            if (onClick != null) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = stringResource(R.string.pair_detail_open_comparison),
+                    tint = MaterialTheme.colorScheme.textTertiary,
+                    modifier = Modifier.size(Dimensions.IconSize.md),
+                )
+            }
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
