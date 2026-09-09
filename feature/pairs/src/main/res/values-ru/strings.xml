@@ -65,7 +65,7 @@
     <string name="pair_comparison_exchanges">Биржи · %1$d</string>
     <string name="pair_comparison_buy">Покупка</string>
     <string name="pair_comparison_sell">Продажа</string>
-    <string name="pair_comparison_stale">цена устарела</string>
+    <string name="pair_comparison_volume">объём %1$s</string>
     <string name="pair_comparison_best_buy">лучшая цена покупки</string>
     <string name="pair_comparison_best_sell">лучшая цена продажи</string>
     <string name="pair_comparison_single_exchange">Пара торгуется на одной бирже — сравнивать не с чем</string>

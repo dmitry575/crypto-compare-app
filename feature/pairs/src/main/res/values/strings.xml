@@ -67,7 +67,7 @@
     <string name="pair_comparison_exchanges">Exchanges · %1$d</string>
     <string name="pair_comparison_buy">Buy</string>
     <string name="pair_comparison_sell">Sell</string>
-    <string name="pair_comparison_stale">stale price</string>
+    <string name="pair_comparison_volume">volume %1$s</string>
     <string name="pair_comparison_best_buy">best buy price</string>
     <string name="pair_comparison_best_sell">best sell price</string>
     <string name="pair_comparison_single_exchange">This pair trades on a single exchange, nothing to compare</string>

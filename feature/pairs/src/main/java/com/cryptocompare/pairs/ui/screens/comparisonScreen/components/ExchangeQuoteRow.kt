@@ -2,6 +2,7 @@ package com.cryptocompare.pairs.ui.screens.comparisonScreen.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import com.cryptocompare.helpers.toCompactPriceString
 import com.cryptocompare.helpers.toCompactVolumeString
@@ -41,8 +41,11 @@ import com.cryptocompare.ui.theme.textTertiary
  * он приходит без фильтра свежести, и застрявшая цена получала бы отметку
  * «здесь выгоднее» именно потому, что застряла в выгодную сторону.
  *
- * Под именем — объём: он показывает, стоит ли верить заманчивой цене. Рядом с
- * ним отметка о несвежести, если биржа давно не присылала котировку.
+ * Строка с [isStale] приглушается целиком. Без этого таблица выглядит сломанной:
+ * у пары бывает биржа с самой низкой ценой покупки **без** отметки о выгоде —
+ * потому что цена стоит третий час, и бэкенд её отбросил. Приглушённая строка
+ * объясняет это без слов; словами не выходит — на подпись рядом с объёмом
+ * в колонке имени места нет.
  */
 @Composable
 internal fun ExchangeQuoteRow(
@@ -61,6 +64,7 @@ internal fun ExchangeQuoteRow(
                     horizontal = Dimensions.Padding.listItemHorizontal,
                     vertical = Dimensions.Padding.listItemVertical,
                 ),
+        horizontalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(
@@ -70,12 +74,22 @@ internal fun ExchangeQuoteRow(
             Text(
                 text = quote.provider.name ?: stringResource(R.string.pair_detail_unknown_exchange),
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.textPrimary,
+                color =
+                    if (isStale) {
+                        MaterialTheme.colorScheme.textTertiary
+                    } else {
+                        MaterialTheme.colorScheme.textPrimary
+                    },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = metaLine(quote, isStale),
+                text =
+                    stringResource(
+                        R.string.pair_comparison_volume,
+                        quote.quoteVolume24h?.toCompactVolumeString()
+                            ?: PriceFormatConstants.NON_FINITE_PLACEHOLDER,
+                    ),
                 style = NumericType.Caption,
                 color = MaterialTheme.colorScheme.textTertiary,
                 maxLines = 1,
@@ -86,83 +100,71 @@ internal fun ExchangeQuoteRow(
         PriceCell(
             price = quote.priceSell,
             highlighted = isBestAsk,
+            dimmed = isStale,
             contentDescription = stringResource(R.string.pair_comparison_best_buy),
         )
         PriceCell(
             price = quote.priceBuy,
             highlighted = isBestBid,
-            contentDescription = stringResource(R.string.pair_comparison_best_sell),
+            dimmed = isStale,
             muted = true,
+            contentDescription = stringResource(R.string.pair_comparison_best_sell),
         )
     }
 }
 
-@Composable
-private fun metaLine(
-    quote: ProviderDetail,
-    isStale: Boolean,
-): String {
-    // без подписи «объём»: вместе с отметкой о несвежести строка не влезает
-    // в колонку имени — на 360dp ей достаётся ~136dp, а подпись съедает ~50dp
-    val volume =
-        quote.quoteVolume24h?.toCompactVolumeString()
-            ?: PriceFormatConstants.NON_FINITE_PLACEHOLDER
-
-    return if (isStale) {
-        volume +
-            PairsConstants.ComparisonScreen.META_SEPARATOR +
-            stringResource(R.string.pair_comparison_stale)
-    } else {
-        volume
-    }
-}
-
 /**
- * Ячейка цены. Прочерк вместо нуля: биржа может не отдавать одну из сторон, и
- * ноль читался бы как «отдают даром».
+ * Ячейка цены.
+ *
+ * Колонка фиксированной ширины, а плашка обнимает само число: если красить фоном
+ * всю колонку, подсветка уезжает влево от цены и стыкуется с соседней.
+ *
+ * Прочерк вместо нуля: биржа может не отдавать одну из сторон, и ноль читался бы
+ * как «отдают даром».
  */
 @Composable
 private fun PriceCell(
     price: Double?,
     highlighted: Boolean,
+    dimmed: Boolean,
     contentDescription: String,
     muted: Boolean = false,
 ) {
     val text = price?.toCompactPriceString() ?: PriceFormatConstants.NON_FINITE_PLACEHOLDER
     val color =
         when {
-            price == null -> MaterialTheme.colorScheme.textTertiary
             highlighted -> MaterialTheme.colorScheme.primary
+            price == null || dimmed -> MaterialTheme.colorScheme.textTertiary
             muted -> MaterialTheme.colorScheme.textSecondary
             else -> MaterialTheme.colorScheme.textPrimary
         }
 
-    Text(
-        text = text,
-        style = NumericType.Caption,
-        color = color,
-        textAlign = TextAlign.End,
-        maxLines = 1,
-        softWrap = false,
-        modifier =
-            Modifier
-                .width(PairsConstants.ComparisonScreen.priceColumnWidth)
-                .then(
-                    if (highlighted) {
-                        Modifier
-                            .background(
-                                color = MaterialTheme.colorScheme.accentSoft,
-                                shape = RoundedCornerShape(Dimensions.Radius.sm),
-                            ).padding(
-                                horizontal = Dimensions.Spacing.xxs,
-                                vertical = Dimensions.Spacing.xxs,
-                            ).semantics { this.contentDescription = contentDescription }
-                    } else {
-                        Modifier.padding(
-                            horizontal = Dimensions.Spacing.xxs,
-                            vertical = Dimensions.Spacing.xxs,
-                        )
-                    },
-                ),
-    )
+    Box(
+        modifier = Modifier.width(PairsConstants.ComparisonScreen.priceColumnWidth),
+        contentAlignment = Alignment.CenterEnd,
+    ) {
+        Text(
+            text = text,
+            style = NumericType.Caption,
+            color = color,
+            maxLines = 1,
+            softWrap = false,
+            modifier =
+                Modifier
+                    .then(
+                        if (highlighted) {
+                            Modifier
+                                .background(
+                                    color = MaterialTheme.colorScheme.accentSoft,
+                                    shape = RoundedCornerShape(Dimensions.Radius.sm),
+                                ).semantics { this.contentDescription = contentDescription }
+                        } else {
+                            Modifier
+                        },
+                    ).padding(
+                        horizontal = Dimensions.Spacing.xs,
+                        vertical = Dimensions.Spacing.xxs,
+                    ),
+        )
+    }
 }

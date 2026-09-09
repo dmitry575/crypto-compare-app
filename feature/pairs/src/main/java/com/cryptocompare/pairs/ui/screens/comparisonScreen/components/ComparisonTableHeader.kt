@@ -21,8 +21,9 @@ import com.cryptocompare.ui.theme.textTertiary
 /**
  * Подписи колонок таблицы — один раз сверху, а не в каждой строке.
  *
- * Ширины повторяют [ExchangeQuoteRow] дословно: у колонок цен фиксированная
- * ширина, иначе числа разной длины разъедут заголовок и строки в разные стороны.
+ * Ширины и отступы повторяют [ExchangeQuoteRow] дословно: у колонок цен
+ * фиксированная ширина и одинаковый внутренний отступ, иначе заголовок и числа
+ * встанут по разным правым краям.
  */
 @Composable
 internal fun ComparisonTableHeader(modifier: Modifier = Modifier) {
@@ -34,7 +35,7 @@ internal fun ComparisonTableHeader(modifier: Modifier = Modifier) {
                     horizontal = Dimensions.Padding.listItemHorizontal,
                     vertical = Dimensions.Spacing.xs,
                 ),
-        horizontalArrangement = Arrangement.End,
+        horizontalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
     ) {
         Spacer(modifier = Modifier.weight(1f))
         HeaderCell(text = stringResource(R.string.pair_comparison_buy))
@@ -53,6 +54,6 @@ private fun HeaderCell(text: String) {
         modifier =
             Modifier
                 .width(PairsConstants.ComparisonScreen.priceColumnWidth)
-                .padding(horizontal = Dimensions.Spacing.xxs),
+                .padding(horizontal = Dimensions.Spacing.xs),
     )
 }

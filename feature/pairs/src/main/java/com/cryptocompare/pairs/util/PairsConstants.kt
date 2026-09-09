@@ -66,9 +66,6 @@ object PairsConstants {
         /** Колонки цен: шире имени биржи не нужны, а уже — обрезают число. */
         val priceColumnWidth: Dp = 88.dp
 
-        /** Разделитель между объёмом и отметкой о несвежести. */
-        const val META_SEPARATOR = " · "
-
         const val MILLIS_IN_SECOND = 1_000L
     }
 
