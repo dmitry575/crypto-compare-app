@@ -94,6 +94,30 @@ class GetTickerDetailUseCaseTest {
         }
 
     @Test
+    fun `non finite prices become null too`() =
+        runTest {
+            // бесконечность больше нуля и мимо проверки знака проходила бы:
+            // такая биржа вставала бы в таблицу с ценой «∞»
+            coEvery { repository.getSymbolsByTicker(TICKER) } returns
+                Result.success(
+                    listOf(
+                        symbol(
+                            id = 1,
+                            providerId = 10,
+                            priceSell = Double.POSITIVE_INFINITY,
+                            priceBuy = Double.NaN,
+                        ),
+                    ),
+                )
+            coEvery { repository.getProviders() } returns Result.success(listOf(provider(10, "Binance")))
+
+            val exchange = useCase(TICKER).getOrThrow().exchanges.single()
+
+            assertNull(exchange.priceSell)
+            assertNull(exchange.priceBuy)
+        }
+
+    @Test
     fun `failed symbols request produces a failure`() =
         runTest {
             coEvery { repository.getSymbolsByTicker(TICKER) } returns Result.failure(IllegalStateException("offline"))

@@ -1,6 +1,7 @@
 package com.cryptocompare.domain.usecase.pairs
 
 import com.cryptocompare.domain.repository.CryptoCompareRepository
+import com.cryptocompare.helpers.validPriceOrNull
 import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.model.ticker.TickerDetail
 import javax.inject.Inject
@@ -22,8 +23,8 @@ class GetTickerDetailUseCase
 
                             ProviderDetail(
                                 provider = provider,
-                                priceSell = symbol.priceSell.takeIf { it > 0 },
-                                priceBuy = symbol.priceBuy.takeIf { it > 0 },
+                                priceSell = symbol.priceSell.validPriceOrNull(),
+                                priceBuy = symbol.priceBuy.validPriceOrNull(),
                                 // 24ч-статистика необязательная: биржа может её не отдавать,
                                 // а NaN/Infinity из JSON не должны доехать до форматтеров
                                 volume24h = symbol.volume24h.sanitizeVolume(),
