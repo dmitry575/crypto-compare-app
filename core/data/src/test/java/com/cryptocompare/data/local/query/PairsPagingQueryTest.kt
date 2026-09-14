@@ -59,6 +59,15 @@ class PairsPagingQueryTest {
     }
 
     @Test
+    fun `zero volume is treated as missing so it shows a dash and sorts last`() {
+        val sql = build(sorting = CatalogSorting(CatalogSort.VOLUME, ascending = true)).sql
+
+        // без NULLIF пары с нулём вставали бы в начало сортировки по возрастанию
+        // перед настоящими малыми объёмами, а в строке рисовался бы голый «0»
+        assertTrue(sql.contains("NULLIF(SUM(quoteVolume24h), 0) AS quoteVolume24h"))
+    }
+
+    @Test
     fun `spread is taken from the column, not recomputed`() {
         val sql = build().sql
 

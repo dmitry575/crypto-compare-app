@@ -174,6 +174,24 @@ class GetTickerDetailUseCaseTest {
             assertNull(exchange.change24h)
         }
 
+    @Test
+    fun `zero volume means no statistics and becomes a dash`() =
+        runTest {
+            // athbtc 2026-09-14: объём ноль при изменении за сутки +16.67% —
+            // торги были, биржа просто не отдала объём
+            coEvery { repository.getSymbolsByTicker(TICKER) } returns
+                Result.success(
+                    listOf(symbol(id = 1, providerId = 10, volume24h = 0.0, quoteVolume24h = 0.0, change24h = 16.67)),
+                )
+            coEvery { repository.getProviders() } returns Result.success(listOf(provider(10, "Binance")))
+
+            val exchange = useCase(TICKER).getOrThrow().exchanges.single()
+
+            assertNull(exchange.volume24h)
+            assertNull(exchange.quoteVolume24h)
+            assertEquals(16.67, exchange.change24h!!, 0.0)
+        }
+
     private fun symbol(
         id: Long,
         providerId: Int,

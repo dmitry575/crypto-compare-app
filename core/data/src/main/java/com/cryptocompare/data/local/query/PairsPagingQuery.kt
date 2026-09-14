@@ -41,6 +41,11 @@ internal object PairsPagingQuery {
      * Агрегаты нужны из-за `GROUP BY UPPER(ticker)`: одна пара может торговаться
      * в нескольких сетях, и строк на тикер бывает больше одной. Для единственной
      * строки все три `MIN`/`MAX` возвращают её собственные значения.
+     *
+     * Нулевой объём — это «биржа не отдала статистику», а не «торгов не было»:
+     * на 2026-09-14 так у 18 строк каталога, и у `athbtc` при нуле объёма
+     * изменение за сутки +16.67%. Показанный как есть, он рисовался голым «0»,
+     * а сортировка по объёму ставила такие пары перед настоящими малыми объёмами.
      */
     private const val SELECT_AND_FROM =
         """
@@ -49,7 +54,7 @@ internal object PairsPagingQuery {
             MIN(bestAskPrice) AS buyPrice,
             MAX(bestBidPrice) AS sellPrice,
             MAX(spreadPercent) AS spreadPercent,
-            SUM(quoteVolume24h) AS quoteVolume24h,
+            NULLIF(SUM(quoteVolume24h), 0) AS quoteVolume24h,
             $CHANGE_EXPRESSION AS change24h
         FROM symbols
         """

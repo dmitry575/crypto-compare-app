@@ -37,5 +37,8 @@ class GetTickerDetailUseCase
             }
     }
 
-/** Отрицательного объёма не бывает: такое значение это ошибка биржи, а не ноль торгов. */
-private fun Double?.sanitizeVolume(): Double? = this?.takeIf { it.isFinite() && it >= 0.0 }
+/**
+ * Отрицательного объёма не бывает, а нулевой биржи отдают вместо «нет статистики»:
+ * у `athbtc` при нуле объёма изменение за сутки +16.67%. Оба случая — прочерк.
+ */
+private fun Double?.sanitizeVolume(): Double? = this?.takeIf { it.isFinite() && it > 0.0 }
