@@ -5,6 +5,7 @@ import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.model.provider.ProviderStatus
 import com.cryptocompare.model.ticker.TickerPrice
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class UpdateExchangePricesTest {
@@ -50,6 +51,25 @@ class UpdateExchangePricesTest {
         val updated = exchanges.withLivePrices(tick(providerId = 42, priceSell = 105.0, priceBuy = 104.0))
 
         assertEquals(exchanges, updated)
+    }
+
+    @Test
+    fun `a zero side of the tick becomes a dash, not a zero`() {
+        val updated = exchanges.withLivePrices(tick(providerId = 2, priceSell = 0.0, priceBuy = 104.0))
+
+        assertNull(updated.last().priceSell)
+        assertEquals(104.0, updated.last().priceBuy!!, 0.0)
+    }
+
+    @Test
+    fun `non finite prices of the tick are dropped`() {
+        val updated =
+            exchanges.withLivePrices(
+                tick(providerId = 1, priceSell = Double.POSITIVE_INFINITY, priceBuy = Double.NaN),
+            )
+
+        assertNull(updated.first().priceSell)
+        assertNull(updated.first().priceBuy)
     }
 
     @Test

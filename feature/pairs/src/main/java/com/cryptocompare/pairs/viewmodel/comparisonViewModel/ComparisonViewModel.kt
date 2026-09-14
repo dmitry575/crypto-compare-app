@@ -3,6 +3,7 @@ package com.cryptocompare.pairs.viewmodel.comparisonViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cryptocompare.domain.usecase.pairs.ApplyComparisonBestPricesUseCase
 import com.cryptocompare.domain.usecase.pairs.ComparePairAcrossExchangesUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
@@ -39,6 +40,7 @@ class ComparisonViewModel
     constructor(
         savedStateHandle: SavedStateHandle,
         private val comparePairAcrossExchangesUseCase: ComparePairAcrossExchangesUseCase,
+        private val applyComparisonBestPricesUseCase: ApplyComparisonBestPricesUseCase,
         private val streamConnectUseCase: StreamConnectUseCase,
         private val subscribeSingleTickerUseCase: SubscribeSingleTickerUseCase,
         private val restoreTickerSubscriptionsUseCase: RestoreTickerSubscriptionsUseCase,
@@ -54,9 +56,14 @@ class ComparisonViewModel
 
         @Volatile private var isFlushScheduled = false
 
-        /** Последний тик каждой биржи и последняя лучшая пара, накопленные за интервал. */
+        /**
+         * Последний тик каждой биржи и последняя лучшая пара каждого символа,
+         * накопленные за интервал. Лучшие пары ключуются символом, а не тикером:
+         * символов у тикера бывает несколько, и одна переменная на всех хранила бы
+         * только того, кто тикнул последним.
+         */
         private val pendingQuotes = mutableMapOf<Int, TickerPrice>()
-        private var pendingBest: TickerBestPrice? = null
+        private val pendingBest = mutableMapOf<Long, TickerBestPrice>()
 
         init {
             val ticker = savedStateHandle.get<String>(PairsConstants.Navigation.TICKER_ARG)?.lowercase() ?: ""
@@ -110,7 +117,7 @@ class ComparisonViewModel
                             }
 
                             event is TickerStreamEvent.TickerBestPriceChange && event.data.ticker == ticker -> {
-                                synchronized(pendingLock) { pendingBest = event.data }
+                                synchronized(pendingLock) { pendingBest[event.data.symbolId] = event.data }
                                 scheduleFlush()
                             }
                         }
@@ -137,44 +144,36 @@ class ComparisonViewModel
                 while (true) {
                     delay(PairsConstants.ComparisonScreen.LIVE_PRICE_INTERVAL_MS.milliseconds)
 
-                    val (quotes, best) =
+                    val (quotes, bestPrices) =
                         synchronized(pendingLock) {
-                            if (pendingQuotes.isEmpty() && pendingBest == null) {
+                            if (pendingQuotes.isEmpty() && pendingBest.isEmpty()) {
                                 isFlushScheduled = false
                                 return@launch
                             }
-                            val batch = pendingQuotes.values.toList() to pendingBest
+                            val batch = pendingQuotes.values.toList() to pendingBest.values.toList()
                             pendingQuotes.clear()
-                            pendingBest = null
+                            pendingBest.clear()
                             batch
                         }
 
-                    applyLiveUpdates(quotes, best)
+                    applyLiveUpdates(quotes, bestPrices)
                 }
             }
         }
 
         private fun applyLiveUpdates(
             quotes: List<TickerPrice>,
-            best: TickerBestPrice?,
+            bestPrices: List<TickerBestPrice>,
         ) {
             _uiState.update { state ->
                 val comparison = state.comparison ?: return@update state
 
-                val updatedQuotes =
-                    quotes.fold(comparison.quotes) { acc, tick -> acc.withLivePrices(tick) }
+                val withQuotes =
+                    comparison.copy(
+                        quotes = quotes.fold(comparison.quotes) { acc, tick -> acc.withLivePrices(tick) },
+                    )
 
-                state.copy(
-                    comparison =
-                        comparison.copy(
-                            quotes = updatedQuotes,
-                            bestAskProviderId = best?.bestAskProviderId ?: comparison.bestAskProviderId,
-                            bestAskPrice = best?.bestAskPrice?.takeIf { it > 0 } ?: comparison.bestAskPrice,
-                            bestBidProviderId = best?.bestBidProviderId ?: comparison.bestBidProviderId,
-                            bestBidPrice = best?.bestBidPrice?.takeIf { it > 0 } ?: comparison.bestBidPrice,
-                            spreadPercent = best?.spreadPercent ?: comparison.spreadPercent,
-                        ),
-                )
+                state.copy(comparison = applyComparisonBestPricesUseCase(withQuotes, bestPrices))
             }
         }
 

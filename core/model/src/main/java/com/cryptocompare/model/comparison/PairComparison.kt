@@ -1,6 +1,7 @@
 package com.cryptocompare.model.comparison
 
 import com.cryptocompare.model.provider.ProviderDetail
+import com.cryptocompare.model.ticker.TickerBestPrice
 
 /**
  * Сравнение котировок одной пары по биржам — то, ради чего приложение и существует.
@@ -26,6 +27,15 @@ data class PairComparison(
     val bestBidPrice: Double?,
     /** Спред в процентах от цены покупки, со знаком. В норме отрицателен. */
     val spreadPercent: Double?,
+    /**
+     * Все лучшие пары тикера, по одной на символ, — из них выбрана показанная.
+     *
+     * Символов у тикера бывает несколько: на 2026-09-14 так у 310 тикеров из
+     * 2857, у `ethusdc` их три со спредами +0.078%, −0.0004% и −0.008%. Сокет
+     * присылает лучшую пару по каждому отдельно, и без этого списка выжимка
+     * показывала бы ту, что тикнула последней, а не самую широкую.
+     */
+    val bestPrices: List<TickerBestPrice>,
 ) {
     /** Разница в котируемом активе: плюс — заработок, минус — потеря на паре. */
     val difference: Double?
