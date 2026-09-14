@@ -47,6 +47,7 @@ import com.cryptocompare.pairs.util.needsOlderPage
 import com.cryptocompare.pairs.util.pinnedToFreshEdge
 import com.cryptocompare.pairs.util.priceLabels
 import com.cryptocompare.pairs.util.scrolledBy
+import com.cryptocompare.pairs.util.timeLabelCount
 import com.cryptocompare.pairs.util.visibleIndices
 import com.cryptocompare.pairs.util.zoomedBy
 import com.cryptocompare.ui.theme.NumericType
@@ -317,10 +318,7 @@ private fun DrawScope.drawTimeAxis(
 
     val sample = candleAt(viewport.leftEdge + viewport.visibleCount / 2) ?: return
     val sampleWidth = textMeasurer.measure(format(sample.timeMillis), labelStyle).size.width + gap * 2
-    val count =
-        (plotWidth / sampleWidth)
-            .toInt()
-            .coerceIn(1, PairsConstants.Chart.TIME_LABEL_COUNT)
+    val count = timeLabelCount(plotWidth, sampleWidth)
     val stepCandles = viewport.visibleCount / (count + 1)
 
     for (step in 1..count) {
