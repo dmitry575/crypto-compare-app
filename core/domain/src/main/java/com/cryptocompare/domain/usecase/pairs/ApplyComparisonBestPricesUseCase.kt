@@ -1,5 +1,7 @@
 package com.cryptocompare.domain.usecase.pairs
 
+import com.cryptocompare.helpers.widest
+import com.cryptocompare.helpers.withUpdates
 import com.cryptocompare.model.comparison.PairComparison
 import com.cryptocompare.model.ticker.TickerBestPrice
 import javax.inject.Inject
@@ -24,13 +26,9 @@ class ApplyComparisonBestPricesUseCase
             comparison: PairComparison,
             updates: List<TickerBestPrice>,
         ): PairComparison {
-            val complete = updates.filter { it.isComplete() }
-            if (complete.isEmpty()) return comparison
+            val bestPrices = comparison.bestPrices.withUpdates(updates)
+            if (bestPrices === comparison.bestPrices) return comparison
 
-            val bestPrices =
-                (comparison.bestPrices.associateBy { it.symbolId } + complete.associateBy { it.symbolId })
-                    .values
-                    .toList()
             val best = bestPrices.widest() ?: return comparison
 
             return comparison.withBest(best).copy(bestPrices = bestPrices)

@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import com.cryptocompare.domain.usecase.pairs.ApplyComparisonBestPricesUseCase
 import com.cryptocompare.domain.usecase.pairs.ComparePairAcrossExchangesUseCase
+import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
@@ -45,6 +46,9 @@ class ComparisonViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val events = MutableSharedFlow<TickerStreamEvent>(extraBufferCapacity = 16)
+    private val reconnects = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val observeReconnects: ObserveStreamReconnectsUseCase =
+        mockk { every { this@mockk.invoke() } returns reconnects }
 
     private val connect: StreamConnectUseCase = mockk(relaxed = true)
     private val subscribeSingle: SubscribeSingleTickerUseCase = mockk(relaxed = true)
@@ -62,6 +66,7 @@ class ComparisonViewModelTest {
             subscribeSingleTickerUseCase = subscribeSingle,
             restoreTickerSubscriptionsUseCase = restore,
             observeTickerEventUseCase = observeEvents,
+            observeStreamReconnectsUseCase = observeReconnects,
         )
 
     @Test
@@ -240,6 +245,41 @@ class ComparisonViewModelTest {
             val comparison = vm.uiState.value.comparison!!
             assertEquals(1, comparison.bestAskProviderId)
             assertEquals(0.2, comparison.spreadPercent!!, 1e-9)
+        }
+
+    @Test
+    fun `a reconnect rebuilds the comparison without a spinner`() =
+        runTest {
+            val vm = makeVm()
+            runCurrent()
+
+            val fresh = defaultComparison().copy(spreadPercent = 0.33)
+            coEvery { compare.invoke(TICKER) } returns Result.success(fresh)
+            reconnects.emit(Unit)
+            runCurrent()
+
+            // тики за время разрыва потеряны — сравнение собирается заново
+            assertEquals(
+                0.33,
+                vm.uiState.value.comparison!!
+                    .spreadPercent!!,
+                0.0,
+            )
+            assertFalse(vm.uiState.value.loading)
+        }
+
+    @Test
+    fun `a failed rebuild after a reconnect keeps the table on screen`() =
+        runTest {
+            val vm = makeVm()
+            runCurrent()
+
+            coEvery { compare.invoke(TICKER) } returns Result.failure(IllegalStateException("500"))
+            reconnects.emit(Unit)
+            runCurrent()
+
+            assertNotNull(vm.uiState.value.comparison)
+            assertNull(vm.uiState.value.error)
         }
 
     @Test

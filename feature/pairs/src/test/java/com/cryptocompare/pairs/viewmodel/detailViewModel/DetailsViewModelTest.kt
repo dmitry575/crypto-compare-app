@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
+import com.cryptocompare.domain.usecase.pairs.GetBestPricesUseCase
 import com.cryptocompare.domain.usecase.pairs.GetTickerDetailUseCase
 import com.cryptocompare.domain.usecase.pairs.GetTickerHistoryUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
@@ -14,6 +15,7 @@ import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.provider.Provider
 import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.model.provider.ProviderStatus
+import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerDetail
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
@@ -42,6 +44,24 @@ class DetailsViewModelTest {
 
     private val events = MutableSharedFlow<TickerStreamEvent>(extraBufferCapacity = 16)
     private val reconnects = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    private val bestPrices: GetBestPricesUseCase =
+        mockk { coEvery { this@mockk.invoke(any()) } returns Result.success(emptyList()) }
+
+    private fun bestPair(
+        symbolId: Long,
+        askId: Int,
+        bidId: Int,
+        spread: Double,
+    ) = TickerBestPrice(
+        ticker = "btcusdt",
+        symbolId = symbolId,
+        bestAskProviderId = askId,
+        bestAskPrice = 100.0,
+        bestBidProviderId = bidId,
+        bestBidPrice = 100.5,
+        spreadPercent = spread,
+    )
 
     // часовые бары открываются на кратных H1_DURATION_MS отметках, поэтому живой
     // тик попадает в последний бар независимо от того, в какой момент идёт тест
@@ -117,6 +137,7 @@ class DetailsViewModelTest {
             restoreTickerSubscriptionsUseCase = restore,
             observeTickerEventUseCase = observeEvents,
             observeStreamReconnectsUseCase = mockk { every { this@mockk.invoke() } returns reconnects },
+            getBestPricesUseCase = bestPrices,
         )
 
     private fun tick(
@@ -237,6 +258,66 @@ class DetailsViewModelTest {
                     .priceBuy!!,
                 0.0,
             )
+        }
+
+    @Test
+    fun `the spread block takes the backend pair, not the widest gap in the list`() =
+        runTest {
+            // в разбивке у биржи 2 ask 101 и bid 100.5, у биржи 1 — 100 и 99: сам
+            // экран выбрал бы свою пару, а бэкенд, отбросив протухшее, назвал 1 и 1
+            coEvery { bestPrices.invoke("btcusdt") } returns
+                Result.success(listOf(bestPair(symbolId = 1, askId = 1, bidId = 1, spread = -1.0)))
+
+            val vm = makeVm()
+            runCurrent()
+
+            val pair = vm.uiState.value.bestPair!!
+            assertEquals(1, pair.bestAskProviderId)
+            assertEquals(1, pair.bestBidProviderId)
+            assertEquals(-1.0, pair.spreadPercent!!, 0.0)
+        }
+
+    @Test
+    fun `a best price event moves the spread block by the widest rule`() =
+        runTest {
+            coEvery { bestPrices.invoke("btcusdt") } returns
+                Result.success(listOf(bestPair(symbolId = 143, askId = 1, bidId = 2, spread = 0.0784)))
+            val vm = makeVm()
+            runCurrent()
+
+            // событие другого, более узкого символа тикера не должно забрать блок
+            events.emit(
+                TickerStreamEvent.TickerBestPriceChange(
+                    id = "evt",
+                    data = bestPair(symbolId = 14487, askId = 2, bidId = 2, spread = -0.008),
+                ),
+            )
+            events.emit(
+                TickerStreamEvent.TickerBestPriceChange(
+                    id = "evt",
+                    data = bestPair(symbolId = 143, askId = 2, bidId = 1, spread = 0.12),
+                ),
+            )
+            advanceTimeBy(PairsConstants.DetailScreen.LIVE_PRICE_INTERVAL_MS + 1)
+            runCurrent()
+
+            val pair = vm.uiState.value.bestPair!!
+            assertEquals(143L, pair.symbolId)
+            assertEquals(0.12, pair.spreadPercent!!, 0.0)
+            assertEquals(2, vm.uiState.value.bestPrices.size)
+        }
+
+    @Test
+    fun `a failed best price request leaves the screen usable`() =
+        runTest {
+            coEvery { bestPrices.invoke("btcusdt") } returns Result.failure(IllegalStateException("500"))
+
+            val vm = makeVm()
+            runCurrent()
+
+            assertEquals(null, vm.uiState.value.bestPair)
+            assertEquals(null, vm.uiState.value.error)
+            assertEquals(2, vm.uiState.value.exchanges.size)
         }
 
     @Test

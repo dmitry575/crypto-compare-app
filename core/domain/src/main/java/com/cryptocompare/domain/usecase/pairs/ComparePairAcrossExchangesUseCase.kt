@@ -1,7 +1,9 @@
 package com.cryptocompare.domain.usecase.pairs
 
 import com.cryptocompare.domain.repository.CryptoCompareRepository
+import com.cryptocompare.helpers.isComplete
 import com.cryptocompare.helpers.spreadPercent
+import com.cryptocompare.helpers.widest
 import com.cryptocompare.model.comparison.PairComparison
 import com.cryptocompare.model.provider.ProviderDetail
 import javax.inject.Inject

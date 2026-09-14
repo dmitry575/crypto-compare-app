@@ -3,6 +3,7 @@ package com.cryptocompare.pairs.viewmodel.detailViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cryptocompare.domain.usecase.pairs.GetBestPricesUseCase
 import com.cryptocompare.domain.usecase.pairs.GetTickerDetailUseCase
 import com.cryptocompare.domain.usecase.pairs.GetTickerHistoryUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
@@ -11,7 +12,9 @@ import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SubscribeSingleTickerUseCase
 import com.cryptocompare.helpers.toUserMessage
+import com.cryptocompare.helpers.withUpdates
 import com.cryptocompare.model.chart.ChartTimeframe
+import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
 import com.cryptocompare.pairs.util.ChartHistory
@@ -42,6 +45,7 @@ class DetailsViewModel
         private val restoreTickerSubscriptionsUseCase: RestoreTickerSubscriptionsUseCase,
         private val observeTickerEventUseCase: ObserveTickerEventUseCase,
         private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
+        private val getBestPricesUseCase: GetBestPricesUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(DetailUiState())
         val uiState = _uiState.asStateFlow()
@@ -68,10 +72,14 @@ class DetailsViewModel
          */
         private val pendingTicks = mutableMapOf<Int, TickerPrice>()
 
+        /** Лучшие пары за интервал, по символу: у тикера их бывает несколько. */
+        private val pendingBestPrices = mutableMapOf<Long, TickerBestPrice>()
+
         init {
             val ticker = savedStateHandle.get<String>(PairsConstants.Navigation.TICKER_ARG)?.lowercase() ?: ""
             _uiState.update { it.copy(ticker = ticker) }
             loadPairDetails(ticker)
+            loadBestPrices(ticker)
             observeLivePrice(ticker)
             observeReconnects(ticker)
         }
@@ -87,6 +95,7 @@ class DetailsViewModel
 
             viewModelScope.launch {
                 observeStreamReconnectsUseCase().collect {
+                    loadBestPrices(ticker)
                     getPairDetailsUseCase(ticker).onSuccess { details ->
                         _uiState.update { state ->
                             val selectedId = state.selectedExchange?.provider?.id
@@ -98,6 +107,23 @@ class DetailsViewModel
                             state.copy(exchanges = details.exchanges, selectedExchangeIndex = selectedIndex)
                         }
                     }
+                }
+            }
+        }
+
+        /**
+         * Разница между биржами в блоке сверху — лучшая пара бэкенда, та же, что в
+         * каталоге и на экране сравнения. Раньше блок считал её сам по разбивке,
+         * которая приходит без фильтра свежести, и показывал арбитраж там, где
+         * одна из бирж просто зависла. Ошибку не показываем: блок останется без
+         * лучшей пары и скажет об этом сам, а цены бирж ниже на месте.
+         */
+        private fun loadBestPrices(ticker: String) {
+            if (ticker.isBlank()) return
+
+            viewModelScope.launch {
+                getBestPricesUseCase(ticker).onSuccess { bestPrices ->
+                    _uiState.update { it.copy(bestPrices = bestPrices) }
                 }
             }
         }
@@ -117,11 +143,21 @@ class DetailsViewModel
             viewModelScope.launch {
                 try {
                     observeTickerEventUseCase().collect { event ->
-                        if (event is TickerStreamEvent.TickerPriceChange && event.data.ticker == ticker) {
-                            synchronized(pendingTickLock) {
-                                pendingTicks[event.data.providerId] = event.data
+                        when {
+                            event is TickerStreamEvent.TickerPriceChange && event.data.ticker == ticker -> {
+                                synchronized(pendingTickLock) {
+                                    pendingTicks[event.data.providerId] = event.data
+                                }
+                                scheduleTickFlush()
                             }
-                            scheduleTickFlush()
+
+                            // тип 5 двигает блок разницы: тот же источник, что при загрузке
+                            event is TickerStreamEvent.TickerBestPriceChange && event.data.ticker == ticker -> {
+                                synchronized(pendingTickLock) {
+                                    pendingBestPrices[event.data.symbolId] = event.data
+                                }
+                                scheduleTickFlush()
+                            }
                         }
                     }
                 } catch (e: CancellationException) {
@@ -145,15 +181,21 @@ class DetailsViewModel
                 while (true) {
                     delay(PairsConstants.DetailScreen.LIVE_PRICE_INTERVAL_MS.milliseconds)
 
-                    val ticks =
+                    val (ticks, bestPrices) =
                         synchronized(pendingTickLock) {
-                            if (pendingTicks.isEmpty()) {
+                            if (pendingTicks.isEmpty() && pendingBestPrices.isEmpty()) {
                                 isTickFlushScheduled = false
                                 return@launch
                             }
-                            pendingTicks.values.toList().also { pendingTicks.clear() }
+                            val batch = pendingTicks.values.toList() to pendingBestPrices.values.toList()
+                            pendingTicks.clear()
+                            pendingBestPrices.clear()
+                            batch
                         }
                     ticks.forEach(::applyLiveTick)
+                    if (bestPrices.isNotEmpty()) {
+                        _uiState.update { it.copy(bestPrices = it.bestPrices.withUpdates(bestPrices)) }
+                    }
                 }
             }
         }

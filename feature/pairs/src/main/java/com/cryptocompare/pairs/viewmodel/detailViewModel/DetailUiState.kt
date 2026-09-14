@@ -1,8 +1,10 @@
 package com.cryptocompare.pairs.viewmodel.detailViewModel
 
+import com.cryptocompare.helpers.widest
 import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.model.provider.ProviderDetail
+import com.cryptocompare.model.ticker.TickerBestPrice
 
 data class DetailUiState(
     val ticker: String = "",
@@ -25,7 +27,13 @@ data class DetailUiState(
     /** Есть ли что грузить глубже в историю. */
     val chartCanLoadOlder: Boolean = false,
     val timeframe: ChartTimeframe = ChartTimeframe.DEFAULT,
+    /** Лучшие пары бэкенда по символам тикера — из них берётся блок разницы. */
+    val bestPrices: List<TickerBestPrice> = emptyList(),
 ) {
     val selectedExchange: ProviderDetail?
         get() = exchanges.getOrNull(selectedExchangeIndex)
+
+    /** Самая широкая лучшая пара: то же число, что в каталоге и на экране сравнения. */
+    val bestPair: TickerBestPrice?
+        get() = bestPrices.widest()
 }
