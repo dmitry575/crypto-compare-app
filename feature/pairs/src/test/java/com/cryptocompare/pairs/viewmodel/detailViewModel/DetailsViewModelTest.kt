@@ -41,6 +41,7 @@ class DetailsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val events = MutableSharedFlow<TickerStreamEvent>(extraBufferCapacity = 16)
+    private val reconnects = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     // часовые бары открываются на кратных H1_DURATION_MS отметках, поэтому живой
     // тик попадает в последний бар независимо от того, в какой момент идёт тест
@@ -115,6 +116,7 @@ class DetailsViewModelTest {
             subscribeSingleTickerUseCase = subscribeSingle,
             restoreTickerSubscriptionsUseCase = restore,
             observeTickerEventUseCase = observeEvents,
+            observeStreamReconnectsUseCase = mockk { every { this@mockk.invoke() } returns reconnects },
         )
 
     private fun tick(
@@ -235,6 +237,57 @@ class DetailsViewModelTest {
                     .priceBuy!!,
                 0.0,
             )
+        }
+
+    @Test
+    fun `ticks of several exchanges in one interval all land`() =
+        runTest {
+            val vm = makeVm()
+            runCurrent()
+
+            // раньше за интервал доживал только последний тик, и карточка первой
+            // биржи стояла, хотя её тик пришёл
+            events.emit(tick(providerId = 1, priceSell = 90.0, priceBuy = 89.0))
+            events.emit(tick(providerId = 2, priceSell = 105.0, priceBuy = 104.0))
+            advanceTimeBy(PairsConstants.DetailScreen.LIVE_PRICE_INTERVAL_MS + 1)
+            runCurrent()
+
+            val exchanges = vm.uiState.value.exchanges
+            assertEquals(90.0, exchanges.first().priceSell!!, 0.0)
+            assertEquals(105.0, exchanges.last().priceSell!!, 0.0)
+        }
+
+    @Test
+    fun `a reconnect reloads prices and keeps the selected exchange`() =
+        runTest {
+            val details = mockk<GetTickerDetailUseCase>()
+            coEvery { details.invoke(any()) } returns
+                Result.success(TickerDetail(ticker = "btcusdt", exchanges = defaultExchanges()))
+            val vm = makeVm(details = details)
+            runCurrent()
+            vm.onExchangeSelected(1)
+            runCurrent()
+
+            // за время разрыва биржа 2 ушла вверх, а слева появилась новая биржа 0
+            coEvery { details.invoke(any()) } returns
+                Result.success(
+                    TickerDetail(
+                        ticker = "btcusdt",
+                        exchanges =
+                            listOf(
+                                providerDetail(id = 0, priceSell = 98.0, priceBuy = 97.0),
+                                providerDetail(id = 1, priceSell = 100.0, priceBuy = 99.0),
+                                providerDetail(id = 2, priceSell = 120.0, priceBuy = 119.0),
+                            ),
+                    ),
+                )
+            reconnects.emit(Unit)
+            runCurrent()
+
+            val state = vm.uiState.value
+            assertEquals(120.0, state.exchanges.last().priceSell!!, 0.0)
+            assertEquals(2, state.selectedExchange?.provider?.id)
+            assertFalse(state.loading)
         }
 
     @Test

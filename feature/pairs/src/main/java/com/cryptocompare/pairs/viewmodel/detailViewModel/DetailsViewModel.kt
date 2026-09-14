@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cryptocompare.domain.usecase.pairs.GetTickerDetailUseCase
 import com.cryptocompare.domain.usecase.pairs.GetTickerHistoryUseCase
+import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
@@ -40,6 +41,7 @@ class DetailsViewModel
         private val subscribeSingleTickerUseCase: SubscribeSingleTickerUseCase,
         private val restoreTickerSubscriptionsUseCase: RestoreTickerSubscriptionsUseCase,
         private val observeTickerEventUseCase: ObserveTickerEventUseCase,
+        private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(DetailUiState())
         val uiState = _uiState.asStateFlow()
@@ -58,13 +60,46 @@ class DetailsViewModel
 
         @Volatile private var isTickFlushScheduled = false
 
-        private var pendingTick: TickerPrice? = null
+        /**
+         * Последний тик каждой биржи за интервал. Раньше здесь была одна переменная
+         * на весь экран, и из тиков разных бирж за полсекунды доживал только
+         * последний: карточки остальных бирж стояли, пока им не повезёт тикнуть
+         * последними.
+         */
+        private val pendingTicks = mutableMapOf<Int, TickerPrice>()
 
         init {
             val ticker = savedStateHandle.get<String>(PairsConstants.Navigation.TICKER_ARG)?.lowercase() ?: ""
             _uiState.update { it.copy(ticker = ticker) }
             loadPairDetails(ticker)
             observeLivePrice(ticker)
+            observeReconnects(ticker)
+        }
+
+        /**
+         * После реконнекта цены бирж берутся заново: тики за время разрыва потеряны.
+         * Без спиннера и без сброса выбранной биржи — пользователь смотрит на экран.
+         * График не перезагружается: его кадр считается от свечей, загруженных при
+         * открытии, и замена истории сдвинула бы его под пальцем.
+         */
+        private fun observeReconnects(ticker: String) {
+            if (ticker.isBlank()) return
+
+            viewModelScope.launch {
+                observeStreamReconnectsUseCase().collect {
+                    getPairDetailsUseCase(ticker).onSuccess { details ->
+                        _uiState.update { state ->
+                            val selectedId = state.selectedExchange?.provider?.id
+                            val selectedIndex =
+                                details.exchanges
+                                    .indexOfFirst { it.provider.id == selectedId }
+                                    .takeIf { it >= 0 } ?: state.selectedExchangeIndex
+
+                            state.copy(exchanges = details.exchanges, selectedExchangeIndex = selectedIndex)
+                        }
+                    }
+                }
+            }
         }
 
         /**
@@ -84,7 +119,7 @@ class DetailsViewModel
                     observeTickerEventUseCase().collect { event ->
                         if (event is TickerStreamEvent.TickerPriceChange && event.data.ticker == ticker) {
                             synchronized(pendingTickLock) {
-                                pendingTick = event.data
+                                pendingTicks[event.data.providerId] = event.data
                             }
                             scheduleTickFlush()
                         }
@@ -110,14 +145,15 @@ class DetailsViewModel
                 while (true) {
                     delay(PairsConstants.DetailScreen.LIVE_PRICE_INTERVAL_MS.milliseconds)
 
-                    val tick =
+                    val ticks =
                         synchronized(pendingTickLock) {
-                            val current = pendingTick
-                            if (current == null) isTickFlushScheduled = false
-                            pendingTick = null
-                            current
-                        } ?: return@launch
-                    applyLiveTick(tick)
+                            if (pendingTicks.isEmpty()) {
+                                isTickFlushScheduled = false
+                                return@launch
+                            }
+                            pendingTicks.values.toList().also { pendingTicks.clear() }
+                        }
+                    ticks.forEach(::applyLiveTick)
                 }
             }
         }

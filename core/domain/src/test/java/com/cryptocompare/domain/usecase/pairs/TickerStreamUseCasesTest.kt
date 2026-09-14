@@ -63,6 +63,34 @@ class TickerStreamUseCasesTest {
     }
 
     @Test
+    fun `StreamPauseUseCase pauses instead of disconnecting`() {
+        StreamPauseUseCase(repository)()
+
+        verify(exactly = 1) { repository.pause() }
+        // disconnect сбросил бы намерение держать соединение, и resume ничего бы не вернул
+        verify(exactly = 0) { repository.disconnect() }
+    }
+
+    @Test
+    fun `StreamResumeUseCase resumes the connection`() {
+        StreamResumeUseCase(repository)()
+
+        verify(exactly = 1) { repository.resume() }
+    }
+
+    @Test
+    fun `ObserveStreamReconnectsUseCase forwards reconnects`() =
+        runTest {
+            every { repository.reconnects } returns flowOf(Unit, Unit)
+
+            ObserveStreamReconnectsUseCase(repository)().test {
+                awaitItem()
+                awaitItem()
+                awaitComplete()
+            }
+        }
+
+    @Test
     fun `StreamConnectUseCase opens the connection`() {
         StreamConnectUseCase(repository)()
 

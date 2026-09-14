@@ -301,6 +301,37 @@ class TickerStreamRepositoryImplTest {
         io.mockk.verify(exactly = 0) { fixture.webSocketClient.unsubscribe(any()) }
     }
 
+    @Test
+    fun `reconnects skip the connection that was already open`() =
+        runTest {
+            val fixture = createRepository()
+            val opened = MutableStateFlow(3)
+            every { fixture.webSocketClient.openedConnections } returns opened
+            val repository =
+                TickerStreamRepositoryImpl(fixture.webSocketClient, "ws://localhost:8081", mockk(relaxed = true))
+
+            repository.reconnects.test {
+                // три открытия было до подписки — это не реконнект для того, кто слушает сейчас
+                expectNoEvents()
+
+                opened.value = 4
+                assertEquals(Unit, awaitItem())
+            }
+        }
+
+    @Test
+    fun `pause and resume go straight to the socket`() {
+        val fixture = createRepository()
+
+        fixture.repository.pause()
+        fixture.repository.resume()
+
+        verifyOrder {
+            fixture.webSocketClient.pause()
+            fixture.webSocketClient.resume()
+        }
+    }
+
     /** Мокаем подписки соединения изменяемым множеством, чтобы дифф захвата было видно по факту. */
     private fun simulateSubscriptions(
         webSocketClient: WebSocketClient,

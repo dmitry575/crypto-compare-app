@@ -4,7 +4,9 @@ import androidx.paging.PagingData
 import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
 import com.cryptocompare.domain.usecase.pairs.LoadPairsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteTickersUseCase
+import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
+import com.cryptocompare.domain.usecase.pairs.RefreshBestPricesUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamDisconnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncFavouriteTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
@@ -94,6 +96,10 @@ class MainViewModelTest {
             observeFavoriteTickersUseCaseMock(flowOf(emptySet())),
         toggleFavouriteTickerUseCase: ToggleFavouriteTickerUseCase = toggleFavoriteTickerUseCaseMock(),
         syncFavouriteTickersUseCase: SyncFavouriteTickersUseCase = syncFavoriteTickersUseCaseMock(),
+        observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase =
+            mockk { every { this@mockk.invoke() } returns emptyFlow() },
+        refreshBestPricesUseCase: RefreshBestPricesUseCase =
+            mockk { coEvery { this@mockk.invoke(any()) } returns Result.success(Unit) },
     ): MainViewModel =
         MainViewModel(
             loadPairsUseCase = loadPairsUseCase,
@@ -104,6 +110,8 @@ class MainViewModelTest {
             observeFavouriteTickersUseCase = observeFavouriteTickersUseCase,
             toggleFavouriteTickerUseCase = toggleFavouriteTickerUseCase,
             syncFavouriteTickersUseCase = syncFavouriteTickersUseCase,
+            observeStreamReconnectsUseCase = observeStreamReconnectsUseCase,
+            refreshBestPricesUseCase = refreshBestPricesUseCase,
         )
 
     /** Событие типа 5: лучшая пара по тикеру. Каталог слушает только его. */
@@ -204,6 +212,51 @@ class MainViewModelTest {
             // for the same symbol only the latest tick survives
             assertEquals(110.0, batch.first { it.symbolId == 1L }.bestBidPrice, 0.0)
             assertEquals(10.0, batch.first { it.symbolId == 2L }.bestBidPrice, 0.0)
+
+            assertNull(vm.uiState.value.error)
+        }
+
+    @Test
+    fun `a reconnect refreshes the rows the catalog is subscribed to`() =
+        runTest {
+            val reconnects = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+            val refresh =
+                mockk<RefreshBestPricesUseCase> {
+                    coEvery { this@mockk.invoke(any()) } returns
+                        Result.success(Unit)
+                }
+            val vm =
+                makeVm(
+                    observeStreamReconnectsUseCase = mockk { every { this@mockk.invoke() } returns reconnects },
+                    refreshBestPricesUseCase = refresh,
+                )
+            runCurrent()
+            vm.onVisibleTickersChange(listOf("BTCUSDT", "ethusdc"))
+
+            reconnects.tryEmit(Unit)
+            runCurrent()
+
+            // сокет пропущенного не досылает — видимые строки берутся через REST
+            coVerify(exactly = 1) { refresh.invoke(setOf("btcusdt", "ethusdc")) }
+        }
+
+    @Test
+    fun `a failed refresh after a reconnect shows no error`() =
+        runTest {
+            val reconnects = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+            val vm =
+                makeVm(
+                    observeStreamReconnectsUseCase = mockk { every { this@mockk.invoke() } returns reconnects },
+                    refreshBestPricesUseCase =
+                        mockk {
+                            coEvery { this@mockk.invoke(any()) } returns
+                                Result.failure(IllegalStateException("500"))
+                        },
+                )
+            runCurrent()
+
+            reconnects.tryEmit(Unit)
+            runCurrent()
 
             assertNull(vm.uiState.value.error)
         }

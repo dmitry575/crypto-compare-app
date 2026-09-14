@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -48,13 +49,37 @@ class WebSocketClient
         private val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
         private val subscribedTickers = mutableSetOf<String>()
+
+        /**
+         * Один замок на соединение и набор подписок. Раньше набор жил под своим, а
+         * состояние не охранялось вовсе, и подписка, пришедшая между «Connected» и
+         * снимком набора в onOpen, уходила на сервер дважды.
+         */
         private val lock = Any()
+
+        /**
+         * Номер текущего сокета, под [lock]. Каждый сокет получает свой листенер с
+         * номером на момент создания, и колбэки чужого номера игнорируются.
+         *
+         * Без этого закрытый сокет доживал до своего onClosed уже после того, как
+         * открылся новый: ставил Disconnected поверх живого соединения, обнулял
+         * ссылку на **новый** сокет и запускал реконнект. Реконнект открывал третий,
+         * а второй оставался висеть без ссылки — оба слали тики в один поток,
+         * и каждая цена приходила дважды. Достаточно было disconnect() и connect()
+         * подряд, быстрее ответа сервера на close.
+         */
+        private var generation = 0
+
+        /** Соединение закрыто уходом приложения в фон и вернётся вместе с ним. Под [lock]. */
+        private var pausedInBackground = false
 
         // Эти поля читаются и пишутся из потоков OkHttp-колбэков (onOpen/onClosed/
         // onFailure) и из korutin реконнекта — @Volatile гарантирует их видимость
         // между потоками. Без него disconnect() мог выставить isManuallyDisconnect,
         // а onClosed на потоке OkHttp прочитать устаревшее false и переподключиться.
         @Volatile private var reconnectJob: Job? = null
+
+        @Volatile private var stableConnectionJob: Job? = null
 
         @Volatile private var isManuallyDisconnect = false
 
@@ -74,36 +99,89 @@ class WebSocketClient
             )
         val messages = _messages.asSharedFlow()
 
+        private val _openedConnections = MutableStateFlow(0)
+
+        /**
+         * Сколько раз соединение открывалось. Растёт на каждом onOpen, в том числе
+         * после реконнекта и возврата из фона: по нему экраны понимают, что тики за
+         * время разрыва потеряны. Сервер их не досылает и снимка цены при подписке
+         * не присылает (проверено 2026-09-14), так что свежие цены надо брать REST.
+         *
+         * Счётчик, а не событие: StateFlow склеивает быстрые переходы, и
+         * последовательность Connected → Disconnected → Connected могла бы дойти
+         * до подписчика как один Connected. Число при этом всё равно изменится.
+         */
+        val openedConnections = _openedConnections.asStateFlow()
+
         fun connect(url: String) {
             require(url.startsWith("ws://") || url.startsWith("wss://")) {
                 "WebSocket URL must start with ws:// or wss://"
             }
 
-            currentUrl = url
-            if (_connectionState.value == ConnectionState.Connecting ||
-                _connectionState.value == ConnectionState.Connected
-            ) {
-                Log.d(TAG, "connect($url) skipped, state=${_connectionState.value}")
-                return
+            synchronized(lock) {
+                currentUrl = url
+                if (pausedInBackground) {
+                    // экран попросил соединение, пока приложение в фоне: откроется на resume()
+                    Log.d(TAG, "connect($url) deferred, app is in background")
+                    return
+                }
+                if (_connectionState.value == ConnectionState.Connecting ||
+                    _connectionState.value == ConnectionState.Connected
+                ) {
+                    Log.d(TAG, "connect($url) skipped, state=${_connectionState.value}")
+                    return
+                }
+
+                Log.i(TAG, "connecting to $url")
+                _connectionState.value = ConnectionState.Connecting
+                isManuallyDisconnect = false
+
+                webSocket?.cancel()
+                generation++
+                val request = Request.Builder().url(url).build()
+                webSocket = okHttpClient.newWebSocket(request, webSocketListener(generation))
             }
-
-            Log.i(TAG, "connecting to $url")
-            _connectionState.value = ConnectionState.Connecting
-            isManuallyDisconnect = false
-
-            webSocket?.cancel()
-            val request = Request.Builder().url(url).build()
-            webSocket = okHttpClient.newWebSocket(request, webSocketListener())
         }
 
         fun disconnect() {
-            Log.i(TAG, "disconnect requested")
-            isManuallyDisconnect = true
-            reconnectJob?.cancel()
-            reconnectAttempts = 0
-            _connectionState.value = ConnectionState.Disconnected
-            webSocket?.close(WebSocketConstants.NORMAL_CLOSURE_STATUS, "Client disconnected")
-            webSocket = null
+            synchronized(lock) {
+                Log.i(TAG, "disconnect requested")
+                isManuallyDisconnect = true
+                pausedInBackground = false
+                reconnectJob?.cancel()
+                stableConnectionJob?.cancel()
+                reconnectAttempts = 0
+                _connectionState.value = ConnectionState.Disconnected
+                // закрываемый сокет больше не наш: его onClosed придёт позже и не
+                // должен ни трогать состояние, ни запускать реконнект
+                generation++
+                webSocket?.close(WebSocketConstants.NORMAL_CLOSURE_STATUS, "Client disconnected")
+                webSocket = null
+            }
+        }
+
+        /**
+         * Приложение ушло в фон: соединение закрывается, набор подписок остаётся.
+         *
+         * Раньше поток жил, пока жив процесс: тики, запись в базу раз в интервал и
+         * пинг каждые 20 секунд — в кармане, с выключенным экраном. Если соединение
+         * никто не открывал или его закрыли намеренно, возвращать нечего.
+         */
+        fun pause() {
+            synchronized(lock) {
+                if (isManuallyDisconnect || currentUrl == null) return
+                disconnect()
+                pausedInBackground = true
+            }
+        }
+
+        /** Приложение вернулось: открываем соединение, если его закрыл [pause]. */
+        fun resume() {
+            synchronized(lock) {
+                if (!pausedInBackground) return
+                pausedInBackground = false
+                currentUrl?.let(::connect)
+            }
         }
 
         fun reconnect() {
@@ -136,29 +214,27 @@ class WebSocketClient
         fun subscribe(ticker: String) {
             val tickerLower = ticker.lowercase()
 
-            val wasAdded =
-                synchronized(lock) {
-                    subscribedTickers.add(tickerLower)
-                }
+            // добавление, проверка состояния и отправка — под одним замком с onOpen:
+            // иначе подписка между «Connected» и снимком набора уходит дважды
+            synchronized(lock) {
+                if (!subscribedTickers.add(tickerLower)) return
 
-            if (wasAdded && _connectionState.value == ConnectionState.Connected) {
-                sendMessage(MessageType.SUBSCRIBE, tickerLower)
-            } else if (wasAdded) {
-                // подписка не потеряется: restoreSubscriptions() дошлёт её после onOpen
-                Log.d(TAG, "subscribe($tickerLower) deferred, state=${_connectionState.value}")
+                if (_connectionState.value == ConnectionState.Connected) {
+                    sendMessage(MessageType.SUBSCRIBE, tickerLower)
+                } else {
+                    // подписка не потеряется: restoreSubscriptions() дошлёт её после onOpen
+                    Log.d(TAG, "subscribe($tickerLower) deferred, state=${_connectionState.value}")
+                }
             }
         }
 
         fun unsubscribe(ticker: String) {
             val tickerLower = ticker.lowercase()
 
-            val wasRemoved =
-                synchronized(lock) {
-                    subscribedTickers.remove(tickerLower)
+            synchronized(lock) {
+                if (subscribedTickers.remove(tickerLower) && _connectionState.value == ConnectionState.Connected) {
+                    sendMessage(MessageType.UNSUBSCRIBE, tickerLower)
                 }
-
-            if (wasRemoved && _connectionState.value == ConnectionState.Connected) {
-                sendMessage(MessageType.UNSUBSCRIBE, tickerLower)
             }
         }
 
@@ -170,23 +246,38 @@ class WebSocketClient
             const val TAG = WebSocketConstants.LOG_TAG
         }
 
-        private fun webSocketListener(): WebSocketListener =
+        private fun webSocketListener(socketGeneration: Int): WebSocketListener =
             object : WebSocketListener() {
+                /** Колбэк от сокета, который уже заменён новым или закрыт намеренно. Звать под [lock]. */
+                private fun isAbandoned(): Boolean = socketGeneration != generation
+
                 override fun onOpen(
                     webSocket: WebSocket,
                     response: Response,
                 ) {
-                    Log.i(TAG, "connected, http=${response.code}")
-                    _connectionState.value = ConnectionState.Connected
-                    reconnectAttempts = 0
-                    reconnectJob?.cancel()
-                    restoreSubscriptions()
+                    synchronized(lock) {
+                        if (isAbandoned()) {
+                            // успел открыться уже ненужный сокет — закрываем, иначе он
+                            // так и будет висеть без ссылки
+                            Log.d(TAG, "abandoned socket opened, closing it")
+                            webSocket.cancel()
+                            return
+                        }
+
+                        Log.i(TAG, "connected, http=${response.code}")
+                        _connectionState.value = ConnectionState.Connected
+                        _openedConnections.update { it + 1 }
+                        reconnectJob?.cancel()
+                        scheduleBackoffReset()
+                        restoreSubscriptions()
+                    }
                 }
 
                 override fun onMessage(
                     webSocket: WebSocket,
                     bytes: ByteString,
                 ) {
+                    if (synchronized(lock) { isAbandoned() }) return
                     parseAndEmitRaw(bytes.utf8())
                 }
 
@@ -194,6 +285,7 @@ class WebSocketClient
                     webSocket: WebSocket,
                     text: String,
                 ) {
+                    if (synchronized(lock) { isAbandoned() }) return
                     parseAndEmitRaw(text)
                 }
 
@@ -202,11 +294,17 @@ class WebSocketClient
                     t: Throwable,
                     response: Response?,
                 ) {
-                    // response == null означает, что до HTTP-ответа дело не дошло:
-                    // обычно неверный хост/порт или сервер не отвечает на upgrade
-                    Log.e(TAG, "failure on $currentUrl, http=${response?.code}: ${t.message}", t)
-                    _connectionState.value = ConnectionState.Error(t.message ?: "Error in websocket", t)
-                    reconnect()
+                    synchronized(lock) {
+                        if (isAbandoned()) return
+
+                        // response == null означает, что до HTTP-ответа дело не дошло:
+                        // обычно неверный хост/порт или сервер не отвечает на upgrade
+                        Log.e(TAG, "failure on $currentUrl, http=${response?.code}: ${t.message}", t)
+                        stableConnectionJob?.cancel()
+                        this@WebSocketClient.webSocket = null
+                        _connectionState.value = ConnectionState.Error(t.message ?: "Error in websocket", t)
+                        reconnect()
+                    }
                 }
 
                 override fun onClosing(
@@ -222,14 +320,35 @@ class WebSocketClient
                     code: Int,
                     reason: String,
                 ) {
-                    Log.i(TAG, "closed code=$code reason=$reason")
-                    _connectionState.value = ConnectionState.Disconnected
-                    this@WebSocketClient.webSocket = null
-                    if (!isManuallyDisconnect) {
-                        reconnect()
+                    synchronized(lock) {
+                        if (isAbandoned()) return
+
+                        Log.i(TAG, "closed code=$code reason=$reason")
+                        stableConnectionJob?.cancel()
+                        _connectionState.value = ConnectionState.Disconnected
+                        this@WebSocketClient.webSocket = null
+                        if (!isManuallyDisconnect) {
+                            reconnect()
+                        }
                     }
                 }
             }
+
+        /**
+         * Счётчик попыток обнуляется, только когда соединение **продержалось**
+         * [WebSocketConstants.STABLE_CONNECTION_MS]. Раньше он обнулялся на onOpen,
+         * и сервер, который принимает соединение и тут же его рвёт, получал
+         * переподключение раз в секунду без конца: бэкофф каждый раз начинался
+         * с нуля.
+         */
+        private fun scheduleBackoffReset() {
+            stableConnectionJob?.cancel()
+            stableConnectionJob =
+                scope.launch {
+                    delay(WebSocketConstants.STABLE_CONNECTION_MS.milliseconds)
+                    reconnectAttempts = 0
+                }
+        }
 
         private fun sendMessage(
             type: MessageType,
@@ -250,8 +369,9 @@ class WebSocketClient
             return sent
         }
 
+        /** Звать под [lock]: снимок набора и отправка не должны разойтись с subscribe(). */
         private fun restoreSubscriptions() {
-            val tickers = synchronized(lock) { subscribedTickers.toSet() }
+            val tickers = subscribedTickers.toSet()
             Log.i(TAG, "restoring ${tickers.size} subscription(s): $tickers")
             tickers.forEach { ticker ->
                 sendMessage(MessageType.SUBSCRIBE, ticker)

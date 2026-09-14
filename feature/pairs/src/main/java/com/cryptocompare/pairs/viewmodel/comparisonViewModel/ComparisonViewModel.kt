@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cryptocompare.domain.usecase.pairs.ComparePairAcrossExchangesUseCase
+import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
@@ -43,6 +44,7 @@ class ComparisonViewModel
         private val subscribeSingleTickerUseCase: SubscribeSingleTickerUseCase,
         private val restoreTickerSubscriptionsUseCase: RestoreTickerSubscriptionsUseCase,
         private val observeTickerEventUseCase: ObserveTickerEventUseCase,
+        private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ComparisonUiState())
         val uiState = _uiState.asStateFlow()
@@ -63,6 +65,7 @@ class ComparisonViewModel
             _uiState.update { it.copy(ticker = ticker) }
             loadComparison(ticker)
             observeLivePrices(ticker)
+            observeReconnects(ticker)
         }
 
         fun retry() {
@@ -89,6 +92,23 @@ class ComparisonViewModel
                         _uiState.update { it.copy(loading = false, error = error.toUserMessage()) }
                     },
                 )
+            }
+        }
+
+        /**
+         * После реконнекта сравнение собирается заново: тики за время разрыва
+         * потеряны, а лучшую пару с их учётом знает только бэкенд. Тихо — старая
+         * таблица остаётся на экране, пока едет новая, и ошибка её не сносит.
+         */
+        private fun observeReconnects(ticker: String) {
+            if (ticker.isBlank()) return
+
+            viewModelScope.launch {
+                observeStreamReconnectsUseCase().collect {
+                    comparePairAcrossExchangesUseCase(ticker).onSuccess { comparison ->
+                        _uiState.update { it.copy(comparison = comparison, error = null) }
+                    }
+                }
             }
         }
 

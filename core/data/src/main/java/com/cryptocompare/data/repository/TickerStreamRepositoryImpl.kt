@@ -10,6 +10,7 @@ import com.cryptocompare.network.dto.webSocketDTO.SocketDtoMessage
 import com.cryptocompare.network.websocket.ConnectionState
 import com.cryptocompare.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import javax.inject.Inject
@@ -114,12 +115,27 @@ class TickerStreamRepositoryImpl
         private var catalogBaseline: Set<String>? = null
         private var activeTakeovers = 0
 
+        // drop(1): StateFlow отдаёт текущее число сразу при подписке, а это не
+        // новое соединение, а то, что уже было
+        override val reconnects: Flow<Unit> =
+            webSocketClient.openedConnections
+                .drop(1)
+                .map { }
+
         override fun connect() {
             webSocketClient.connect(wsUrl)
         }
 
         override fun disconnect() {
             webSocketClient.disconnect()
+        }
+
+        override fun pause() {
+            webSocketClient.pause()
+        }
+
+        override fun resume() {
+            webSocketClient.resume()
         }
 
         override fun subscribe(ticker: String) {

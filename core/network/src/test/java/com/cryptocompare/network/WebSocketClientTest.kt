@@ -30,6 +30,7 @@ import okio.ByteString
 import okio.ByteString.Companion.encodeUtf8
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -515,6 +516,216 @@ class WebSocketClientTest {
             client.close()
 
             verify { mockWebSocket.close(any(), any()) }
+        }
+
+    // ---------- аудит #43: брошенные сокеты, бэкофф, фон ----------
+
+    /** Каждый connect() получает свой сокет и свой листенер — иначе брошенный не отличить от живого. */
+    private fun distinctSockets(): Pair<MutableList<WebSocket>, MutableList<WebSocketListener>> {
+        val sockets = mutableListOf<WebSocket>()
+        val listeners = mutableListOf<WebSocketListener>()
+        every { mockOkHttpClient.newWebSocket(any(), any()) } answers {
+            listeners += secondArg<WebSocketListener>()
+            mockk<WebSocket>(relaxed = true).also { sockets += it }
+        }
+        return sockets to listeners
+    }
+
+    @Test
+    fun `a closed socket reporting late does not touch the new connection`() =
+        testScope.runTest {
+            val (sockets, listeners) = distinctSockets()
+            client.connect("wss://api.example.com/ws")
+            listeners[0].onOpen(sockets[0], mockk(relaxed = true))
+
+            // уход в фон и возврат быстрее, чем сервер ответил на close
+            client.disconnect()
+            client.connect("wss://api.example.com/ws")
+            listeners[1].onOpen(sockets[1], mockk(relaxed = true))
+
+            listeners[0].onClosed(sockets[0], 1000, "Client disconnected")
+            advanceUntilIdle()
+
+            // раньше: Disconnected поверх живого соединения, ссылка на новый сокет
+            // обнулялась, и реконнект открывал третий, пока второй висел без хозяина
+            assertEquals(ConnectionState.Connected, client.connectionState.value)
+            verify(exactly = 2) { mockOkHttpClient.newWebSocket(any(), any()) }
+            verify(exactly = 0) { sockets[1].cancel() }
+        }
+
+    @Test
+    fun `a failure of an abandoned socket does not start a reconnect`() =
+        testScope.runTest {
+            val (sockets, listeners) = distinctSockets()
+            client.connect("wss://api.example.com/ws")
+            client.disconnect()
+            client.connect("wss://api.example.com/ws")
+
+            listeners[0].onFailure(sockets[0], Throwable("Canceled"), null)
+            advanceUntilIdle()
+
+            assertEquals(ConnectionState.Connecting, client.connectionState.value)
+            verify(exactly = 2) { mockOkHttpClient.newWebSocket(any(), any()) }
+        }
+
+    @Test
+    fun `messages from an abandoned socket are dropped`() =
+        testScope.runTest {
+            val (sockets, listeners) = distinctSockets()
+            client.connect("wss://api.example.com/ws")
+            listeners[0].onOpen(sockets[0], mockk(relaxed = true))
+            client.disconnect()
+            client.connect("wss://api.example.com/ws")
+            listeners[1].onOpen(sockets[1], mockk(relaxed = true))
+
+            val welcome = """{"id": "1", "type": ${MessageType.WELCOME.type}, "data": {"message": "hi"}}"""
+            client.messages.test {
+                // иначе каждая цена приходила бы дважды — от старого сокета и от нового
+                listeners[0].onMessage(sockets[0], welcome)
+                expectNoEvents()
+
+                listeners[1].onMessage(sockets[1], welcome)
+                assertTrue(awaitItem() is SocketDtoMessage.Welcome)
+            }
+        }
+
+    @Test
+    fun `an abandoned socket that opens late is closed and not counted`() =
+        testScope.runTest {
+            val (sockets, listeners) = distinctSockets()
+            client.connect("wss://api.example.com/ws")
+            client.disconnect()
+
+            listeners[0].onOpen(sockets[0], mockk(relaxed = true))
+
+            verify(exactly = 1) { sockets[0].cancel() }
+            assertEquals(ConnectionState.Disconnected, client.connectionState.value)
+            assertEquals(0, client.openedConnections.value)
+        }
+
+    @Test
+    fun `every open is counted, including reconnects`() =
+        testScope.runTest {
+            client.connect("wss://api.example.com/ws")
+            simulateWebSocketOpen()
+            simulateWebSocketClosed(1006, "Abnormal closure")
+            advanceTimeBy(35_000.milliseconds)
+            simulateWebSocketOpen()
+
+            assertEquals(2, client.openedConnections.value)
+        }
+
+    @Test
+    fun `a connection dropped right after opening keeps backing off`() =
+        testScope.runTest {
+            client.connect("wss://api.example.com/ws")
+
+            // сервер принимает соединение и тут же рвёт его: раньше onOpen обнулял
+            // счётчик, и переподключение шло раз в секунду без конца
+            val attempts =
+                (0 until 4).map {
+                    simulateWebSocketOpen()
+                    simulateWebSocketClosed(1011, "Server error")
+                    val state = client.connectionState.value as ConnectionState.Reconnecting
+                    advanceTimeBy((state.timeDelay + 1).milliseconds)
+                    state.attempts
+                }
+
+            assertEquals(listOf(0, 1, 2, 3), attempts)
+        }
+
+    @Test
+    fun `a connection that held long enough starts the backoff over`() =
+        testScope.runTest {
+            client.connect("wss://api.example.com/ws")
+            simulateWebSocketFailure(Throwable("Network error"))
+            advanceTimeBy(5_000.milliseconds)
+            simulateWebSocketFailure(Throwable("Network error"))
+            advanceTimeBy(5_000.milliseconds)
+
+            simulateWebSocketOpen()
+            advanceTimeBy((WebSocketConstants.STABLE_CONNECTION_MS + 1).milliseconds)
+            simulateWebSocketClosed(1006, "Abnormal closure")
+
+            assertEquals(0, (client.connectionState.value as ConnectionState.Reconnecting).attempts)
+        }
+
+    @Test
+    fun `pause closes the socket and resume reopens it with the same subscriptions`() =
+        testScope.runTest {
+            client.connect("wss://api.example.com/ws")
+            simulateWebSocketOpen()
+            every { mockWebSocket.send(any<String>()) } returns true
+            client.subscribe("BTCUSDT")
+
+            client.pause()
+            advanceUntilIdle()
+
+            assertEquals(ConnectionState.Disconnected, client.connectionState.value)
+            verify { mockWebSocket.close(WebSocketConstants.NORMAL_CLOSURE_STATUS, any()) }
+            // в фоне не переподключаемся сами
+            verify(exactly = 1) { mockOkHttpClient.newWebSocket(any(), any()) }
+
+            clearMocks(mockWebSocket, answers = false)
+            client.resume()
+            simulateWebSocketOpen()
+
+            verify(exactly = 2) { mockOkHttpClient.newWebSocket(any(), any()) }
+            verify(exactly = 1) { mockWebSocket.send(match<String> { it.contains("btcusdt") }) }
+        }
+
+    @Test
+    fun `a screen asking to connect while in background waits for resume`() =
+        testScope.runTest {
+            client.connect("wss://api.example.com/ws")
+            simulateWebSocketOpen()
+            client.pause()
+
+            client.connect("wss://api.example.com/ws")
+
+            verify(exactly = 1) { mockOkHttpClient.newWebSocket(any(), any()) }
+
+            client.resume()
+
+            verify(exactly = 2) { mockOkHttpClient.newWebSocket(any(), any()) }
+        }
+
+    @Test
+    fun `resume does not reopen a connection that was closed on purpose`() =
+        testScope.runTest {
+            client.connect("wss://api.example.com/ws")
+            simulateWebSocketOpen()
+            client.disconnect()
+
+            client.pause()
+            client.resume()
+
+            verify(exactly = 1) { mockOkHttpClient.newWebSocket(any(), any()) }
+            assertEquals(ConnectionState.Disconnected, client.connectionState.value)
+        }
+
+    @Test
+    fun `leaving the catalog while in background keeps the connection closed`() =
+        testScope.runTest {
+            client.connect("wss://api.example.com/ws")
+            simulateWebSocketOpen()
+            client.pause()
+
+            // MainViewModel.onCleared приходит, пока приложение свёрнуто
+            client.disconnect()
+            client.resume()
+
+            verify(exactly = 1) { mockOkHttpClient.newWebSocket(any(), any()) }
+        }
+
+    @Test
+    fun `pause without an open connection does nothing`() =
+        testScope.runTest {
+            client.pause()
+            client.resume()
+
+            verify(exactly = 0) { mockOkHttpClient.newWebSocket(any(), any()) }
+            assertFalse(client.connectionState.value is ConnectionState.Reconnecting)
         }
 
     private fun simulateWebSocketOpen() {

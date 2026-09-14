@@ -7,7 +7,9 @@ import androidx.paging.cachedIn
 import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
 import com.cryptocompare.domain.usecase.pairs.LoadPairsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteTickersUseCase
+import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
+import com.cryptocompare.domain.usecase.pairs.RefreshBestPricesUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamDisconnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncFavouriteTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
@@ -50,6 +52,8 @@ class MainViewModel
         private val observeFavouriteTickersUseCase: ObserveFavouriteTickersUseCase,
         private val syncFavouriteTickersUseCase: SyncFavouriteTickersUseCase,
         private val toggleFavouriteTickerUseCase: ToggleFavouriteTickerUseCase,
+        private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
+        private val refreshBestPricesUseCase: RefreshBestPricesUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(MainUiState())
         val uiState = _uiState.asStateFlow()
@@ -103,6 +107,7 @@ class MainViewModel
 
         init {
             observeSocket()
+            observeReconnects()
             syncFavouriteTickers()
             observeFavouriteTickers()
         }
@@ -177,6 +182,20 @@ class MainViewModel
                     throw e
                 } catch (e: Exception) {
                     _uiState.update { it.copy(error = e.toUserMessage()) }
+                }
+            }
+        }
+
+        /**
+         * После реконнекта видимые строки дотягиваются через REST. Сокет пропущенного
+         * не досылает, и строка малоликвидной пары показывала бы цену часовой
+         * давности, пока по ней не придёт следующее событие. Ошибку не показываем:
+         * это фоновая догонка, а следующее событие сокета строку всё равно обновит.
+         */
+        private fun observeReconnects() {
+            viewModelScope.launch {
+                observeStreamReconnectsUseCase().collect {
+                    refreshBestPricesUseCase(subscribedTickers.toSet())
                 }
             }
         }

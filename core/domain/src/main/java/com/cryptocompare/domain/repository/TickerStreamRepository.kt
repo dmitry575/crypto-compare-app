@@ -8,9 +8,23 @@ interface TickerStreamRepository {
     val connectionState: Flow<TickerConnectionState>
     val event: Flow<TickerStreamEvent>
 
+    /**
+     * Соединение открылось заново — после разрыва или возврата из фона. Тики за
+     * время разрыва потеряны: сервер их не досылает и снимка при подписке не
+     * присылает, поэтому экран по этому сигналу берёт свежие цены через REST.
+     * Первое открытие, случившееся до подписки на поток, не приходит.
+     */
+    val reconnects: Flow<Unit>
+
     fun connect()
 
     fun disconnect()
+
+    /** Приложение ушло в фон: закрыть соединение, сохранив подписки. */
+    fun pause()
+
+    /** Приложение вернулось: открыть соединение, если его закрыл [pause]. */
+    fun resume()
 
     fun subscribe(ticker: String)
 
