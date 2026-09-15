@@ -18,6 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.cryptocompare.ui.theme.CryptoCompareThemePreview
 import com.cryptocompare.ui.theme.Dimensions
@@ -40,6 +43,10 @@ import com.cryptocompare.ui.theme.textSecondary
  * для зоны нажатия. Это осознанно: ряд из капсул в 48dp читается как ряд кнопок
  * и перевешивает список, ради которого экран существует. Промах гасится
  * вертикальным зазором вокруг ленты.
+ *
+ * При [showLabel] = false подпись не рисуется, а уходит в описание для
+ * TalkBack: чип из одной иконки нужен там, где он прижат к краю и не
+ * прокручивается вместе с лентой, — ширину ему отдать не из чего.
  */
 @Composable
 fun AppFilterChip(
@@ -49,6 +56,7 @@ fun AppFilterChip(
     modifier: Modifier = Modifier,
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
+    showLabel: Boolean = true,
 ) {
     val shape = RoundedCornerShape(Dimensions.Radius.full)
     val accent = MaterialTheme.colorScheme.primary
@@ -68,7 +76,10 @@ fun AppFilterChip(
                 // clip до clickable, иначе рябь заливает прямоугольник поверх капсулы
                 .clip(shape)
                 .clickable(onClick = onClick)
-                .padding(
+                .semantics {
+                    this.selected = selected
+                    if (!showLabel) contentDescription = label
+                }.padding(
                     horizontal = Dimensions.Padding.chipHorizontal,
                     vertical = Dimensions.Padding.chipVertical,
                 ),
@@ -77,18 +88,20 @@ fun AppFilterChip(
     ) {
         leading?.invoke()
 
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color =
-                if (selected) {
-                    MaterialTheme.colorScheme.onPrimary
-                } else {
-                    MaterialTheme.colorScheme.textSecondary
-                },
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        if (showLabel) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color =
+                    if (selected) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.textSecondary
+                    },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
 
         trailing?.invoke()
     }

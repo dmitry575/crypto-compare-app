@@ -88,11 +88,16 @@ internal fun PairsFilterRow(
 
         // избранное — другое измерение, поэтому стоит вне ленты и прижато к краю:
         // внутри прокрутки его к правому краю не прижать, а болтающийся в середине
-        // ряда чип читается как незаполненное место
+        // ряда чип читается как незаполненное место.
+        //
+        // Звёздочка без подписи: прижатый чип забирает ширину у ленты, и с подписью
+        // при шрифте 1.3 лента обрывалась прямо о него. Звезда в каталоге уже
+        // означает избранное — она стоит в каждой строке
         AppFilterChip(
             label = stringResource(R.string.pairs_filter_favorites),
             selected = onlyFavourite,
             onClick = { onOnlyFavouriteChange(!onlyFavourite) },
+            showLabel = false,
             leading = {
                 Icon(
                     imageVector = if (onlyFavourite) Icons.Filled.Star else Icons.Outlined.StarBorder,
