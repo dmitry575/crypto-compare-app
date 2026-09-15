@@ -146,6 +146,7 @@ fun DetailsScreen(
                     // вход в сравнение: блок показывает выжимку того же экрана,
                     // поэтому переход читается как «подробнее», а не как новая функция
                     SpreadBar(
+                        bestPair = state.bestPair,
                         exchanges = state.exchanges,
                         modifier = contentPadding,
                         onClick = { onCompareClick(state.ticker) },

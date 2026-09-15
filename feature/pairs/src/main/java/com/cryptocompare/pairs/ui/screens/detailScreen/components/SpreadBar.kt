@@ -27,7 +27,9 @@ import com.cryptocompare.helpers.isNotableSpread
 import com.cryptocompare.helpers.spreadPercent
 import com.cryptocompare.helpers.toPercentString
 import com.cryptocompare.helpers.toPriceString
+import com.cryptocompare.helpers.util.PriceFormatConstants
 import com.cryptocompare.model.provider.ProviderDetail
+import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.pairs.R
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.NumericType
@@ -46,16 +48,18 @@ import com.cryptocompare.ui.theme.textTertiary
  * собой и читались как поломка. Здесь у каждого края есть имя биржи, а снизу —
  * готовая разница: покупаешь слева, продаёшь справа.
  *
- * Величина та же, что в строке каталога, и считает её общий `spreadPercent`.
- * Знак значим и в норме отрицателен — купить дороже, чем продать, это обычное
- * состояние рынка. При единственной бирже формула вырождается в её собственный
- * спред, отдельной ветки для этого не нужно.
+ * **Пара берётся с бэкенда** — [bestPair], та же, что в строке каталога и в
+ * выжимке экрана сравнения. Раньше блок искал её сам по [exchanges], а разбивка
+ * по биржам приходит без фильтра свежести: на `ethusdc` 2026-09-14 он показывал
+ * «купить на bingx, продать на kraken, +0.87%», потому что цена kraken стояла,
+ * тогда как каталог и сравнение для той же пары показывали +0.078%. Из
+ * [exchanges] здесь берутся только имена бирж.
  *
- * **Числу каталога оно при этом равно не всегда.** Здесь цены берутся из разбивки
- * по биржам, а каталог получает готовую пару из best-выдачи, и наборы бирж у этих
- * эндпоинтов разные: на BTCUSDT 2026-09-08 best-выдача выбрала биржи 19 и 23,
- * которых в разбивке в тот момент не было вовсе. Сводить экраны к одному источнику —
- * задача #19.
+ * Знак значим и в норме отрицателен — купить дороже, чем продать, это обычное
+ * состояние рынка. Если бэкенд лучшую пару не прислал, а биржа одна, блок
+ * показывает её собственный bid/ask: выбирать не из чего, и ответ очевиден.
+ * Если бирж несколько, блок так и говорит, что лучших цен нет, но остаётся на
+ * месте — он же ведёт на экран сравнения.
  *
  * Цвета краёв нейтральные. Зелёный на дешёвой стороне против красного на
  * дорогой работал, пока разница считалась модулем; со знаком продажа сплошь и
@@ -64,21 +68,27 @@ import com.cryptocompare.ui.theme.textTertiary
  */
 @Composable
 internal fun SpreadBar(
+    bestPair: TickerBestPrice?,
     exchanges: List<ProviderDetail>,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
 ) {
-    // priceSell — это ask, по нему пользователь покупает; priceBuy — bid, по нему продаёт.
-    // Здесь строки пришли с разбивки по биржам, где имена от лица биржи
-    val cheapest = exchanges.minByOrNull { it.priceSell ?: it.priceBuy ?: Double.MAX_VALUE }
-    val dearest = exchanges.maxByOrNull { it.priceBuy ?: it.priceSell ?: Double.MIN_VALUE }
+    if (exchanges.isEmpty()) return
 
-    val buyPrice = cheapest?.let { it.priceSell ?: it.priceBuy } ?: return
-    val sellPrice = dearest?.let { it.priceBuy ?: it.priceSell } ?: return
-
-    val percent = spreadPercent(buyPrice = buyPrice, sellPrice = sellPrice) ?: return
-    val difference = sellPrice - buyPrice
     val crossExchange = exchanges.size > 1
+    val single = exchanges.singleOrNull()
+
+    // priceSell одной биржи — это ask, по нему пользователь покупает; priceBuy — bid.
+    // В разбивке по биржам имена от лица биржи, в лучшей паре — от лица пользователя
+    val buyPrice = bestPair?.bestAskPrice ?: single?.priceSell
+    val sellPrice = bestPair?.bestBidPrice ?: single?.priceBuy
+    val buyExchange =
+        bestPair?.bestAskProviderId?.let { id -> exchanges.firstOrNull { it.provider.id == id } } ?: single
+    val sellExchange =
+        bestPair?.bestBidProviderId?.let { id -> exchanges.firstOrNull { it.provider.id == id } } ?: single
+
+    val percent = bestPair?.spreadPercent ?: spreadPercent(buyPrice = buyPrice, sellPrice = sellPrice)
+    val difference = if (buyPrice != null && sellPrice != null) sellPrice - buyPrice else null
 
     Column(
         modifier =
@@ -133,22 +143,22 @@ internal fun SpreadBar(
             SpreadEnd(
                 label =
                     if (crossExchange) {
-                        stringResource(R.string.pair_detail_buy_on, exchangeName(cheapest))
+                        stringResource(R.string.pair_detail_buy_on, exchangeName(buyExchange))
                     } else {
                         stringResource(R.string.pair_detail_buy_price)
                     },
-                price = buyPrice.toPriceString(),
+                price = buyPrice?.toPriceString() ?: PriceFormatConstants.NON_FINITE_PLACEHOLDER,
                 alignment = TextAlign.Start,
                 modifier = Modifier.weight(1f),
             )
             SpreadEnd(
                 label =
                     if (crossExchange) {
-                        stringResource(R.string.pair_detail_sell_on, exchangeName(dearest))
+                        stringResource(R.string.pair_detail_sell_on, exchangeName(sellExchange))
                     } else {
                         stringResource(R.string.pair_detail_sell_price)
                     },
-                price = sellPrice.toPriceString(),
+                price = sellPrice?.toPriceString() ?: PriceFormatConstants.NON_FINITE_PLACEHOLDER,
                 alignment = TextAlign.End,
                 modifier = Modifier.weight(1f),
             )
@@ -173,18 +183,19 @@ internal fun SpreadBar(
         ) {
             Text(
                 text =
-                    stringResource(
-                        R.string.pair_detail_spread_difference,
-                        difference.toPriceString(),
-                    ),
+                    if (difference != null) {
+                        stringResource(R.string.pair_detail_spread_difference, difference.toPriceString())
+                    } else {
+                        stringResource(R.string.pair_detail_no_best)
+                    },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.textTertiary,
             )
             Text(
-                text = percent.toPercentString(),
+                text = percent?.toPercentString() ?: PriceFormatConstants.NON_FINITE_PLACEHOLDER,
                 style = NumericType.Medium,
                 color =
-                    if (percent.isNotableSpread()) {
+                    if (percent != null && percent.isNotableSpread()) {
                         MaterialTheme.colorScheme.primary
                     } else {
                         MaterialTheme.colorScheme.textPrimary

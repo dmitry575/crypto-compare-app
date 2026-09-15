@@ -1,7 +1,9 @@
 package com.cryptocompare.domain.usecase.pairs
 
 import com.cryptocompare.domain.repository.CryptoCompareRepository
+import com.cryptocompare.helpers.isComplete
 import com.cryptocompare.helpers.spreadPercent
+import com.cryptocompare.helpers.widest
 import com.cryptocompare.model.comparison.PairComparison
 import com.cryptocompare.model.provider.ProviderDetail
 import javax.inject.Inject
@@ -32,12 +34,12 @@ class ComparePairAcrossExchangesUseCase
 
                 // если лучшие цены не пришли, экран всё равно покажет таблицу:
                 // выжимка сверху сообщит, что данных нет, а не соврёт числом
-                val best =
+                val bestPrices =
                     cryptoCompareRepository
                         .getBestPricesByTicker(ticker)
                         .getOrNull()
                         .orEmpty()
-                        .maxByOrNull { it.spreadPercent ?: Double.NEGATIVE_INFINITY }
+                        .filter { it.isComplete() }
 
                 val quotes = detail.exchanges.sortedByAsk()
 
@@ -46,21 +48,19 @@ class ComparePairAcrossExchangesUseCase
                 // потому что по таким парам best-выдача иногда молчит вовсе
                 val single = quotes.singleOrNull()
 
-                PairComparison(
-                    ticker = ticker,
-                    quotes = quotes,
-                    bestAskProviderId =
-                        best?.bestAskProviderId
-                            ?: single?.provider?.id?.takeIf { single.priceSell != null },
-                    bestAskPrice = best?.bestAskPrice?.takeIf { it > 0 } ?: single?.priceSell,
-                    bestBidProviderId =
-                        best?.bestBidProviderId
-                            ?: single?.provider?.id?.takeIf { single.priceBuy != null },
-                    bestBidPrice = best?.bestBidPrice?.takeIf { it > 0 } ?: single?.priceBuy,
-                    spreadPercent =
-                        best?.spreadPercent
-                            ?: single?.let { spreadPercent(buyPrice = it.priceSell, sellPrice = it.priceBuy) },
-                )
+                val comparison =
+                    PairComparison(
+                        ticker = ticker,
+                        quotes = quotes,
+                        bestAskProviderId = single?.provider?.id?.takeIf { single.priceSell != null },
+                        bestAskPrice = single?.priceSell,
+                        bestBidProviderId = single?.provider?.id?.takeIf { single.priceBuy != null },
+                        bestBidPrice = single?.priceBuy,
+                        spreadPercent = single?.let { spreadPercent(buyPrice = it.priceSell, sellPrice = it.priceBuy) },
+                        bestPrices = bestPrices,
+                    )
+
+                bestPrices.widest()?.let(comparison::withBest) ?: comparison
             }
     }
 

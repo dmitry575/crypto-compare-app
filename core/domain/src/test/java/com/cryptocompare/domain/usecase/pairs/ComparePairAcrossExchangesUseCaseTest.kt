@@ -53,6 +53,21 @@ class ComparePairAcrossExchangesUseCaseTest {
         }
 
     @Test
+    fun `an exchange without a bid keeps its place by ask`() =
+        runTest {
+            givenExchanges(
+                quote(id = 1, name = "okx", ask = 101.0, bid = 100.9),
+                quote(id = 2, name = "nobid", ask = 100.5, bid = null),
+            )
+            givenBest()
+
+            val result = useCase(TICKER).getOrThrow()
+
+            assertEquals(listOf("nobid", "okx"), result.quotes.map { it.provider.name })
+            assertNull(result.quotes.first().priceBuy)
+        }
+
+    @Test
     fun `equal asks are broken by name so the list does not jitter on ticks`() =
         runTest {
             givenExchanges(
@@ -99,6 +114,66 @@ class ComparePairAcrossExchangesUseCaseTest {
 
             assertEquals(0.4, result.spreadPercent!!, 0.0001)
             assertEquals(2, result.bestAskProviderId)
+            // все строки остаются в сравнении: по ним сокет потом выбирает заново
+            assertEquals(2, result.bestPrices.size)
+        }
+
+    @Test
+    fun `an incomplete row does not win even when it is the widest`() =
+        runTest {
+            givenExchanges(
+                quote(id = 1, name = "okx", ask = 101.0, bid = 100.9),
+                quote(id = 2, name = "bybit", ask = 102.0, bid = 101.9),
+            )
+            coEvery { repository.getBestPricesByTicker(TICKER) } returns
+                Result.success(
+                    listOf(
+                        best(bestAskProviderId = 1, bestBidProviderId = 2, spreadPercent = -0.1),
+                        best(bestAskProviderId = null, bestBidProviderId = 2, spreadPercent = 5.0),
+                    ),
+                )
+
+            val result = useCase(TICKER).getOrThrow()
+
+            // раньше биржа бралась из одной строки, а цена — откуда придётся
+            assertEquals(-0.1, result.spreadPercent!!, 0.0001)
+            assertEquals(1, result.bestAskProviderId)
+            assertEquals(1, result.bestPrices.size)
+        }
+
+    @Test
+    fun `a non finite best price makes the row incomplete`() =
+        runTest {
+            givenExchanges(
+                quote(id = 1, name = "okx", ask = 101.0, bid = 100.9),
+                quote(id = 2, name = "bybit", ask = 102.0, bid = 101.9),
+            )
+            givenBest(bestAskPrice = Double.POSITIVE_INFINITY)
+
+            val result = useCase(TICKER).getOrThrow()
+
+            assertNull(result.bestAskPrice)
+            assertNull(result.bestAskProviderId)
+        }
+
+    @Test
+    fun `same prices everywhere give a zero spread, not a missing one`() =
+        runTest {
+            givenExchanges(
+                quote(id = 1, name = "okx", ask = 100.0, bid = 100.0),
+                quote(id = 2, name = "bybit", ask = 100.0, bid = 100.0),
+            )
+            coEvery { repository.getBestPricesByTicker(TICKER) } returns
+                Result.success(
+                    listOf(
+                        best(bestAskPrice = 100.0, bestBidPrice = 100.0, spreadPercent = 0.0),
+                    ),
+                )
+
+            val result = useCase(TICKER).getOrThrow()
+
+            assertEquals(0.0, result.spreadPercent!!, 0.0)
+            assertEquals(0.0, result.difference!!, 0.0)
         }
 
     @Test

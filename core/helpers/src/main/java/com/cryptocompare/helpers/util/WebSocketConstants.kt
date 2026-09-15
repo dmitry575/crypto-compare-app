@@ -24,6 +24,13 @@ object WebSocketConstants {
     const val BASE_RECONNECT_DELAY_MS = 1_000L
     const val MAX_RECONNECT_DELAY_MS = 30_000L
     const val RECONNECT_JITTER_MS = 500L
+
+    /**
+     * Сколько соединение должно продержаться, чтобы бэкофф начался заново с
+     * [BASE_RECONNECT_DELAY_MS]. Короче — сервер, рвущий соединение сразу после
+     * открытия, получал бы реконнект раз в секунду.
+     */
+    const val STABLE_CONNECTION_MS = 10_000L
     const val MAX_EXPONENT = 5
     const val UNKNOWN_ERROR_CODE = -1
 }
