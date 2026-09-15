@@ -2,9 +2,9 @@ name: CI-CD
 
 on:
   push:
-    # fix/chart-rendering — временно, чтобы собрать APK с фиксом графика до мержа;
-    # убрать из списка после мержа (для веток есть workflow_dispatch ниже).
-    branches: ["main", "master", "fix/chart-rendering"]
+    # собрать APK с другой ветки можно кнопкой (workflow_dispatch ниже), а не
+    # добавлением её сюда
+    branches: ["main", "master"]
   pull_request:
   # ручной запуск: Actions → CI-CD → Run workflow → выбрать ветку → соберётся и
   # уйдёт в телеграм подписанный APK этой ветки. Кнопка появляется, когда этот
@@ -94,9 +94,6 @@ jobs:
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
       ORG_GRADLE_PROJECT_RELEASE_BASE_URL: ${{ secrets.RELEASE_BASE_URL }}
       ORG_GRADLE_PROJECT_RELEASE_WS_BASE_URL: ${{ secrets.RELEASE_WS_BASE_URL }}
-      # без ключа сборка не падает (core/network берёт его через .orNull.orEmpty()),
-      # но свечной график в релизном APK покажет пустое состояние
-      ORG_GRADLE_PROJECT_CRYPTOCOMPARE_API_KEY: ${{ secrets.CRYPTOCOMPARE_API_KEY }}
 
     steps:
       - name: Checkout
