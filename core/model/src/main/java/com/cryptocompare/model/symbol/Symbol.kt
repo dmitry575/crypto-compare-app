@@ -22,4 +22,6 @@ data class Symbol(
      * время, которое не разобрать.
      */
     val quotedAtMillis: Long? = null,
+    /** Сети символа строкой в формате источника, см. `networkNames`. */
+    val network: String? = null,
 )

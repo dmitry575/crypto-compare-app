@@ -11,6 +11,15 @@ import androidx.compose.ui.unit.sp
 object PairsConstants {
     object Navigation {
         const val TICKER_ARG = "ticker"
+
+        /**
+         * Символ пары — один набор сетей. Без него экран открыл бы все биржи тикера
+         * разом, смешав USDC из Ethereum с USDC из Solana.
+         */
+        const val SYMBOL_ID_ARG = "symbolId"
+
+        /** Навигация не умеет nullable Long: «символ не выбран» передаётся так. */
+        const val NO_SYMBOL_ID = -1L
     }
 
     object MainScreen {

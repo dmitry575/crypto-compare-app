@@ -57,9 +57,18 @@ class ComparisonViewModelTest {
     private val compare: ComparePairAcrossExchangesUseCase =
         mockk { coEvery { this@mockk.invoke(TICKER) } returns Result.success(defaultComparison()) }
 
-    private fun makeVm(ticker: String = "ETHUSDC"): ComparisonViewModel =
+    private fun makeVm(
+        ticker: String = "ETHUSDC",
+        symbolId: Long = PairsConstants.Navigation.NO_SYMBOL_ID,
+    ): ComparisonViewModel =
         ComparisonViewModel(
-            savedStateHandle = SavedStateHandle(mapOf(PairsConstants.Navigation.TICKER_ARG to ticker)),
+            savedStateHandle =
+                SavedStateHandle(
+                    mapOf(
+                        PairsConstants.Navigation.TICKER_ARG to ticker,
+                        PairsConstants.Navigation.SYMBOL_ID_ARG to symbolId,
+                    ),
+                ),
             comparePairAcrossExchangesUseCase = compare,
             applyComparisonBestPricesUseCase = ApplyComparisonBestPricesUseCase(),
             streamConnectUseCase = connect,
@@ -280,6 +289,22 @@ class ComparisonViewModelTest {
 
             assertNotNull(vm.uiState.value.comparison)
             assertNull(vm.uiState.value.error)
+        }
+
+    @Test
+    fun `a symbol screen ignores events of the ticker's other networks`() =
+        runTest {
+            coEvery { compare.invoke(TICKER, MAIN_SYMBOL) } returns Result.success(defaultComparison())
+            val vm = makeVm(symbolId = MAIN_SYMBOL)
+            runCurrent()
+            val before = vm.uiState.value.comparison
+
+            // подписка в сокете по тикеру: события символа 14487 приходят сюда же
+            events.emit(bestEvent(symbolId = OTHER_SYMBOL, askId = 2, bidId = 2, spread = 5.0))
+            advanceInterval()
+
+            assertEquals(before, vm.uiState.value.comparison)
+            coVerify { compare.invoke(TICKER, MAIN_SYMBOL) }
         }
 
     @Test

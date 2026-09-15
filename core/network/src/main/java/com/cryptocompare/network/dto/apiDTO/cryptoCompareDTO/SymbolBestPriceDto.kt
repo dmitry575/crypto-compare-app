@@ -37,4 +37,13 @@ data class SymbolBestPriceDto(
     val volume24h: Double? = null,
     val quoteVolume24h: Double? = null,
     val change24h: Double? = null,
+    /**
+     * Сети символа строкой через запятую, в формате источника: `arbitrum,base,eth`,
+     * `Arbitrum One,BNB Smart Chain`, `ETH-ERC20`. Разбирает `networkNames`.
+     * У одной пары бывает несколько символов — по одному на набор сетей.
+     *
+     * До 2026-09-15 поле приходило только в разбивке по биржам; в ленту каталога
+     * и best-выдачу его добавляет бэкенд, до этого здесь `null`.
+     */
+    val network: String? = null,
 )

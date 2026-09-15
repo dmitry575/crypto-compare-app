@@ -25,6 +25,17 @@ class GetBestPricesUseCaseTest {
         }
 
     @Test
+    fun `a symbol id keeps only its own best pair`() =
+        runTest {
+            coEvery { repository.getBestPricesByTicker(TICKER) } returns
+                Result.success(listOf(best(143, askId = 18), best(14487, askId = 17)))
+
+            val result = useCase(TICKER, symbolId = 14487).getOrThrow()
+
+            assertEquals(listOf(14487L), result.map { it.symbolId })
+        }
+
+    @Test
     fun `a failed request stays a failure`() =
         runTest {
             coEvery { repository.getBestPricesByTicker(TICKER) } returns Result.failure(IllegalStateException("500"))

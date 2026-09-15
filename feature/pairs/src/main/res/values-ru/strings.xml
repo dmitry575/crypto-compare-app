@@ -2,6 +2,7 @@
     <!-- Главный экран -->
     <string name="pairs_title">Пары</string>
     <string name="pairs_search_placeholder">Поиск пары</string>
+    <string name="pairs_network_unknown">Одна из сетей: %1$d</string>
     <string name="pairs_filter_all">Все</string>
     <string name="pairs_filter_favorites">Избранное</string>
     <string name="pairs_filter_gainers">Растут</string>

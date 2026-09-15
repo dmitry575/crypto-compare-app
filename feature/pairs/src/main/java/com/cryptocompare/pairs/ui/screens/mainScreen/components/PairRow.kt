@@ -34,6 +34,7 @@ import com.cryptocompare.helpers.isNotableSpread
 import com.cryptocompare.helpers.parseTicker
 import com.cryptocompare.helpers.toCompactPriceString
 import com.cryptocompare.helpers.toCompactVolumeString
+import com.cryptocompare.helpers.toNetworkLabel
 import com.cryptocompare.helpers.toPercentString
 import com.cryptocompare.helpers.util.PriceFormatConstants
 import com.cryptocompare.model.symbol.PairUiItem
@@ -69,6 +70,11 @@ import com.cryptocompare.ui.theme.textTertiary
  *
  * Кто соберётся ставить сюда спарклайн: он потребует ~44dp плюс зазор, и вместе
  * с объёмом они уже не помещаются. Платить придётся объёмом.
+ *
+ * **Сети — третьей строкой и только у тикеров с несколькими символами.** У ETHUSDC
+ * строк столько, сколько наборов сетей, и без пометки они выглядели бы дублями.
+ * Во вторую строку метка не влезает (запас там ~4dp), а у тикера с одним символом
+ * сравнивать сети не с чем, и лишняя строка только удлиняла бы список.
  */
 @Composable
 fun PairRow(
@@ -118,6 +124,19 @@ fun PairRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (pair.networkCount > 1) {
+                Text(
+                    // сети бэкенд присылает не во всех ответах: пока их нет, строка
+                    // хотя бы говорит, что она — одна из нескольких
+                    text =
+                        pair.networks.toNetworkLabel()
+                            ?: stringResource(R.string.pairs_network_unknown, pair.networkCount),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.textTertiary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(Dimensions.Gap.md))
@@ -263,19 +282,24 @@ private fun PairRowPreviewContent(showVolume: Boolean) {
 /** Спреды подобраны как на живых данных: большинство в минусе, в плюсе редкий. */
 private fun previewPairs(): List<PairUiItem> =
     listOf(
-        previewPair("BTCUSDT", 82_145.30, -0.27, 98_750_000.0, 2.35),
-        previewPair("ETHUSDT", 3_201.44, -0.03, 41_200_000.0, -1.2),
-        previewPair("SOLUSDT", 184.07, 0.24, null, null),
-        previewPair("1000SATSUSDT", 0.000000331, null, 1_230_000_000_000.0, 0.0),
+        previewPair(1, "BTCUSDT", 82_145.30, -0.27, 98_750_000.0, 2.35),
+        previewPair(143, "ETHUSDC", 2_488.08, 0.02, 94_513_542.0, -1.04)
+            .copy(networks = listOf("Ethereum", "BNB Chain", "Arbitrum", "Base"), networkCount = 4),
+        previewPair(14487, "ETHUSDC", 2_487.32, -0.02, 12_990_000.0, -1.1)
+            .copy(networks = listOf("Ethereum", "Arbitrum", "Base", "Optimism", "Linea"), networkCount = 4),
+        previewPair(45, "SOLUSDT", 184.07, 0.24, null, null),
+        previewPair(2, "1000SATSUSDT", 0.000000331, null, 1_230_000_000_000.0, 0.0),
     )
 
 private fun previewPair(
+    symbolId: Long,
     ticker: String,
     price: Double,
     spread: Double?,
     volume: Double?,
     change: Double?,
 ) = PairUiItem(
+    symbolId = symbolId,
     ticker = ticker,
     buyPrice = price,
     sellPrice = price,

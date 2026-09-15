@@ -18,6 +18,12 @@ class GetBestPricesUseCase
     constructor(
         private val cryptoCompareRepository: CryptoCompareRepository,
     ) {
-        suspend operator fun invoke(ticker: String): Result<List<TickerBestPrice>> =
-            cryptoCompareRepository.getBestPricesByTicker(ticker).map { rows -> rows.filter { it.isComplete() } }
+        /** С [symbolId] — только лучшая пара этого символа: сети не смешиваются. */
+        suspend operator fun invoke(
+            ticker: String,
+            symbolId: Long? = null,
+        ): Result<List<TickerBestPrice>> =
+            cryptoCompareRepository.getBestPricesByTicker(ticker).map { rows ->
+                rows.filter { it.isComplete() && (symbolId == null || it.symbolId == symbolId) }
+            }
     }

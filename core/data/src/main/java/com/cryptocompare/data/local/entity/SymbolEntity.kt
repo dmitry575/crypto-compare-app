@@ -52,4 +52,6 @@ data class SymbolEntity(
     val volume24h: Double? = null,
     val quoteVolume24h: Double? = null,
     val change24h: Double? = null,
+    /** Сети символа строкой в формате источника, см. `networkNames`. */
+    val network: String? = null,
 )

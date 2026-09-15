@@ -118,6 +118,48 @@ class GetTickerDetailUseCaseTest {
         }
 
     @Test
+    fun `a symbol id keeps only the exchanges of that network set`() =
+        runTest {
+            // ethusdc 2026-09-15: символ 143 на 16 биржах, 14487 — только okx
+            coEvery { repository.getSymbolsByTicker(TICKER) } returns
+                Result.success(
+                    listOf(
+                        symbol(id = 143, providerId = 10, network = "arbitrum,base,bsc,eth", symbol = "eth/usdc"),
+                        symbol(id = 143, providerId = 20, network = "arbitrum,base,bsc,eth", symbol = "eth/usdc"),
+                        symbol(id = 14487, providerId = 30, network = "ETH-ERC20,ETH-Base", symbol = "eth/usdc"),
+                    ),
+                )
+            coEvery { repository.getProviders() } returns
+                Result.success(listOf(provider(10, "binance"), provider(20, "bybit"), provider(30, "okx")))
+
+            val detail = useCase(TICKER, symbolId = 14487).getOrThrow()
+
+            assertEquals(listOf("okx"), detail.exchanges.map { it.provider.name })
+            assertEquals(14487L, detail.symbolId)
+            assertEquals(listOf("Ethereum", "Base"), detail.networks)
+        }
+
+    @Test
+    fun `without a symbol id the whole ticker comes back unlabelled`() =
+        runTest {
+            coEvery { repository.getSymbolsByTicker(TICKER) } returns
+                Result.success(
+                    listOf(
+                        symbol(id = 143, providerId = 10, network = "eth"),
+                        symbol(id = 14487, providerId = 30, network = "sol"),
+                    ),
+                )
+            coEvery { repository.getProviders() } returns
+                Result.success(listOf(provider(10, "binance"), provider(30, "okx")))
+
+            val detail = useCase(TICKER).getOrThrow()
+
+            // у двух символов сети разные — одной метки на обе быть не может
+            assertEquals(2, detail.exchanges.size)
+            assertTrue(detail.networks.isEmpty())
+        }
+
+    @Test
     fun `failed symbols request produces a failure`() =
         runTest {
             coEvery { repository.getSymbolsByTicker(TICKER) } returns Result.failure(IllegalStateException("offline"))
@@ -224,10 +266,13 @@ class GetTickerDetailUseCaseTest {
         volume24h: Double? = null,
         quoteVolume24h: Double? = null,
         change24h: Double? = null,
+        network: String? = null,
+        symbol: String = TICKER,
     ) = Symbol(
         id = id,
         ticker = TICKER,
-        symbol = TICKER,
+        symbol = symbol,
+        network = network,
         providerId = providerId,
         priceSell = priceSell,
         priceBuy = priceBuy,

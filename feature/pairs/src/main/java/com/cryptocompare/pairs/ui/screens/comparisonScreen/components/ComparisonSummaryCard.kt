@@ -23,6 +23,7 @@ import com.cryptocompare.helpers.toPriceString
 import com.cryptocompare.helpers.util.PriceFormatConstants
 import com.cryptocompare.model.comparison.PairComparison
 import com.cryptocompare.pairs.R
+import com.cryptocompare.pairs.util.ComparisonCaption
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.NumericType
 import com.cryptocompare.ui.theme.OverlineType
@@ -114,7 +115,7 @@ internal fun ComparisonSummaryCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = summaryCaption(comparison, notable),
+                text = summaryCaption(comparison),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.textTertiary,
             )
@@ -133,26 +134,21 @@ internal fun ComparisonSummaryCard(
 }
 
 /**
- * Слева от процента — что он значит.
- *
- * Разница в котируемом активе полезна, только когда на ней можно заработать;
- * в обычном случае честнее сказать словами, что продажа дешевле покупки, чем
- * показывать минус вторым числом подряд.
+ * Слева от процента — что он значит. В минусе честнее сказать словами, что
+ * продажа дешевле покупки, чем показывать минус вторым числом подряд; что
+ * выбрать, решает [ComparisonCaption].
  */
 @Composable
-private fun summaryCaption(
-    comparison: PairComparison,
-    notable: Boolean,
-): String {
-    val difference = comparison.difference
-
-    return when {
-        comparison.spreadPercent == null -> stringResource(R.string.pair_comparison_no_best)
-        notable && difference != null ->
-            stringResource(R.string.pair_detail_spread_difference, difference.toPriceString())
-        else -> stringResource(R.string.pair_comparison_no_profit)
+private fun summaryCaption(comparison: PairComparison): String =
+    when (ComparisonCaption.of(comparison)) {
+        ComparisonCaption.NO_BEST -> stringResource(R.string.pair_comparison_no_best)
+        ComparisonCaption.NO_PROFIT -> stringResource(R.string.pair_comparison_no_profit)
+        ComparisonCaption.DIFFERENCE ->
+            stringResource(
+                R.string.pair_detail_spread_difference,
+                comparison.difference?.toPriceString() ?: PriceFormatConstants.NON_FINITE_PLACEHOLDER,
+            )
     }
-}
 
 @Composable
 private fun SummarySide(

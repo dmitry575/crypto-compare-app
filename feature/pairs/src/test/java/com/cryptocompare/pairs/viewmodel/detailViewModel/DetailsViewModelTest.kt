@@ -46,7 +46,7 @@ class DetailsViewModelTest {
     private val reconnects = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     private val bestPrices: GetBestPricesUseCase =
-        mockk { coEvery { this@mockk.invoke(any()) } returns Result.success(emptyList()) }
+        mockk { coEvery { this@mockk.invoke(any(), any()) } returns Result.success(emptyList()) }
 
     private fun bestPair(
         symbolId: Long,
@@ -318,6 +318,69 @@ class DetailsViewModelTest {
             assertEquals(null, vm.uiState.value.bestPair)
             assertEquals(null, vm.uiState.value.error)
             assertEquals(2, vm.uiState.value.exchanges.size)
+        }
+
+    @Test
+    fun `a symbol screen loads its own exchanges and ignores other networks' ticks`() =
+        runTest {
+            val details = mockk<GetTickerDetailUseCase>()
+            coEvery { details.invoke("btcusdt", 143L) } returns
+                Result.success(
+                    TickerDetail(
+                        ticker = "btcusdt",
+                        exchanges = defaultExchanges(),
+                        symbolId = 143L,
+                        networks = listOf("Ethereum", "Base"),
+                    ),
+                )
+            val vm =
+                DetailsViewModel(
+                    savedStateHandle =
+                        SavedStateHandle(
+                            mapOf(
+                                PairsConstants.Navigation.TICKER_ARG to "BTCUSDT",
+                                PairsConstants.Navigation.SYMBOL_ID_ARG to 143L,
+                            ),
+                        ),
+                    getPairDetailsUseCase = details,
+                    getTickerHistoryUseCase = historyUseCaseMock(defaultHistory()),
+                    streamConnectUseCase = connectUseCaseMock(),
+                    subscribeSingleTickerUseCase = subscribeSingleUseCaseMock(),
+                    restoreTickerSubscriptionsUseCase = restoreUseCaseMock(),
+                    observeTickerEventUseCase = observeEventsUseCaseMock(),
+                    observeStreamReconnectsUseCase = mockk { every { this@mockk.invoke() } returns reconnects },
+                    getBestPricesUseCase = bestPrices,
+                )
+            runCurrent()
+
+            assertEquals(listOf("Ethereum", "Base"), vm.uiState.value.networks)
+            assertEquals(143L, vm.uiState.value.symbolId)
+
+            // тик той же биржи, но из символа другого набора сетей
+            events.emit(
+                TickerStreamEvent.TickerPriceChange(
+                    id = "evt",
+                    data =
+                        TickerPrice(
+                            ticker = "btcusdt",
+                            symbolId = 14487,
+                            providerId = 1,
+                            priceSell = 1.0,
+                            priceBuy = 0.9,
+                        ),
+                ),
+            )
+            advanceTimeBy(PairsConstants.DetailScreen.LIVE_PRICE_INTERVAL_MS + 1)
+            runCurrent()
+
+            assertEquals(
+                100.0,
+                vm.uiState.value.exchanges
+                    .first()
+                    .priceSell!!,
+                0.0,
+            )
+            coVerify { bestPrices.invoke("btcusdt", 143L) }
         }
 
     @Test

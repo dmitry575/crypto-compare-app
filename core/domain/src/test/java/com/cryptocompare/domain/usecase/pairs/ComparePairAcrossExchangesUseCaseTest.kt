@@ -297,6 +297,40 @@ class ComparePairAcrossExchangesUseCaseTest {
         }
 
     @Test
+    fun `a symbol id compares one network set and takes its own best pair, not the widest`() =
+        runTest {
+            coEvery { getTickerDetailUseCase(TICKER, 14487) } returns
+                Result.success(
+                    TickerDetail(
+                        ticker = TICKER,
+                        exchanges = listOf(quote(id = 17, name = "okx", ask = 2487.32, bid = 2486.93)),
+                        symbolId = 14487,
+                        networks = listOf("Ethereum", "Base"),
+                    ),
+                )
+            coEvery { repository.getBestPricesByTicker(TICKER) } returns
+                Result.success(
+                    listOf(
+                        best(bestAskProviderId = 18, bestBidProviderId = 3, spreadPercent = 0.16).copy(symbolId = 143),
+                        best(
+                            bestAskProviderId = 17,
+                            bestBidProviderId = 17,
+                            spreadPercent = -0.02,
+                        ).copy(symbolId = 14487),
+                    ),
+                )
+
+            val result = useCase(TICKER, symbolId = 14487).getOrThrow()
+
+            // самая широкая пара тикера — у символа 143, но это другие сети
+            assertEquals(17, result.bestAskProviderId)
+            assertEquals(-0.02, result.spreadPercent!!, 1e-9)
+            assertEquals(listOf(14487L), result.bestPrices.map { it.symbolId })
+            assertEquals(14487L, result.symbolId)
+            assertEquals(listOf("Ethereum", "Base"), result.networks)
+        }
+
+    @Test
     fun `a failing detail request fails the whole comparison`() =
         runTest {
             coEvery { getTickerDetailUseCase(TICKER) } returns Result.failure(IllegalStateException("no network"))

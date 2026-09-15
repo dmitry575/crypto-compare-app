@@ -48,6 +48,12 @@ class ComparisonViewModel
         private val observeTickerEventUseCase: ObserveTickerEventUseCase,
         private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
     ) : ViewModel() {
+        /** Символ пары: сравниваются только его биржи. */
+        private val symbolId: Long? =
+            savedStateHandle
+                .get<Long>(PairsConstants.Navigation.SYMBOL_ID_ARG)
+                ?.takeIf { it != PairsConstants.Navigation.NO_SYMBOL_ID }
+
         private val _uiState = MutableStateFlow(ComparisonUiState())
         val uiState = _uiState.asStateFlow()
 
@@ -91,7 +97,7 @@ class ComparisonViewModel
             }
 
             viewModelScope.launch {
-                comparePairAcrossExchangesUseCase(ticker).fold(
+                comparePairAcrossExchangesUseCase(ticker, symbolId).fold(
                     onSuccess = { comparison ->
                         _uiState.update { it.copy(loading = false, comparison = comparison) }
                     },
@@ -112,7 +118,7 @@ class ComparisonViewModel
 
             viewModelScope.launch {
                 observeStreamReconnectsUseCase().collect {
-                    comparePairAcrossExchangesUseCase(ticker).onSuccess { comparison ->
+                    comparePairAcrossExchangesUseCase(ticker, symbolId).onSuccess { comparison ->
                         _uiState.update { it.copy(comparison = comparison, error = null) }
                     }
                 }
@@ -131,12 +137,16 @@ class ComparisonViewModel
                 try {
                     observeTickerEventUseCase().collect { event ->
                         when {
-                            event is TickerStreamEvent.TickerPriceChange && event.data.ticker == ticker -> {
+                            event is TickerStreamEvent.TickerPriceChange &&
+                                event.data.ticker == ticker &&
+                                isOwnSymbol(event.data.symbolId.toLong()) -> {
                                 synchronized(pendingLock) { pendingQuotes[event.data.providerId] = event.data }
                                 scheduleFlush()
                             }
 
-                            event is TickerStreamEvent.TickerBestPriceChange && event.data.ticker == ticker -> {
+                            event is TickerStreamEvent.TickerBestPriceChange &&
+                                event.data.ticker == ticker &&
+                                isOwnSymbol(event.data.symbolId) -> {
                                 synchronized(pendingLock) { pendingBest[event.data.symbolId] = event.data }
                                 scheduleFlush()
                             }
@@ -196,6 +206,9 @@ class ComparisonViewModel
                 state.copy(comparison = applyComparisonBestPricesUseCase(withQuotes, bestPrices))
             }
         }
+
+        /** Подписка в сокете по тикеру: события других символов тикера отсекаются здесь. */
+        private fun isOwnSymbol(eventSymbolId: Long): Boolean = symbolId == null || eventSymbolId == symbolId
 
         override fun onCleared() {
             // отпускаем захват только если сами его брали — иначе чужой счётчик уедет

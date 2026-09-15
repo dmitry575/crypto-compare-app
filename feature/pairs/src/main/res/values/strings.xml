@@ -4,6 +4,7 @@
     <!-- Main screen -->
     <string name="pairs_title">Symbols</string>
     <string name="pairs_search_placeholder">Search pair</string>
+    <string name="pairs_network_unknown">One of %1$d networks</string>
     <string name="pairs_filter_all">All</string>
     <string name="pairs_filter_favorites">Favorites</string>
     <string name="pairs_filter_gainers">Gainers</string>

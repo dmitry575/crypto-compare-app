@@ -25,8 +25,8 @@ fun NavGraphBuilder.pairsNavigation(
     ) {
         composable(route = PairsScreens.MainScreen.route) {
             MainScreen(
-                onPairClick = { ticker ->
-                    navController.navigate(PairsScreens.DetailsScreen.createRoute(ticker))
+                onPairClick = { ticker, symbolId ->
+                    navController.navigate(PairsScreens.DetailsScreen.createRoute(ticker, symbolId))
                 },
                 onProfileClick = onProfileClick,
             )
@@ -34,33 +34,33 @@ fun NavGraphBuilder.pairsNavigation(
 
         composable(
             route = PairsScreens.DetailsScreen.route,
-            arguments =
-                listOf(
-                    navArgument(PairsConstants.Navigation.TICKER_ARG) {
-                        type = NavType.StringType
-                        defaultValue = ""
-                    },
-                ),
+            arguments = pairArguments(),
         ) {
             DetailsScreen(
                 onBack = { navController.popBackStack() },
-                onCompareClick = { ticker ->
-                    navController.navigate(PairsScreens.ComparisonScreen.createRoute(ticker))
+                onCompareClick = { ticker, symbolId ->
+                    navController.navigate(PairsScreens.ComparisonScreen.createRoute(ticker, symbolId))
                 },
             )
         }
 
         composable(
             route = PairsScreens.ComparisonScreen.route,
-            arguments =
-                listOf(
-                    navArgument(PairsConstants.Navigation.TICKER_ARG) {
-                        type = NavType.StringType
-                        defaultValue = ""
-                    },
-                ),
+            arguments = pairArguments(),
         ) {
             ComparisonScreen(onBack = { navController.popBackStack() })
         }
     }
 }
+
+private fun pairArguments() =
+    listOf(
+        navArgument(PairsConstants.Navigation.TICKER_ARG) {
+            type = NavType.StringType
+            defaultValue = ""
+        },
+        navArgument(PairsConstants.Navigation.SYMBOL_ID_ARG) {
+            type = NavType.LongType
+            defaultValue = PairsConstants.Navigation.NO_SYMBOL_ID
+        },
+    )
