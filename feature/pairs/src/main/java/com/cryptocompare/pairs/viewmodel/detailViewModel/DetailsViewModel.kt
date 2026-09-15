@@ -47,7 +47,13 @@ class DetailsViewModel
         private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
         private val getBestPricesUseCase: GetBestPricesUseCase,
     ) : ViewModel() {
-        private val _uiState = MutableStateFlow(DetailUiState())
+        /** Символ пары: биржи, лучшая пара и живые события берутся только его. */
+        private val symbolId: Long? =
+            savedStateHandle
+                .get<Long>(PairsConstants.Navigation.SYMBOL_ID_ARG)
+                ?.takeIf { it != PairsConstants.Navigation.NO_SYMBOL_ID }
+
+        private val _uiState = MutableStateFlow(DetailUiState(symbolId = symbolId))
         val uiState = _uiState.asStateFlow()
 
         /**
@@ -96,7 +102,7 @@ class DetailsViewModel
             viewModelScope.launch {
                 observeStreamReconnectsUseCase().collect {
                     loadBestPrices(ticker)
-                    getPairDetailsUseCase(ticker).onSuccess { details ->
+                    getPairDetailsUseCase(ticker, symbolId).onSuccess { details ->
                         _uiState.update { state ->
                             val selectedId = state.selectedExchange?.provider?.id
                             val selectedIndex =
@@ -122,7 +128,7 @@ class DetailsViewModel
             if (ticker.isBlank()) return
 
             viewModelScope.launch {
-                getBestPricesUseCase(ticker).onSuccess { bestPrices ->
+                getBestPricesUseCase(ticker, symbolId).onSuccess { bestPrices ->
                     _uiState.update { it.copy(bestPrices = bestPrices) }
                 }
             }
@@ -144,7 +150,9 @@ class DetailsViewModel
                 try {
                     observeTickerEventUseCase().collect { event ->
                         when {
-                            event is TickerStreamEvent.TickerPriceChange && event.data.ticker == ticker -> {
+                            event is TickerStreamEvent.TickerPriceChange &&
+                                event.data.ticker == ticker &&
+                                isOwnSymbol(event.data.symbolId.toLong()) -> {
                                 synchronized(pendingTickLock) {
                                     pendingTicks[event.data.providerId] = event.data
                                 }
@@ -152,7 +160,9 @@ class DetailsViewModel
                             }
 
                             // тип 5 двигает блок разницы: тот же источник, что при загрузке
-                            event is TickerStreamEvent.TickerBestPriceChange && event.data.ticker == ticker -> {
+                            event is TickerStreamEvent.TickerBestPriceChange &&
+                                event.data.ticker == ticker &&
+                                isOwnSymbol(event.data.symbolId) -> {
                                 synchronized(pendingTickLock) {
                                     pendingBestPrices[event.data.symbolId] = event.data
                                 }
@@ -235,12 +245,13 @@ class DetailsViewModel
             _uiState.update { it.copy(loading = true, error = null) }
             viewModelScope.launch {
                 try {
-                    val result = getPairDetailsUseCase(ticker)
+                    val result = getPairDetailsUseCase(ticker, symbolId)
                     result.fold(
                         onSuccess = { details ->
                             _uiState.update { state ->
                                 state.copy(
                                     loading = false,
+                                    networks = details.networks,
                                     exchanges = details.exchanges,
                                     selectedExchangeIndex = 0,
                                 )
@@ -395,6 +406,12 @@ class DetailsViewModel
             val providerId: Int,
             val timeframe: ChartTimeframe,
         )
+
+        /**
+         * Событие своего символа. Подписка в сокете идёт по тикеру, и события всех
+         * его символов приходят вперемешку — чужие сети сюда не пускаем.
+         */
+        private fun isOwnSymbol(eventSymbolId: Long): Boolean = symbolId == null || eventSymbolId == symbolId
 
         override fun onCleared() {
             // отпускаем захват только если сами его брали — иначе чужой счётчик уедет

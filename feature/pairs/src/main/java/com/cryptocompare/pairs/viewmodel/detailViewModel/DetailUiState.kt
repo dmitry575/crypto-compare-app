@@ -8,6 +8,10 @@ import com.cryptocompare.model.ticker.TickerBestPrice
 
 data class DetailUiState(
     val ticker: String = "",
+    /** Символ пары — один набор сетей. `null` — открыт тикер целиком. */
+    val symbolId: Long? = null,
+    /** Сети символа в едином виде. */
+    val networks: List<String> = emptyList(),
     val loading: Boolean = true,
     val error: String? = null,
     val exchanges: List<ProviderDetail> = emptyList(),

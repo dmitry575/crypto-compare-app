@@ -14,22 +14,35 @@ import org.junit.Test
  */
 class PairsPagingQueryTest {
     @Test
-    fun `sorting by name needs no tiebreaker because the name is unique`() {
+    fun `sorting by name falls back to the symbol because a ticker has several networks`() {
+        // у ETHUSDC строк столько, сколько наборов сетей: без добора по символу
+        // их порядок между страницами не определён
         val sql = build(sorting = CatalogSorting(CatalogSort.NAME, ascending = true)).sql
 
-        assertTrue(sql.contains("ORDER BY ticker ASC"))
+        assertTrue(sql.contains("ORDER BY ticker ASC, symbolId ASC"))
     }
 
     @Test
-    fun `every other field falls back to the ticker so paging stays stable`() {
+    fun `every other field falls back to ticker and symbol so paging stays stable`() {
         // Paging листает через LIMIT/OFFSET: при равных значениях порядок должен
         // быть одинаковым между запросами, иначе строки дублируются и пропадают
         listOf(CatalogSort.PRICE, CatalogSort.CHANGE, CatalogSort.SPREAD, CatalogSort.VOLUME)
             .forEach { field ->
                 val sql = build(sorting = CatalogSorting(field, ascending = false)).sql
 
-                assertTrue("нет добора по тикеру для $field", sql.contains(", ticker ASC"))
+                assertTrue("нет добора для $field", sql.contains(", ticker ASC, symbolId ASC"))
             }
+    }
+
+    @Test
+    fun `a row per symbol, not per ticker`() {
+        val sql = build().sql
+
+        // сводка по тикеру смешивала сети: покупку из одной, спред из другой
+        assertFalse("каталог снова сводит символы по тикеру", sql.contains("GROUP BY UPPER(ticker)\n            ORDER"))
+        assertTrue(sql.contains("symbols.id AS symbolId"))
+        assertTrue(sql.contains("counts.networkCount AS networkCount"))
+        assertTrue(sql.contains("symbols.network AS network"))
     }
 
     @Test
@@ -64,7 +77,7 @@ class PairsPagingQueryTest {
 
         // без NULLIF пары с нулём вставали бы в начало сортировки по возрастанию
         // перед настоящими малыми объёмами, а в строке рисовался бы голый «0»
-        assertTrue(sql.contains("NULLIF(SUM(quoteVolume24h), 0) AS quoteVolume24h"))
+        assertTrue(sql.contains("NULLIF(symbols.quoteVolume24h, 0) AS quoteVolume24h"))
     }
 
     @Test
@@ -73,7 +86,7 @@ class PairsPagingQueryTest {
 
         // считает бэкенд: там же отсеиваются протухшие котировки, которые
         // иначе выигрывали бы сравнение и рисовали арбитраж на пустом месте
-        assertTrue(sql.contains("MAX(spreadPercent) AS spreadPercent"))
+        assertTrue(sql.contains("symbols.spreadPercent AS spreadPercent"))
         assertFalse("спред снова считается в SQL", sql.contains("* 100.0 /"))
     }
 
@@ -83,8 +96,8 @@ class PairsPagingQueryTest {
 
         // покупка это минимальный ask, продажа — максимальный bid;
         // перепутанные местами, они переворачивают знак спреда
-        assertTrue(sql.contains("MIN(bestAskPrice) AS buyPrice"))
-        assertTrue(sql.contains("MAX(bestBidPrice) AS sellPrice"))
+        assertTrue(sql.contains("symbols.bestAskPrice AS buyPrice"))
+        assertTrue(sql.contains("symbols.bestBidPrice AS sellPrice"))
     }
 
     @Test
@@ -120,12 +133,13 @@ class PairsPagingQueryTest {
     }
 
     @Test
-    fun `direction is filtered in having because it is an aggregate`() {
-        val sql = build().sql
+    fun `direction is filtered on the symbol row itself`() {
+        val sql = build(direction = CatalogDirection.GAINERS).sql
 
-        // «растёт» — свойство пары целиком, а строк на тикер бывает несколько
-        assertTrue(sql.contains("HAVING"))
-        assertTrue(sql.indexOf("HAVING") > sql.indexOf("GROUP BY"))
+        // строка теперь один символ: агрегата и HAVING больше нет
+        assertFalse(sql.contains("HAVING"))
+        assertTrue(sql.contains("symbols.change24h > 0"))
+        assertTrue(sql.contains("symbols.change24h < 0"))
     }
 
     private fun build(

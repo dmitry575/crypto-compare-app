@@ -32,6 +32,7 @@ fun SymbolBestPriceDto.toEntityFromDto(syncedAtMillis: Long): SymbolEntity =
         change24h = change24h,
         quoteVolume24h = quoteVolume24h,
         volume24h = volume24h,
+        network = network,
     )
 
 fun List<SymbolBestPriceDto>.toEntityFromDto(syncedAtMillis: Long): List<SymbolEntity> =
@@ -50,6 +51,7 @@ fun SymbolDto.symbolToDomainFromDto(): Symbol =
         quoteVolume24h = quoteVolume24h,
         volume24h = volume24h,
         quotedAtMillis = updatedAt.toEpochMillisOrNull(),
+        network = network,
     )
 
 /**

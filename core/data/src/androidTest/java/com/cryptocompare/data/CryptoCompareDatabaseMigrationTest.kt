@@ -133,6 +133,32 @@ class CryptoCompareDatabaseMigrationTest {
     }
 
     @Test
+    fun migrate8To9AddsNetworkAndRefetchesCatalog() {
+        helper.createDatabase(TEST_DB, 8).apply {
+            insertFavouritesAndPendingOperation()
+            execSQL(
+                "INSERT INTO symbols (id, ticker, symbol, bestAskProviderId, bestAskPrice, bestBidProviderId, " +
+                    "bestBidPrice, spreadPercent, updatedAt, syncedAtMillis) " +
+                    "VALUES (143, 'ethusdc', 'eth/usdc', 18, 2498.35, 3, 2498.92, 0.02, '2026-09-15T00:00:00Z', 1)",
+            )
+            execSQL("INSERT INTO catalog_remote_key (id, nextSkip, endReached) VALUES (0, 500, 0)")
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 9, true, *AssetMigrations.loadAll(context))
+
+        assertFavouritesAndPendingOperationSurvived(db)
+        // строка остаётся, сети у неё пока нет — придёт с перекачкой каталога
+        db.query("SELECT network FROM symbols WHERE id = 143").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertTrue(cursor.isNull(0))
+        }
+        // позиция подкачки сброшена: иначе медиатор не дойдёт до старых страниц,
+        // и сети у них так и не появятся
+        assertEquals(0, db.count("catalog_remote_key"))
+    }
+
+    @Test
     fun migrate5To8KeepsFavouritesAlongTheWholeChain() {
         // устройство, пропустившее несколько обновлений, проходит всю цепочку разом
         helper.createDatabase(TEST_DB, 5).apply {
@@ -187,6 +213,6 @@ class CryptoCompareDatabaseMigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** Держать равной `version` в `@Database`: иначе тест открывает не ту схему, что у пользователя. */
-        const val CURRENT_VERSION = 8
+        const val CURRENT_VERSION = 9
     }
 }

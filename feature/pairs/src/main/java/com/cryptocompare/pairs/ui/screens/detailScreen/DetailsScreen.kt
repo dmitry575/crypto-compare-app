@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cryptocompare.pairs.R
+import com.cryptocompare.pairs.ui.components.TitleWithNetworks
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.CandlestickChart
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.ExchangeInfoCard
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.ExchangeSelector
@@ -55,7 +56,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun DetailsScreen(
     onBack: () -> Unit,
-    onCompareClick: (String) -> Unit,
+    onCompareClick: (ticker: String, symbolId: Long?) -> Unit,
     viewModel: DetailsViewModel = hiltViewModel(),
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle()
@@ -74,9 +75,10 @@ fun DetailsScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = state.ticker.uppercase(),
-                        style = MaterialTheme.typography.headlineMedium,
+                    TitleWithNetworks(
+                        title = state.ticker.uppercase(),
+                        networks = state.networks,
+                        titleStyle = MaterialTheme.typography.headlineMedium,
                     )
                 },
                 colors =
@@ -149,7 +151,7 @@ fun DetailsScreen(
                         bestPair = state.bestPair,
                         exchanges = state.exchanges,
                         modifier = contentPadding,
-                        onClick = { onCompareClick(state.ticker) },
+                        onClick = { onCompareClick(state.ticker, state.symbolId) },
                     )
 
                     // Масштаб графика: он стоит вплотную над графиком, потому что

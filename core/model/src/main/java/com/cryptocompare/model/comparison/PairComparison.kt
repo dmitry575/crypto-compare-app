@@ -36,6 +36,10 @@ data class PairComparison(
      * показывала бы ту, что тикнула последней, а не самую широкую.
      */
     val bestPrices: List<TickerBestPrice>,
+    /** Символ сравнения. `null` — сравниваются все биржи тикера. */
+    val symbolId: Long? = null,
+    /** Сети символа в едином виде, крупные сначала. */
+    val networks: List<String> = emptyList(),
 ) {
     /** Разница в котируемом активе: плюс — заработок, минус — потеря на паре. */
     val difference: Double?

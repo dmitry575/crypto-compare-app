@@ -66,7 +66,7 @@ import kotlin.math.ceil
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    onPairClick: (ticker: String) -> Unit = {},
+    onPairClick: (ticker: String, symbolId: Long) -> Unit = { _, _ -> },
     onProfileClick: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel(),
 ) {
@@ -303,7 +303,8 @@ fun MainScreen(
                     ) {
                         items(
                             count = pairItems.itemCount,
-                            key = pairItems.itemKey { it.ticker },
+                            // тикер больше не уникален: у ETHUSDC строка на каждый набор сетей
+                            key = pairItems.itemKey { it.symbolId },
                         ) { index ->
                             val pair = pairItems[index]
                             if (pair != null) {
@@ -322,7 +323,7 @@ fun MainScreen(
                                     showVolume = showVolumeInRow,
                                     isFavourite = pair.ticker in uiState.value.favouriteTickers,
                                     onFavouriteClick = { viewModel.onFavouriteClick(pair.ticker) },
-                                    onClick = { onPairClick(pair.ticker) },
+                                    onClick = { onPairClick(pair.ticker, pair.symbolId) },
                                 )
                             }
                         }

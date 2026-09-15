@@ -28,9 +28,16 @@ class ComparePairAcrossExchangesUseCase
         private val getTickerDetailUseCase: GetTickerDetailUseCase,
         private val cryptoCompareRepository: CryptoCompareRepository,
     ) {
-        suspend operator fun invoke(ticker: String): Result<PairComparison> =
+        /**
+         * С [symbolId] сравниваются биржи одного символа и берётся его лучшая пара.
+         * Символы тикера — разные наборы сетей, и сводить их в одну таблицу нельзя.
+         */
+        suspend operator fun invoke(
+            ticker: String,
+            symbolId: Long? = null,
+        ): Result<PairComparison> =
             runCatching {
-                val detail = getTickerDetailUseCase(ticker).getOrThrow()
+                val detail = getTickerDetailUseCase(ticker, symbolId).getOrThrow()
 
                 // если лучшие цены не пришли, экран всё равно покажет таблицу:
                 // выжимка сверху сообщит, что данных нет, а не соврёт числом
@@ -39,7 +46,7 @@ class ComparePairAcrossExchangesUseCase
                         .getBestPricesByTicker(ticker)
                         .getOrNull()
                         .orEmpty()
-                        .filter { it.isComplete() }
+                        .filter { it.isComplete() && (symbolId == null || it.symbolId == symbolId) }
 
                 val quotes = detail.exchanges.sortedByAsk()
 
@@ -58,6 +65,8 @@ class ComparePairAcrossExchangesUseCase
                         bestBidPrice = single?.priceBuy,
                         spreadPercent = single?.let { spreadPercent(buyPrice = it.priceSell, sellPrice = it.priceBuy) },
                         bestPrices = bestPrices,
+                        symbolId = symbolId,
+                        networks = detail.networks,
                     )
 
                 bestPrices.widest()?.let(comparison::withBest) ?: comparison

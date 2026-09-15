@@ -35,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cryptocompare.model.comparison.PairComparison
 import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.pairs.R
+import com.cryptocompare.pairs.ui.components.TitleWithNetworks
 import com.cryptocompare.pairs.ui.screens.comparisonScreen.components.ComparisonMessage
 import com.cryptocompare.pairs.ui.screens.comparisonScreen.components.ComparisonSummaryCard
 import com.cryptocompare.pairs.ui.screens.comparisonScreen.components.ComparisonTableHeader
@@ -69,9 +70,10 @@ fun ComparisonScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = stringResource(R.string.pair_comparison_title, state.ticker.uppercase()),
-                        style = MaterialTheme.typography.titleLarge,
+                    TitleWithNetworks(
+                        title = stringResource(R.string.pair_comparison_title, state.ticker.uppercase()),
+                        networks = state.comparison?.networks.orEmpty(),
+                        titleStyle = MaterialTheme.typography.titleLarge,
                     )
                 },
                 colors =

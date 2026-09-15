@@ -3,6 +3,7 @@ package com.cryptocompare.data.mapper
 import com.cryptocompare.model.symbol.PairAggregateRow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PairAggregateMapperTest {
@@ -12,8 +13,14 @@ class PairAggregateMapperTest {
         spreadPercent: Double? = -1.0,
         quoteVolume24h: Double? = 98_750_000.0,
         change24h: Double? = 2.35,
+        network: String? = null,
+        networkCount: Int = 1,
     ) = PairAggregateRow(
-        ticker = "BTCUSDT",
+        symbolId = 143L,
+        ticker = "ETHUSDC",
+        symbol = "eth/usdc",
+        network = network,
+        networkCount = networkCount,
         buyPrice = buyPrice,
         sellPrice = sellPrice,
         spreadPercent = spreadPercent,
@@ -49,6 +56,27 @@ class PairAggregateMapperTest {
 
         assertEquals(98_750_000.0, item.quoteVolume24h!!, 0.0001)
         assertEquals(2.35, item.change24h!!, 0.0001)
+    }
+
+    @Test
+    fun `symbol id and network count reach the row`() {
+        val item = row(networkCount = 4).toPairUiItem()
+
+        assertEquals(143L, item.symbolId)
+        assertEquals(4, item.networkCount)
+    }
+
+    @Test
+    fun `networks are normalised with the base asset of the symbol`() {
+        // okx пишет сеть с префиксом базового актива: ETH-ERC20
+        val item = row(network = "ETH-Arbitrum One,ETH-ERC20,ETH-Base").toPairUiItem()
+
+        assertEquals(listOf("Ethereum", "Arbitrum", "Base"), item.networks)
+    }
+
+    @Test
+    fun `no network from the backend means no names yet`() {
+        assertTrue(row(network = null).toPairUiItem().networks.isEmpty())
     }
 
     @Test

@@ -1,7 +1,8 @@
 package com.cryptocompare.model.symbol
 
-/** Пара в каталоге: одна строка на тикер, сведённая бэкендом по всем биржам. */
+/** Пара в каталоге: один символ, то есть пара в одном наборе сетей. */
 data class PairUiItem(
+    val symbolId: Long,
     val ticker: String,
     /** Цена, по которой покупает пользователь: лучший ask среди бирж. */
     val buyPrice: Double,
@@ -16,8 +17,12 @@ data class PairUiItem(
      * бэкенда готовым. `null` — цены нет.
      */
     val spreadPercent: Double?,
-    /** Суммарный объём за 24ч в котируемом активе. Подробности — [PairAggregateRow]. */
+    /** Объём за 24ч в котируемом активе. Подробности — [PairAggregateRow]. */
     val quoteVolume24h: Double? = null,
-    /** Изменение цены за 24ч, наибольшее по модулю среди бирж. */
+    /** Изменение цены за 24ч. */
     val change24h: Double? = null,
+    /** Сети символа в едином виде, крупные сначала. Пусто — бэкенд их не прислал. */
+    val networks: List<String> = emptyList(),
+    /** Сколько символов у тикера в каталоге. Больше одного — строка помечается сетями. */
+    val networkCount: Int = 1,
 )

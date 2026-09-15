@@ -7,7 +7,7 @@ import com.cryptocompare.model.symbol.CatalogSort
 import com.cryptocompare.model.symbol.CatalogSorting
 
 /**
- * Запрос каталога: агрегат по тикеру плюс фильтры и сортировка.
+ * Запрос каталога: строка на символ плюс фильтры и сортировка.
  *
  * Собирается строкой, а не живёт в `@Query`, потому что Room не подставляет
  * `ORDER BY` параметром — поле сортировки это часть синтаксиса, а не значение.
@@ -18,29 +18,18 @@ import com.cryptocompare.model.symbol.CatalogSorting
  */
 internal object PairsPagingQuery {
     /**
-     * Изменение за 24ч: наибольшее по модулю среди бирж, знак сохраняется.
+     * Цены и спред символа.
      *
-     * Не среднее — биржа с протухшими котировками весила бы в AVG столько же,
-     * сколько основной рынок, и гасила бы реальное движение.
-     */
-    private const val CHANGE_EXPRESSION =
-        """
-        CASE
-            WHEN ABS(MAX(change24h)) >= ABS(MIN(change24h)) THEN MAX(change24h)
-            ELSE MIN(change24h)
-        END
-        """
-
-    /**
-     * Цены и спред пары.
-     *
-     * Спред больше не считается здесь — он приходит с бэкенда готовым, и там же
+     * Спред не считается здесь — он приходит с бэкенда готовым, и там же
      * отсеиваются протухшие котировки, которые иначе выигрывали бы сравнение.
-     * Приложение только выбирает лучшее по тикеру.
      *
-     * Агрегаты нужны из-за `GROUP BY UPPER(ticker)`: одна пара может торговаться
-     * в нескольких сетях, и строк на тикер бывает больше одной. Для единственной
-     * строки все три `MIN`/`MAX` возвращают её собственные значения.
+     * **Строка на символ, а не на тикер.** Раньше запрос сводил `GROUP BY
+     * UPPER(ticker)` все символы тикера в одну строку, а символы — это одна пара
+     * в разных наборах сетей: USDC в Ethereum и USDC в Solana — разные активы.
+     * Сводная строка брала покупку из одной сети, а спред — из другой. Теперь
+     * каждый символ отдельно, а `networkCount` говорит строке, что у тикера есть
+     * соседи и её надо пометить сетями. Считается одним подзапросом с группировкой,
+     * а не на каждую строку: оконных функций в SQLite до API 30 нет.
      *
      * Нулевой объём — это «биржа не отдала статистику», а не «торгов не было»:
      * на 2026-09-14 так у 18 строк каталога, и у `athbtc` при нуле объёма
@@ -50,13 +39,22 @@ internal object PairsPagingQuery {
     private const val SELECT_AND_FROM =
         """
         SELECT
-            UPPER(ticker) AS ticker,
-            MIN(bestAskPrice) AS buyPrice,
-            MAX(bestBidPrice) AS sellPrice,
-            MAX(spreadPercent) AS spreadPercent,
-            NULLIF(SUM(quoteVolume24h), 0) AS quoteVolume24h,
-            $CHANGE_EXPRESSION AS change24h
+            symbols.id AS symbolId,
+            UPPER(symbols.ticker) AS ticker,
+            symbols.symbol AS symbol,
+            symbols.bestAskPrice AS buyPrice,
+            symbols.bestBidPrice AS sellPrice,
+            symbols.spreadPercent AS spreadPercent,
+            NULLIF(symbols.quoteVolume24h, 0) AS quoteVolume24h,
+            symbols.change24h AS change24h,
+            symbols.network AS network,
+            counts.networkCount AS networkCount
         FROM symbols
+        JOIN (
+            SELECT UPPER(ticker) AS countedTicker, COUNT(*) AS networkCount
+            FROM symbols
+            GROUP BY UPPER(ticker)
+        ) AS counts ON counts.countedTicker = UPPER(symbols.ticker)
         """
 
     fun build(
@@ -87,16 +85,14 @@ internal object PairsPagingQuery {
         val sql =
             """
             $SELECT_AND_FROM
-            WHERE ticker IS NOT NULL AND TRIM(ticker) != ''
-                AND (? = '' OR ticker LIKE '%' || ? || '%')
-                AND (? = 0 OR UPPER(ticker) IN ($favouritePlaceholders))
-            GROUP BY UPPER(ticker)
-            -- направление отбирается в HAVING: «растёт» это свойство пары целиком,
-            -- а строки таблицы — отдельные биржи. Выражение повторено дословно, потому
-            -- что имя change24h здесь означало бы колонку, а не результат агрегата
-            HAVING ? = 'ANY'
-                OR (? = '${CatalogDirection.GAINERS.name}' AND $CHANGE_EXPRESSION > 0)
-                OR (? = '${CatalogDirection.LOSERS.name}' AND $CHANGE_EXPRESSION < 0)
+            WHERE symbols.ticker IS NOT NULL AND TRIM(symbols.ticker) != ''
+                AND (? = '' OR symbols.ticker LIKE '%' || ? || '%')
+                AND (? = 0 OR UPPER(symbols.ticker) IN ($favouritePlaceholders))
+                AND (
+                    ? = 'ANY'
+                    OR (? = '${CatalogDirection.GAINERS.name}' AND symbols.change24h > 0)
+                    OR (? = '${CatalogDirection.LOSERS.name}' AND symbols.change24h < 0)
+                )
             ORDER BY ${orderBy(sorting)}
             """.trimIndent()
 
@@ -111,9 +107,11 @@ internal object PairsPagingQuery {
      * то есть с API 30, а minSdk у нас 26. Отдельное выражение `(x IS NULL)` работает
      * везде.
      *
-     * Тикер в хвосте — не украшение: Paging листает через LIMIT/OFFSET, и при
-     * одинаковых значениях сортируемого поля порядок между запросами должен быть
-     * устойчивым, иначе строки будут дублироваться и пропадать между страницами.
+     * Тикер и символ в хвосте — не украшение: Paging листает через LIMIT/OFFSET,
+     * и при одинаковых значениях сортируемого поля порядок между запросами должен
+     * быть устойчивым, иначе строки будут дублироваться и пропадать между
+     * страницами. Символ нужен и при сортировке по имени: тикер больше не
+     * уникален, у ETHUSDC строк столько, сколько наборов сетей.
      */
     private fun orderBy(sorting: CatalogSorting): String {
         val order = if (sorting.ascending) "ASC" else "DESC"
@@ -134,9 +132,9 @@ internal object PairsPagingQuery {
             }
 
         return if (sorting.field == CatalogSort.NAME) {
-            "$column $order"
+            "$column $order, symbolId ASC"
         } else {
-            "$nullsLast$column $order, ticker ASC"
+            "$nullsLast$column $order, ticker ASC, symbolId ASC"
         }
     }
 
