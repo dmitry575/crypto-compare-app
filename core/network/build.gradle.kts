@@ -9,6 +9,8 @@ plugins {
 val debugBaseUrl = project.requireDebugProperty("DEBUG_BASE_URL", "http://example_ip:port")
 val releaseBaseUrl = project.requireReleaseProperty("RELEASE_BASE_URL", "http://example_ip:port")
 
+project.requireSecureReleaseUrl("RELEASE_BASE_URL", releaseBaseUrl)
+
 fun Project.requireReleaseProperty(
     name: String,
     fallback: String,
@@ -28,6 +30,29 @@ fun Project.requireReleaseProperty(
     }
 
     return value ?: fallback
+}
+
+/**
+ * Релиз ходит в сеть только по шифрованному каналу: исключение для cleartext
+ * есть лишь в debug (`app/src/debug/res/xml/network_security_config.xml`).
+ * Адрес `http://` в релизной сборке без него просто не соединится, причём без
+ * ошибки сборки, — поэтому проверяем здесь.
+ */
+fun Project.requireSecureReleaseUrl(
+    name: String,
+    value: String,
+) {
+    val releaseRequested =
+        gradle.startParameter.taskNames.any { taskName ->
+            taskName.contains("release", ignoreCase = true)
+        }
+
+    if (releaseRequested && !value.startsWith("https://")) {
+        throw GradleException(
+            "Gradle property '$name' must start with https:// for release builds: " +
+                "cleartext traffic is allowed only in debug.",
+        )
+    }
 }
 
 fun Project.requireDebugProperty(

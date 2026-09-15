@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Оверлей только для debug-сборок. Выключает сбор крашей: иначе консоль
-  Crashlytics засорялась бы падениями с машин разработчиков вперемешку
-  с реальными от пользователей. В release этого файла нет — там сбор включён.
+  Оверлей только для debug-сборок. В release этого файла нет.
+
+  Выключает сбор крашей: иначе консоль Crashlytics засорялась бы падениями
+  с машин разработчиков вперемешку с реальными от пользователей.
+
+  Разрешает cleartext до отладочного сервера: debug ходит к нему по http и ws.
+  Релиз работает только по https и wss, и исключение ему не нужно — раньше оно
+  лежало в main и открывало незашифрованный трафик и в сборке для RuStore.
+  Что релизные адреса действительно https и wss, проверяет Gradle
+  (requireSecureReleaseUrl в core:network и core:data).
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application>
+    <application android:networkSecurityConfig="@xml/network_security_config">
         <meta-data
             android:name="firebase_crashlytics_collection_enabled"
             android:value="false" />

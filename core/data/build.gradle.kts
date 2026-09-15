@@ -11,6 +11,8 @@ val debugWsBaseUrl = project.requireDebugProperty("DEBUG_WS_BASE_URL", "ws://exa
 
 val releaseWsBaseUrl = project.requireReleaseProperty("RELEASE_WS_BASE_URL", "ws://example_ip:port")
 
+project.requireSecureReleaseUrl("RELEASE_WS_BASE_URL", releaseWsBaseUrl)
+
 fun Project.requireReleaseProperty(
     name: String,
     fallback: String,
@@ -30,6 +32,29 @@ fun Project.requireReleaseProperty(
     }
 
     return value ?: fallback
+}
+
+/**
+ * Релиз ходит в сеть только по шифрованному каналу: исключение для cleartext
+ * есть лишь в debug (`app/src/debug/res/xml/network_security_config.xml`).
+ * Адрес `ws://` в релизной сборке без него просто не соединится, причём без
+ * ошибки сборки, — поэтому проверяем здесь.
+ */
+fun Project.requireSecureReleaseUrl(
+    name: String,
+    value: String,
+) {
+    val releaseRequested =
+        gradle.startParameter.taskNames.any { taskName ->
+            taskName.contains("release", ignoreCase = true)
+        }
+
+    if (releaseRequested && !value.startsWith("wss://")) {
+        throw GradleException(
+            "Gradle property '$name' must start with wss:// for release builds: " +
+                "cleartext traffic is allowed only in debug.",
+        )
+    }
 }
 
 fun Project.requireDebugProperty(
