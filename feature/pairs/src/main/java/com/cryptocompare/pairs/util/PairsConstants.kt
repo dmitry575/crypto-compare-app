@@ -2,6 +2,7 @@ package com.cryptocompare.pairs.util
 
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * Константы фичи pairs. Размеры, у которых есть смысловой аналог в
@@ -18,6 +19,13 @@ object PairsConstants {
 
         /** Сколько символов базовой валюты влезает в значок пары. */
         const val BADGE_MAX_CHARS = 4
+
+        /**
+         * Ниже этого подгонка текста в значке не опускается. Это меньше шкалы
+         * шрифтов, но срабатывает только при крупном системном шрифте, где и 8sp
+         * физически больше обычных 12sp.
+         */
+        val BADGE_MIN_FONT_SIZE = 8.sp
         const val TICKER_PREFIX = "$"
 
         /** Разделитель между спредом и объёмом в приглушённом ряду строки. */
