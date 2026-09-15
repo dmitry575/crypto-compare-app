@@ -65,6 +65,11 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # по умолчанию действие ставит «tools platform-tools», а пакета tools в
+          # репозитории SDK больше нет: sdkmanager падал «Failed to find package
+          # 'tools'», и с 2026-09-15 не проходил ни один прогон
+          packages: platform-tools
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -110,6 +115,11 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # по умолчанию действие ставит «tools platform-tools», а пакета tools в
+          # репозитории SDK больше нет: sdkmanager падал «Failed to find package
+          # 'tools'», и с 2026-09-15 не проходил ни один прогон
+          packages: platform-tools
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
