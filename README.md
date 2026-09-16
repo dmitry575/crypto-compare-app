@@ -1,4 +1,4 @@
-# CryptoCompare (CoinDiff)
+# Coins Compare
 
 An Android app for comparing quotes of the same crypto pair across different
 exchanges. The ticker catalog, live prices, and chart history all come from a
@@ -7,7 +7,7 @@ history is paged from `GET /v1/klines/{providerId}` (offset/limit), no local cac
 
 - `applicationId`: `com.boomhaa.cryptocompare`
 - code namespace: `com.cryptocompare.*`
-- min SDK 26 / target SDK 36 / compile SDK 37.1 / JVM target 21
+- min SDK 26 / target SDK 37 / compile SDK 37.1 / JVM target 21
 
 ## Features
 
