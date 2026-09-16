@@ -20,10 +20,12 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.cryptocompare.model.symbol.CatalogSort
 import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.pairs.R
+import com.cryptocompare.ui.locale.ProvideWindowLanguage
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.OverlineType
 import com.cryptocompare.ui.theme.bgCard
@@ -48,72 +50,77 @@ internal fun PairsSortSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Читается снаружи окна шторки: внутри LocalContext уже без подмены языка.
+    val outerContext = LocalContext.current
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(),
         containerColor = MaterialTheme.colorScheme.bgCard,
         modifier = modifier,
     ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = Dimensions.Spacing.xl),
-        ) {
-            Text(
-                text = stringResource(R.string.pairs_sort_title),
-                style = OverlineType,
-                color = MaterialTheme.colorScheme.textTertiary,
+        ProvideWindowLanguage(outerContext) {
+            Column(
                 modifier =
-                    Modifier.padding(
-                        horizontal = Dimensions.Padding.screenHorizontal,
-                        vertical = Dimensions.Spacing.xs,
-                    ),
-            )
-
-            CatalogSort.entries.forEach { field ->
-                val selected = field == sorting.field
-
-                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = Dimensions.Spacing.xl),
+            ) {
+                Text(
+                    text = stringResource(R.string.pairs_sort_title),
+                    style = OverlineType,
+                    color = MaterialTheme.colorScheme.textTertiary,
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = Dimensions.Height.listItemSmall)
-                            .clickable { onSortSelected(field) }
-                            .padding(horizontal = Dimensions.Padding.screenHorizontal),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(field.labelRes()),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color =
-                            if (selected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.textPrimary
-                            },
-                    )
+                        Modifier.padding(
+                            horizontal = Dimensions.Padding.screenHorizontal,
+                            vertical = Dimensions.Spacing.xs,
+                        ),
+                )
 
-                    if (selected) {
-                        Icon(
-                            imageVector =
-                                if (sorting.ascending) {
-                                    Icons.Filled.ArrowUpward
+                CatalogSort.entries.forEach { field ->
+                    val selected = field == sorting.field
+
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = Dimensions.Height.listItemSmall)
+                                .clickable { onSortSelected(field) }
+                                .padding(horizontal = Dimensions.Padding.screenHorizontal),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(field.labelRes()),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color =
+                                if (selected) {
+                                    MaterialTheme.colorScheme.primary
                                 } else {
-                                    Icons.Filled.ArrowDownward
+                                    MaterialTheme.colorScheme.textPrimary
                                 },
-                            contentDescription =
-                                stringResource(
-                                    if (sorting.ascending) {
-                                        R.string.pairs_sort_ascending
-                                    } else {
-                                        R.string.pairs_sort_descending
-                                    },
-                                ),
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(Dimensions.IconSize.md),
                         )
+
+                        if (selected) {
+                            Icon(
+                                imageVector =
+                                    if (sorting.ascending) {
+                                        Icons.Filled.ArrowUpward
+                                    } else {
+                                        Icons.Filled.ArrowDownward
+                                    },
+                                contentDescription =
+                                    stringResource(
+                                        if (sorting.ascending) {
+                                            R.string.pairs_sort_ascending
+                                        } else {
+                                            R.string.pairs_sort_descending
+                                        },
+                                    ),
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(Dimensions.IconSize.md),
+                            )
+                        }
                     }
                 }
             }
