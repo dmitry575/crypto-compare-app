@@ -10,6 +10,11 @@ data class MainUiState(
     val favouriteTickers: Set<String> = emptySet(),
     val onlyFavourite: Boolean = false,
     /**
+     * Гость попросил избранное. Экран показывает приглашение войти и гасит
+     * флаг: это разовое событие, а не состояние.
+     */
+    val signInRequired: Boolean = false,
+    /**
      * Направление за 24ч. Независимо от [onlyFavourite]: «избранное, которое
      * растёт» — это ровно тот вопрос, ради которого избранное и заводят.
      */

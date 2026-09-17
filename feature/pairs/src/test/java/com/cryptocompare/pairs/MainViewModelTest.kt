@@ -1,6 +1,8 @@
 package com.cryptocompare.pairs
 
 import androidx.paging.PagingData
+import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
+import com.cryptocompare.domain.usecase.auth.ObserveAuthStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
 import com.cryptocompare.domain.usecase.pairs.LoadPairsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteTickersUseCase
@@ -11,6 +13,7 @@ import com.cryptocompare.domain.usecase.pairs.StreamDisconnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncFavouriteTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.ToggleFavouriteTickerUseCase
+import com.cryptocompare.model.auth.AuthUser
 import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSort
 import com.cryptocompare.model.symbol.CatalogSorting
@@ -30,6 +33,7 @@ import io.mockk.slot
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -39,7 +43,9 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -83,6 +89,12 @@ class MainViewModelTest {
         result: Result<Unit> = Result.success(Unit),
     ): SyncFavouriteTickersUseCase = mockk { coEvery { this@mockk.invoke() } returns result }
 
+    private fun observeAuthStateUseCaseMock(flow: Flow<AuthUser?>): ObserveAuthStateUseCase =
+        mockk { every { this@mockk.invoke() } returns flow }
+
+    private fun getCurrentUserUseCaseMock(user: AuthUser?): GetCurrentUserUseCase =
+        mockk { every { this@mockk.invoke() } returns user }
+
     private fun makeVm(
         loadPairsUseCase: LoadPairsUseCase = loadPairsUseCaseMock(),
         observeTickerEventUseCase: ObserveTickerEventUseCase = observeTickerEventUseCaseMock(emptyFlow()),
@@ -100,6 +112,8 @@ class MainViewModelTest {
             mockk { every { this@mockk.invoke() } returns emptyFlow() },
         refreshBestPricesUseCase: RefreshBestPricesUseCase =
             mockk { coEvery { this@mockk.invoke(any()) } returns Result.success(Unit) },
+        observeAuthStateUseCase: ObserveAuthStateUseCase = observeAuthStateUseCaseMock(flowOf(SIGNED_IN_USER)),
+        getCurrentUserUseCase: GetCurrentUserUseCase = getCurrentUserUseCaseMock(SIGNED_IN_USER),
     ): MainViewModel =
         MainViewModel(
             loadPairsUseCase = loadPairsUseCase,
@@ -112,6 +126,8 @@ class MainViewModelTest {
             syncFavouriteTickersUseCase = syncFavouriteTickersUseCase,
             observeStreamReconnectsUseCase = observeStreamReconnectsUseCase,
             refreshBestPricesUseCase = refreshBestPricesUseCase,
+            observeAuthStateUseCase = observeAuthStateUseCase,
+            getCurrentUserUseCase = getCurrentUserUseCase,
         )
 
     /** Событие типа 5: лучшая пара по тикеру. Каталог слушает только его. */
@@ -367,6 +383,77 @@ class MainViewModelTest {
         }
 
     @Test
+    fun `guest star tap asks for sign in instead of toggling`() =
+        runTest {
+            val toggleFavouriteTickerUseCase = toggleFavoriteTickerUseCaseMock()
+            val vm =
+                makeVm(
+                    toggleFavouriteTickerUseCase = toggleFavouriteTickerUseCase,
+                    observeAuthStateUseCase = observeAuthStateUseCaseMock(flowOf(null)),
+                    getCurrentUserUseCase = getCurrentUserUseCaseMock(null),
+                )
+
+            yield()
+            vm.onFavouriteClick("BTCUSDT")
+            yield()
+
+            assertTrue(vm.uiState.value.signInRequired)
+            coVerify(exactly = 0) { toggleFavouriteTickerUseCase.invoke(any()) }
+        }
+
+    @Test
+    fun `guest favourites filter asks for sign in and stays off`() =
+        runTest {
+            val vm =
+                makeVm(
+                    observeAuthStateUseCase = observeAuthStateUseCaseMock(flowOf(null)),
+                    getCurrentUserUseCase = getCurrentUserUseCaseMock(null),
+                )
+
+            yield()
+            vm.onOnlyFavouriteChange(true)
+            yield()
+
+            assertTrue(vm.uiState.value.signInRequired)
+            assertFalse(vm.uiState.value.onlyFavourite)
+        }
+
+    @Test
+    fun `shown sign in request is not repeated`() =
+        runTest {
+            val vm =
+                makeVm(
+                    observeAuthStateUseCase = observeAuthStateUseCaseMock(flowOf(null)),
+                    getCurrentUserUseCase = getCurrentUserUseCaseMock(null),
+                )
+
+            yield()
+            vm.onFavouriteClick("BTCUSDT")
+            yield()
+            vm.onSignInRequestShown()
+
+            assertFalse(vm.uiState.value.signInRequired)
+        }
+
+    @Test
+    fun `signing out turns the favourites filter off`() =
+        runTest {
+            // иначе после выхода каталог остался бы пустым списком без объяснения
+            val authState = MutableStateFlow<AuthUser?>(SIGNED_IN_USER)
+            val vm = makeVm(observeAuthStateUseCase = observeAuthStateUseCaseMock(authState))
+
+            yield()
+            vm.onOnlyFavouriteChange(true)
+            yield()
+            assertTrue(vm.uiState.value.onlyFavourite)
+
+            authState.value = null
+            yield()
+
+            assertFalse(vm.uiState.value.onlyFavourite)
+        }
+
+    @Test
     fun `onFavouriteClick success does not set error`() =
         runTest {
             val vm =
@@ -567,4 +654,14 @@ class MainViewModelTest {
 
             assertEquals("sync failed", vm.uiState.value.error)
         }
+
+    private companion object {
+        val SIGNED_IN_USER =
+            AuthUser(
+                uid = "uid",
+                email = "test@example.com",
+                displayName = "Test",
+                photoUrl = null,
+            )
+    }
 }

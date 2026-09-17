@@ -13,7 +13,7 @@ import com.cryptocompare.profile.ui.screens.profilescreen.ProfileScreen
  */
 fun NavGraphBuilder.profileNavigation(
     navController: NavHostController,
-    onSignedOut: () -> Unit,
+    onSignInClick: () -> Unit,
 ) {
     navigation(
         route = ProfileDestination.ROUTE,
@@ -22,7 +22,7 @@ fun NavGraphBuilder.profileNavigation(
         composable(ProfileScreens.ProfileScreen.route) {
             ProfileScreen(
                 onBack = { navController.popBackStack() },
-                onSignedOut = onSignedOut,
+                onSignInClick = onSignInClick,
                 onChangePasswordClick = {
                     navController.navigate(ProfileScreens.ChangePasswordScreen.route)
                 },

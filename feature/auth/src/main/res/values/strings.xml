@@ -37,8 +37,6 @@
     <string name="register_sign_in">Sign In</string>
 
     <!-- Splash screen -->
-    <string name="splash_checking">Checking session\u2026</string>
-    <string name="splash_retry">Retry</string>
 
     <!-- Forgot password screen -->
     <string name="forgot_password_title">Reset password</string>

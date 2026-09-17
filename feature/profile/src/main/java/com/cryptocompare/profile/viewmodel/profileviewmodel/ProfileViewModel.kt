@@ -2,7 +2,7 @@ package com.cryptocompare.profile.viewmodel.profileviewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
+import com.cryptocompare.domain.usecase.auth.ObserveAuthStateUseCase
 import com.cryptocompare.domain.usecase.profile.DeleteAccountUseCase
 import com.cryptocompare.domain.usecase.profile.SignOutUseCase
 import com.cryptocompare.domain.usecase.settings.ObserveLanguageUseCase
@@ -23,11 +23,11 @@ import javax.inject.Inject
 class ProfileViewModel
     @Inject
     constructor(
-        private val getCurrentUserUseCase: GetCurrentUserUseCase,
         private val signOutUseCase: SignOutUseCase,
         private val deleteAccountUseCase: DeleteAccountUseCase,
         private val setThemePreferenceUseCase: SetThemePreferenceUseCase,
         private val setLanguageUseCase: SetLanguageUseCase,
+        observeAuthStateUseCase: ObserveAuthStateUseCase,
         observeThemePreferenceUseCase: ObserveThemePreferenceUseCase,
         observeLanguageUseCase: ObserveLanguageUseCase,
     ) : ViewModel() {
@@ -35,7 +35,7 @@ class ProfileViewModel
         val uiState = _uiState.asStateFlow()
 
         init {
-            loadUser()
+            observeUser(observeAuthStateUseCase)
             observeTheme(observeThemePreferenceUseCase)
             observeLanguage(observeLanguageUseCase)
         }
@@ -62,7 +62,7 @@ class ProfileViewModel
                     uiState.copy(showSignOutConfirmation = false, isLoading = true, errorMessage = null)
                 }
                 runCatching { signOutUseCase() }
-                    .onSuccess { clearSession() }
+                    .onSuccess { sessionEnded() }
                     .onFailure(::showError)
             }
         }
@@ -81,7 +81,7 @@ class ProfileViewModel
                     uiState.copy(showDeleteConfirmation = false, isLoading = true, errorMessage = null)
                 }
                 deleteAccountUseCase()
-                    .onSuccess { clearSession() }
+                    .onSuccess { sessionEnded() }
                     .onFailure(::showError)
             }
         }
@@ -106,15 +106,20 @@ class ProfileViewModel
             }
         }
 
-        private fun loadUser() {
-            val user = runCatching { getCurrentUserUseCase() }.getOrNull()
-            _uiState.update { uiState -> uiState.copy(user = user) }
+        /**
+         * Поток, а не разовое чтение: после выхода и удаления аккаунта экран
+         * остаётся открытым и должен сам превратиться в приглашение войти.
+         */
+        private fun observeUser(observeAuthStateUseCase: ObserveAuthStateUseCase) {
+            viewModelScope.launch {
+                observeAuthStateUseCase().collect { user ->
+                    _uiState.update { uiState -> uiState.copy(user = user) }
+                }
+            }
         }
 
-        private fun clearSession() {
-            _uiState.update { uiState ->
-                uiState.copy(user = null, isLoading = false, isSignedOut = true)
-            }
+        private fun sessionEnded() {
+            _uiState.update { uiState -> uiState.copy(isLoading = false) }
         }
 
         private fun showError(error: Throwable) {

@@ -18,6 +18,7 @@ import com.cryptocompare.pairs.util.PairsConstants
 fun NavGraphBuilder.pairsNavigation(
     navController: NavHostController,
     onProfileClick: () -> Unit,
+    onSignInClick: () -> Unit,
 ) {
     navigation(
         route = PairsDestination.ROUTE,
@@ -29,6 +30,7 @@ fun NavGraphBuilder.pairsNavigation(
                     navController.navigate(PairsScreens.DetailsScreen.createRoute(ticker, symbolId))
                 },
                 onProfileClick = onProfileClick,
+                onSignInClick = onSignInClick,
             )
         }
 
