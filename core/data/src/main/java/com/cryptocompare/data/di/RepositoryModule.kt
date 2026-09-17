@@ -4,13 +4,13 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import com.cryptocompare.data.BuildConfig
 import com.cryptocompare.data.local.CryptoCompareDatabase
-import com.cryptocompare.data.local.dao.FavouriteTickerDao
+import com.cryptocompare.data.local.dao.FavouriteSymbolDao
 import com.cryptocompare.data.local.dao.PendingFavouriteOperationDao
 import com.cryptocompare.data.local.dao.ProviderDao
 import com.cryptocompare.data.local.dao.SymbolDao
 import com.cryptocompare.data.repository.AuthRepositoryImpl
 import com.cryptocompare.data.repository.CryptoCompareRepositoryImpl
-import com.cryptocompare.data.repository.FavouriteTickerRepositoryImpl
+import com.cryptocompare.data.repository.FavouriteSymbolRepositoryImpl
 import com.cryptocompare.data.repository.FirebaseCrashReporter
 import com.cryptocompare.data.repository.LanguageRepositoryImpl
 import com.cryptocompare.data.repository.OnboardingRepositoryImpl
@@ -20,7 +20,7 @@ import com.cryptocompare.data.transactionrunner.DatabaseTransactionRunner
 import com.cryptocompare.domain.repository.AuthRepository
 import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.domain.repository.CryptoCompareRepository
-import com.cryptocompare.domain.repository.FavouriteTickerRepository
+import com.cryptocompare.domain.repository.FavouriteSymbolRepository
 import com.cryptocompare.domain.repository.LanguageRepository
 import com.cryptocompare.domain.repository.OnboardingRepository
 import com.cryptocompare.domain.repository.ThemeRepository
@@ -95,18 +95,20 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideFavoritePairsRepository(
-        favouriteTickerDao: FavouriteTickerDao,
+    fun provideFavouriteSymbolRepository(
+        favouriteSymbolDao: FavouriteSymbolDao,
         pendingFavouriteOperationDao: PendingFavouriteOperationDao,
+        symbolDao: SymbolDao,
         transactionRunner: DatabaseTransactionRunner,
         auth: FirebaseAuth,
         firestore: FirebaseFirestore,
         @Named("ioDispatcher") ioDispatcher: CoroutineDispatcher,
-    ): FavouriteTickerRepository =
-        FavouriteTickerRepositoryImpl(
+    ): FavouriteSymbolRepository =
+        FavouriteSymbolRepositoryImpl(
             firestore = firestore,
-            favouriteTickerDao = favouriteTickerDao,
+            favouriteSymbolDao = favouriteSymbolDao,
             pendingFavouriteOperationDao = pendingFavouriteOperationDao,
+            symbolDao = symbolDao,
             transactionRunner = transactionRunner,
             auth = auth,
             ioDispatcher = ioDispatcher,

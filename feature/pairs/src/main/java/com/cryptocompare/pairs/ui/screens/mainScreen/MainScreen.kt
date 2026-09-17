@@ -82,7 +82,7 @@ fun MainScreen(
 
     // Фильтр, которому нечего показать по определению: звезда включена, а избранного
     // нет ни одного. Каталог тут не поможет, сколько его ни догружай.
-    val filterMatchesNothing = uiState.value.onlyFavourite && uiState.value.favouriteTickers.isEmpty()
+    val filterMatchesNothing = uiState.value.onlyFavourite && uiState.value.favouriteSymbolIds.isEmpty()
 
     // Локальная выборка исчерпана: по тому, что уже лежит в Room, под фильтр не
     // подходит ничего. Спрашиваем именно source, а не общий loadState: общий
@@ -271,7 +271,7 @@ fun MainScreen(
                                 uiState.value.searchQuery.isNotEmpty() ->
                                     stringResource(R.string.pairs_empty_search, uiState.value.searchQuery)
 
-                                uiState.value.onlyFavourite && uiState.value.favouriteTickers.isEmpty() ->
+                                uiState.value.onlyFavourite && uiState.value.favouriteSymbolIds.isEmpty() ->
                                     stringResource(R.string.pairs_empty_favorites)
 
                                 uiState.value.direction != CatalogDirection.ANY ->
@@ -341,8 +341,8 @@ fun MainScreen(
                                     pair = pair,
                                     minRowHeight = Dimensions.Height.listItemStats,
                                     showVolume = showVolumeInRow,
-                                    isFavourite = pair.ticker in uiState.value.favouriteTickers,
-                                    onFavouriteClick = { viewModel.onFavouriteClick(pair.ticker) },
+                                    isFavourite = pair.symbolId in uiState.value.favouriteSymbolIds,
+                                    onFavouriteClick = { viewModel.onFavouriteClick(pair.symbolId, pair.ticker) },
                                     onClick = { onPairClick(pair.ticker, pair.symbolId) },
                                 )
                             }

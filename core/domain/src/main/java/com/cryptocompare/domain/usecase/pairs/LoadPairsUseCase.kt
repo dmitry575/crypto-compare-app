@@ -18,7 +18,7 @@ class LoadPairsUseCase
         operator fun invoke(
             query: String,
             onlyFavourite: Boolean,
-            favouriteTickers: Set<String>,
+            favouriteSymbolIds: Set<Long>,
             direction: CatalogDirection,
             sorting: CatalogSorting,
         ): Flow<PagingData<PairUiItem>> {
@@ -27,7 +27,7 @@ class LoadPairsUseCase
             return cryptoCompareRepository.getPairsPaged(
                 query = query,
                 onlyFavourite = onlyFavourite,
-                favouriteTickers = favouriteTickers,
+                favouriteSymbolIds = favouriteSymbolIds,
                 direction = direction,
                 sorting = sorting,
             )

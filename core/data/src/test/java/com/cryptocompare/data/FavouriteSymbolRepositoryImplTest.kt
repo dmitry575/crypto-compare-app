@@ -1,10 +1,12 @@
 package com.cryptocompare.data
 
 import app.cash.turbine.test
-import com.cryptocompare.data.local.dao.FavouriteTickerDao
+import com.cryptocompare.data.local.dao.FavouriteSymbolDao
 import com.cryptocompare.data.local.dao.PendingFavouriteOperationDao
-import com.cryptocompare.data.local.entity.PendingFavoriteOperationEntity
-import com.cryptocompare.data.repository.FavouriteTickerRepositoryImpl
+import com.cryptocompare.data.local.dao.SymbolDao
+import com.cryptocompare.data.local.entity.PendingFavouriteOperationEntity
+import com.cryptocompare.data.local.entity.SymbolEntity
+import com.cryptocompare.data.repository.FavouriteSymbolRepositoryImpl
 import com.cryptocompare.data.transactionrunner.DatabaseTransactionRunner
 import com.cryptocompare.data.util.DataConstants
 import com.google.android.gms.tasks.Tasks
@@ -32,9 +34,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class FavouriteTickerRepositoryImplTest {
+class FavouriteSymbolRepositoryImplTest {
     private val firestore: FirebaseFirestore = mockk()
-    private val dao: FavouriteTickerDao = mockk()
+    private val dao: FavouriteSymbolDao = mockk()
+    private val symbolDao: SymbolDao = mockk()
     private val pendingDao: PendingFavouriteOperationDao = mockk(relaxed = true)
     private val auth: FirebaseAuth = mockk(relaxed = true)
     private val dispatcher = UnconfinedTestDispatcher()
@@ -51,86 +54,91 @@ class FavouriteTickerRepositoryImplTest {
         }
 
     private val repository =
-        FavouriteTickerRepositoryImpl(
+        FavouriteSymbolRepositoryImpl(
             firestore = firestore,
-            favouriteTickerDao = dao,
+            favouriteSymbolDao = dao,
             pendingFavouriteOperationDao = pendingDao,
+            symbolDao = symbolDao,
             transactionRunner = transactionRunner,
             auth = auth,
             ioDispatcher = dispatcher,
         )
 
     @Test
-    fun `observeFavouriteTickers emits empty set when current user is null`() =
+    fun `observeFavouriteSymbolIds emits empty set when current user is null`() =
         runTest {
             every { auth.currentUser } returns null
 
-            repository.observeFavouriteTickers().test {
-                assertEquals(emptySet<String>(), awaitItem())
+            repository.observeFavouriteSymbolIds().test {
+                assertEquals(emptySet<Long>(), awaitItem())
                 cancelAndIgnoreRemainingEvents()
             }
         }
 
     @Test
-    fun `toggleFavouriteTicker returns failure when user is not authorized`() =
+    fun `toggleFavouriteSymbol returns failure when user is not authorized`() =
         runTest {
             every { auth.currentUser } returns null
 
-            val result = repository.toggleFavouriteTicker("BTCUSDT")
+            val result = repository.toggleFavouriteSymbol(SYMBOL_ID, "BTCUSDT")
 
             assertTrue(result.isFailure)
         }
 
     @Test
-    fun `toggleFavouriteTicker adds ticker locally and creates pending ADD without touching firestore`() =
+    fun `toggleFavouriteSymbol adds the symbol locally and creates pending ADD without touching firestore`() =
         runTest {
             val userId = "user-1"
             val normalized = "BTCUSDT"
             val user = mockk<FirebaseUser> { every { uid } returns userId }
             every { auth.currentUser } returns user
 
-            coEvery { dao.exists(userId, normalized) } returns false
+            coEvery { dao.exists(userId, SYMBOL_ID) } returns false
             coEvery { dao.upsert(any()) } just runs
 
-            val result = repository.toggleFavouriteTicker("btcusdt")
+            val result = repository.toggleFavouriteSymbol(SYMBOL_ID, "btcusdt")
 
             assertTrue(result.isSuccess)
             assertEquals(true, result.getOrNull())
-            coVerify { dao.upsert(match { it.userId == userId && it.ticker == normalized }) }
+            coVerify {
+                dao.upsert(
+                    match { it.userId == userId && it.symbolId == SYMBOL_ID && it.ticker == normalized },
+                )
+            }
             coVerify {
                 pendingDao.upsert(
-                    match { it.ticker == normalized && it.operation == PendingFavoriteOperationEntity.Operation.ADD },
+                    match { it.ticker == normalized && it.operation == PendingFavouriteOperationEntity.Operation.ADD },
                 )
             }
             verify(exactly = 0) { firestore.collection(any()) }
         }
 
     @Test
-    fun `toggleFavouriteTicker deletes ticker locally and creates pending DELETE without touching firestore`() =
+    fun `toggleFavouriteSymbol deletes the symbol locally and creates pending DELETE without touching firestore`() =
         runTest {
             val userId = "user-1"
             val ticker = "ETHUSDT"
             val user = mockk<FirebaseUser> { every { uid } returns userId }
             every { auth.currentUser } returns user
 
-            coEvery { dao.exists(userId, ticker) } returns true
-            coEvery { dao.delete(userId, ticker) } just runs
+            coEvery { dao.exists(userId, SYMBOL_ID) } returns true
+            coEvery { dao.delete(userId, SYMBOL_ID) } just runs
 
-            val result = repository.toggleFavouriteTicker(ticker)
+            val result = repository.toggleFavouriteSymbol(SYMBOL_ID, ticker)
 
             assertTrue(result.isSuccess)
             assertEquals(false, result.getOrNull())
-            coVerify { dao.delete(userId, ticker) }
+            coVerify { dao.delete(userId, SYMBOL_ID) }
             coVerify {
                 pendingDao.upsert(
-                    match { it.ticker == ticker && it.operation == PendingFavoriteOperationEntity.Operation.DELETE },
+                    match { it.ticker == ticker && it.operation == PendingFavouriteOperationEntity.Operation.DELETE },
                 )
             }
             verify(exactly = 0) { firestore.collection(any()) }
         }
 
     @Test
-    fun `syncFavouriteTickers pushes pending DELETE before reading remote and clears it via deleteIfMatches`() =
+    fun `syncFavouriteSymbols pushes pending DELETE before reading remote and clears it via deleteIfMatches`() =
         runTest {
             val userId = "user-1"
             val user = mockk<FirebaseUser> { every { uid } returns userId }
@@ -139,10 +147,11 @@ class FavouriteTickerRepositoryImplTest {
             coEvery { pendingDao.getAllByUser(userId) } returnsMany
                 listOf(
                     listOf(
-                        PendingFavoriteOperationEntity(
+                        PendingFavouriteOperationEntity(
                             userId,
+                            SYMBOL_ID,
                             "BTCUSDT",
-                            PendingFavoriteOperationEntity.Operation.DELETE,
+                            PendingFavouriteOperationEntity.Operation.DELETE,
                             1000L,
                         ),
                     ),
@@ -151,28 +160,28 @@ class FavouriteTickerRepositoryImplTest {
 
             val (favoritesCol) = setupFavoritesCollectionPath(userId)
             val docRef = mockk<DocumentReference>()
-            every { favoritesCol.document("BTCUSDT") } returns docRef
+            every { favoritesCol.document(SYMBOL_ID.toString()) } returns docRef
             every { docRef.delete() } returns Tasks.forResult(null)
 
             val querySnapshot = mockk<QuerySnapshot> { every { documents } returns emptyList() }
             every { favoritesCol.get() } returns Tasks.forResult(querySnapshot)
 
-            coEvery { dao.getUserTickers(userId) } returns emptyList()
+            coEvery { dao.getUserSymbols(userId) } returns emptyList()
             coEvery { dao.replaceAll(userId, any()) } just runs
 
-            val result = repository.syncFavouriteTickers()
+            val result = repository.syncFavouriteSymbols()
 
             assertTrue(result.isSuccess)
             verify { docRef.delete() }
             coVerify {
-                pendingDao.delete(userId, "BTCUSDT", PendingFavoriteOperationEntity.Operation.DELETE, 1000L)
+                pendingDao.delete(userId, SYMBOL_ID, PendingFavouriteOperationEntity.Operation.DELETE, 1000L)
             }
             verify { favoritesCol.get() }
             coVerify { dao.replaceAll(userId, emptyList()) }
         }
 
     @Test
-    fun `syncFavouriteTickers does not read remote when a pending operation fails`() =
+    fun `syncFavouriteSymbols does not read remote when a pending operation fails`() =
         runTest {
             val userId = "user-1"
             val user = mockk<FirebaseUser> { every { uid } returns userId }
@@ -180,20 +189,21 @@ class FavouriteTickerRepositoryImplTest {
 
             coEvery { pendingDao.getAllByUser(userId) } returns
                 listOf(
-                    PendingFavoriteOperationEntity(
+                    PendingFavouriteOperationEntity(
                         userId,
+                        SYMBOL_ID,
                         "BTCUSDT",
-                        PendingFavoriteOperationEntity.Operation.DELETE,
+                        PendingFavouriteOperationEntity.Operation.DELETE,
                         1000L,
                     ),
                 )
 
             val (favoritesCol) = setupFavoritesCollectionPath(userId)
             val docRef = mockk<DocumentReference>()
-            every { favoritesCol.document("BTCUSDT") } returns docRef
+            every { favoritesCol.document(SYMBOL_ID.toString()) } returns docRef
             every { docRef.delete() } returns Tasks.forException(IllegalStateException("offline"))
 
-            val result = repository.syncFavouriteTickers()
+            val result = repository.syncFavouriteSymbols()
 
             assertFalse(result.isSuccess)
             verify(exactly = 0) { favoritesCol.get() }
@@ -202,7 +212,7 @@ class FavouriteTickerRepositoryImplTest {
         }
 
     @Test
-    fun `syncFavouriteTickers fails when the queue never settles within MAX_SYNC_PASSES`() =
+    fun `syncFavouriteSymbols fails when the queue never settles within MAX_SYNC_PASSES`() =
         runTest {
             val userId = "user-1"
             val user = mockk<FirebaseUser> { every { uid } returns userId }
@@ -212,10 +222,11 @@ class FavouriteTickerRepositoryImplTest {
             // будто пополняется быстрее, чем успевает опустеть.
             coEvery { pendingDao.getAllByUser(userId) } answers {
                 listOf(
-                    PendingFavoriteOperationEntity(
+                    PendingFavouriteOperationEntity(
                         userId,
+                        SYMBOL_ID,
                         "BTCUSDT",
-                        PendingFavoriteOperationEntity.Operation.ADD,
+                        PendingFavouriteOperationEntity.Operation.ADD,
                         System.nanoTime(),
                     ),
                 )
@@ -223,13 +234,13 @@ class FavouriteTickerRepositoryImplTest {
 
             val (favoritesCol) = setupFavoritesCollectionPath(userId)
             val docRef = mockk<DocumentReference>()
-            every { favoritesCol.document("BTCUSDT") } returns docRef
+            every { favoritesCol.document(SYMBOL_ID.toString()) } returns docRef
             every { docRef.set(any<Map<String, Any>>()) } returns Tasks.forResult(null)
             // deleteIfMatches намеренно ничего не удаляет (нет точного совпадения updatedAt) —
             // имитируем случай "операция всегда чуть новее, чем мы успели обработать"
             coEvery { pendingDao.delete(any(), any(), any(), any()) } just runs
 
-            val result = repository.syncFavouriteTickers()
+            val result = repository.syncFavouriteSymbols()
 
             assertFalse(result.isSuccess)
             verify(exactly = 0) { favoritesCol.get() }
@@ -237,7 +248,7 @@ class FavouriteTickerRepositoryImplTest {
         }
 
     @Test
-    fun `syncFavouriteTickers re-pushes a newer operation that arrived while an older one was in flight`() =
+    fun `syncFavouriteSymbols re-pushes a newer operation that arrived while an older one was in flight`() =
         runTest {
             val userId = "user-1"
             val user = mockk<FirebaseUser> { every { uid } returns userId }
@@ -246,18 +257,20 @@ class FavouriteTickerRepositoryImplTest {
             coEvery { pendingDao.getAllByUser(userId) } returnsMany
                 listOf(
                     listOf(
-                        PendingFavoriteOperationEntity(
+                        PendingFavouriteOperationEntity(
                             userId,
+                            SYMBOL_ID,
                             "BTCUSDT",
-                            PendingFavoriteOperationEntity.Operation.ADD,
+                            PendingFavouriteOperationEntity.Operation.ADD,
                             1000L,
                         ),
                     ),
                     listOf(
-                        PendingFavoriteOperationEntity(
+                        PendingFavouriteOperationEntity(
                             userId,
+                            SYMBOL_ID,
                             "BTCUSDT",
-                            PendingFavoriteOperationEntity.Operation.DELETE,
+                            PendingFavouriteOperationEntity.Operation.DELETE,
                             2000L,
                         ),
                     ),
@@ -266,32 +279,32 @@ class FavouriteTickerRepositoryImplTest {
 
             val (favoritesCol) = setupFavoritesCollectionPath(userId)
             val docRef = mockk<DocumentReference>()
-            every { favoritesCol.document("BTCUSDT") } returns docRef
+            every { favoritesCol.document(SYMBOL_ID.toString()) } returns docRef
             every { docRef.set(any<Map<String, Any>>()) } returns Tasks.forResult(null)
             every { docRef.delete() } returns Tasks.forResult(null)
 
             val querySnapshot = mockk<QuerySnapshot> { every { documents } returns emptyList() }
             every { favoritesCol.get() } returns Tasks.forResult(querySnapshot)
 
-            coEvery { dao.getUserTickers(userId) } returns emptyList()
+            coEvery { dao.getUserSymbols(userId) } returns emptyList()
             coEvery { dao.replaceAll(userId, any()) } just runs
 
-            val result = repository.syncFavouriteTickers()
+            val result = repository.syncFavouriteSymbols()
 
             assertTrue(result.isSuccess)
             verify { docRef.set(any<Map<String, Any>>()) }
             verify { docRef.delete() }
             coVerify {
-                pendingDao.delete(userId, "BTCUSDT", PendingFavoriteOperationEntity.Operation.ADD, 1000L)
+                pendingDao.delete(userId, SYMBOL_ID, PendingFavouriteOperationEntity.Operation.ADD, 1000L)
             }
             coVerify {
-                pendingDao.delete(userId, "BTCUSDT", PendingFavoriteOperationEntity.Operation.DELETE, 2000L)
+                pendingDao.delete(userId, SYMBOL_ID, PendingFavouriteOperationEntity.Operation.DELETE, 2000L)
             }
             coVerify { dao.replaceAll(userId, emptyList()) }
         }
 
     @Test
-    fun `syncFavouriteTickers aborts merge when a pending operation arrives after the queue was drained`() =
+    fun `syncFavouriteSymbols aborts merge when a pending operation arrives after the queue was drained`() =
         runTest {
             val userId = "user-1"
             val user = mockk<FirebaseUser> { every { uid } returns userId }
@@ -305,10 +318,11 @@ class FavouriteTickerRepositoryImplTest {
                 listOf(
                     emptyList(),
                     listOf(
-                        PendingFavoriteOperationEntity(
+                        PendingFavouriteOperationEntity(
                             userId,
+                            SYMBOL_ID,
                             "BTCUSDT",
-                            PendingFavoriteOperationEntity.Operation.DELETE,
+                            PendingFavouriteOperationEntity.Operation.DELETE,
                             5000L,
                         ),
                     ),
@@ -318,7 +332,7 @@ class FavouriteTickerRepositoryImplTest {
             val (favoritesCol) = setupFavoritesCollectionPath(userId)
             every { favoritesCol.get() } returns Tasks.forResult(querySnapshot)
 
-            val result = repository.syncFavouriteTickers()
+            val result = repository.syncFavouriteSymbols()
 
             assertFalse(result.isSuccess)
             assertEquals(DataConstants.Favourites.SYNC_INCOMPLETE, result.exceptionOrNull()?.message)
@@ -327,7 +341,7 @@ class FavouriteTickerRepositoryImplTest {
         }
 
     @Test
-    fun `syncFavouriteTickers merges remote-only ticker into empty local db`() =
+    fun `syncFavouriteSymbols merges a remote-only symbol into an empty local db`() =
         runTest {
             val userId = "user-1"
             val user = mockk<FirebaseUser> { every { uid } returns userId }
@@ -339,29 +353,30 @@ class FavouriteTickerRepositoryImplTest {
                 mockk<DocumentSnapshot> {
                     every { getString("ticker") } returns "BTCUSDT"
                     every { getLong("updatedAt") } returns 1000L
+                    every { getLong("symbolId") } returns SYMBOL_ID
                 }
             val querySnapshot = mockk<QuerySnapshot> { every { documents } returns listOf(remoteDoc) }
             val (favoritesCol) = setupFavoritesCollectionPath(userId)
             every { favoritesCol.get() } returns Tasks.forResult(querySnapshot)
 
             val docRef = mockk<DocumentReference>()
-            every { favoritesCol.document("BTCUSDT") } returns docRef
+            every { favoritesCol.document(SYMBOL_ID.toString()) } returns docRef
             val batch = mockk<WriteBatch>()
             every { firestore.batch() } returns batch
             every { batch.set(docRef, any<Map<String, Any>>()) } returns batch
             every { batch.commit() } returns Tasks.forResult(null)
 
-            coEvery { dao.getUserTickers(userId) } returns emptyList()
+            coEvery { dao.getUserSymbols(userId) } returns emptyList()
             coEvery { dao.replaceAll(userId, any()) } just runs
 
-            val result = repository.syncFavouriteTickers()
+            val result = repository.syncFavouriteSymbols()
 
             assertTrue(result.isSuccess)
-            coVerify { dao.replaceAll(userId, match { it.size == 1 && it[0].ticker == "BTCUSDT" }) }
+            coVerify { dao.replaceAll(userId, match { it.size == 1 && it[0].symbolId == SYMBOL_ID }) }
         }
 
     @Test
-    fun `syncFavouriteTickers serializes concurrent calls via mutex`() =
+    fun `syncFavouriteSymbols serializes concurrent calls via mutex`() =
         runTest {
             val userId = "user-1"
             val user = mockk<FirebaseUser> { every { uid } returns userId }
@@ -371,11 +386,11 @@ class FavouriteTickerRepositoryImplTest {
             val querySnapshot = mockk<QuerySnapshot> { every { documents } returns emptyList() }
             val (favoritesCol) = setupFavoritesCollectionPath(userId)
             every { favoritesCol.get() } returns Tasks.forResult(querySnapshot)
-            coEvery { dao.getUserTickers(userId) } returns emptyList()
+            coEvery { dao.getUserSymbols(userId) } returns emptyList()
             coEvery { dao.replaceAll(userId, any()) } just runs
 
-            val first = repository.syncFavouriteTickers()
-            val second = repository.syncFavouriteTickers()
+            val first = repository.syncFavouriteSymbols()
+            val second = repository.syncFavouriteSymbols()
 
             assertTrue(first.isSuccess)
             assertTrue(second.isSuccess)
@@ -402,13 +417,114 @@ class FavouriteTickerRepositoryImplTest {
 
             coEvery { dao.deleteByUser(userId) } just runs
 
-            val result = repository.deleteAllFavorites()
+            val result = repository.deleteAllFavourites()
 
             assertTrue(result.isSuccess)
             verify { batch.delete(docRef) }
             coVerify { dao.deleteByUser(userId) }
             coVerify { pendingDao.deleteByUser(userId) }
         }
+
+    @Test
+    fun `a legacy ticker document is expanded into every symbol of that ticker and then deleted`() =
+        runTest {
+            val userId = "user-1"
+            val user = mockk<FirebaseUser> { every { uid } returns userId }
+            every { auth.currentUser } returns user
+
+            coEvery { pendingDao.getAllByUser(userId) } returns emptyList()
+
+            val legacyRef = mockk<DocumentReference>()
+            val legacyDoc =
+                mockk<DocumentSnapshot> {
+                    every { getString("ticker") } returns "BTCUSDT"
+                    every { getLong("updatedAt") } returns 1000L
+                    every { getLong("symbolId") } returns null
+                    every { reference } returns legacyRef
+                }
+            val querySnapshot = mockk<QuerySnapshot> { every { documents } returns listOf(legacyDoc) }
+            val (favoritesCol) = setupFavoritesCollectionPath(userId)
+            every { favoritesCol.get() } returns Tasks.forResult(querySnapshot)
+
+            coEvery { symbolDao.getByTicker("BTCUSDT") } returns listOf(symbol(1L), symbol(2L))
+
+            every { favoritesCol.document("1") } returns mockk()
+            every { favoritesCol.document("2") } returns mockk()
+
+            val batch = mockk<WriteBatch>()
+            every { firestore.batch() } returns batch
+            every { batch.set(any<DocumentReference>(), any<Map<String, Any>>()) } returns batch
+            every { batch.delete(legacyRef) } returns batch
+            every { batch.commit() } returns Tasks.forResult(null)
+
+            coEvery { dao.getUserSymbols(userId) } returns emptyList()
+            coEvery { dao.replaceAll(userId, any()) } just runs
+
+            val result = repository.syncFavouriteSymbols()
+
+            assertTrue(result.isSuccess)
+            // избранное по тикеру превращается во все его сети — ровно то, что
+            // пользователь видел до разделения
+            coVerify {
+                dao.replaceAll(userId, match { favourites -> favourites.map { it.symbolId }.toSet() == setOf(1L, 2L) })
+            }
+            verify { batch.delete(legacyRef) }
+        }
+
+    @Test
+    fun `a legacy document survives a sync that ran before the catalog arrived`() =
+        runTest {
+            val userId = "user-1"
+            val user = mockk<FirebaseUser> { every { uid } returns userId }
+            every { auth.currentUser } returns user
+
+            coEvery { pendingDao.getAllByUser(userId) } returns emptyList()
+
+            val legacyRef = mockk<DocumentReference>()
+            val legacyDoc =
+                mockk<DocumentSnapshot> {
+                    every { getString("ticker") } returns "BTCUSDT"
+                    every { getLong("updatedAt") } returns 1000L
+                    every { getLong("symbolId") } returns null
+                    every { reference } returns legacyRef
+                }
+            val querySnapshot = mockk<QuerySnapshot> { every { documents } returns listOf(legacyDoc) }
+            val (favoritesCol) = setupFavoritesCollectionPath(userId)
+            every { favoritesCol.get() } returns Tasks.forResult(querySnapshot)
+
+            // каталога ещё нет — разворачивать не во что
+            coEvery { symbolDao.getByTicker("BTCUSDT") } returns emptyList()
+
+            coEvery { dao.getUserSymbols(userId) } returns emptyList()
+            coEvery { dao.replaceAll(userId, any()) } just runs
+
+            val result = repository.syncFavouriteSymbols()
+
+            assertTrue(result.isSuccess)
+            // документ не тронут: его развернёт следующая синхронизация, когда
+            // каталог доедет
+            verify(exactly = 0) { firestore.batch() }
+        }
+
+    private fun symbol(id: Long): SymbolEntity =
+        SymbolEntity(
+            id = id,
+            ticker = "BTCUSDT",
+            symbol = "BTC/USDT",
+            bestAskProviderId = 1,
+            bestAskPrice = 1.0,
+            bestBidProviderId = 2,
+            bestBidPrice = 1.0,
+            spreadPercent = 0.0,
+            bestAskUpdatedAt = null,
+            bestBidUpdatedAt = null,
+            updatedAt = "",
+            syncedAtMillis = 0L,
+        )
+
+    private companion object {
+        const val SYMBOL_ID = 1L
+    }
 
     private fun setupFavoritesCollectionPath(userId: String): Pair<CollectionReference, DocumentReference> {
         val usersCol = mockk<CollectionReference>()

@@ -17,7 +17,7 @@ interface CryptoCompareRepository {
     fun getPairsPaged(
         query: String,
         onlyFavourite: Boolean,
-        favouriteTickers: Set<String>,
+        favouriteSymbolIds: Set<Long>,
         direction: CatalogDirection,
         sorting: CatalogSorting,
     ): Flow<PagingData<PairUiItem>>

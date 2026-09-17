@@ -8,14 +8,14 @@ import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
 import com.cryptocompare.domain.usecase.auth.ObserveAuthStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
 import com.cryptocompare.domain.usecase.pairs.LoadPairsUseCase
-import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteTickersUseCase
+import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteSymbolsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RefreshBestPricesUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamDisconnectUseCase
-import com.cryptocompare.domain.usecase.pairs.SyncFavouriteTickersUseCase
+import com.cryptocompare.domain.usecase.pairs.SyncFavouriteSymbolsUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
-import com.cryptocompare.domain.usecase.pairs.ToggleFavouriteTickerUseCase
+import com.cryptocompare.domain.usecase.pairs.ToggleFavouriteSymbolUseCase
 import com.cryptocompare.helpers.toUserMessage
 import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSort
@@ -51,9 +51,9 @@ class MainViewModel
         private val streamDisconnectUseCase: StreamDisconnectUseCase,
         private val observeTickerEventUseCase: ObserveTickerEventUseCase,
         private val applyBestPriceChangesUseCase: ApplyBestPriceChangesUseCase,
-        private val observeFavouriteTickersUseCase: ObserveFavouriteTickersUseCase,
-        private val syncFavouriteTickersUseCase: SyncFavouriteTickersUseCase,
-        private val toggleFavouriteTickerUseCase: ToggleFavouriteTickerUseCase,
+        private val observeFavouriteSymbolsUseCase: ObserveFavouriteSymbolsUseCase,
+        private val syncFavouriteSymbolsUseCase: SyncFavouriteSymbolsUseCase,
+        private val toggleFavouriteSymbolUseCase: ToggleFavouriteSymbolUseCase,
         private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
         private val refreshBestPricesUseCase: RefreshBestPricesUseCase,
         private val observeAuthStateUseCase: ObserveAuthStateUseCase,
@@ -85,7 +85,7 @@ class MainViewModel
                     .distinctUntilChanged()
                     .debounce { query -> if (query.isEmpty()) 0L else PairsConstants.MainScreen.SEARCH_DEBOUNCE_MS },
                 _uiState.map { it.onlyFavourite }.distinctUntilChanged(),
-                _uiState.map { it.favouriteTickers }.distinctUntilChanged(),
+                _uiState.map { it.favouriteSymbolIds }.distinctUntilChanged(),
                 _uiState.map { it.direction }.distinctUntilChanged(),
                 _uiState.map { it.sorting }.distinctUntilChanged(),
             ) { query, onlyFavourite, favourites, direction, sorting ->
@@ -94,7 +94,7 @@ class MainViewModel
                     onlyFavourite = onlyFavourite,
                     // the favourites set matters for the query only when the filter is
                     // on; dropping it otherwise keeps star taps from rebuilding the pager
-                    favouriteTickers = if (onlyFavourite) favourites else emptySet(),
+                    favouriteSymbolIds = if (onlyFavourite) favourites else emptySet(),
                     direction = direction,
                     sorting = sorting,
                 )
@@ -103,7 +103,7 @@ class MainViewModel
                     loadPairsUseCase(
                         query = filter.query,
                         onlyFavourite = filter.onlyFavourite,
-                        favouriteTickers = filter.favouriteTickers,
+                        favouriteSymbolIds = filter.favouriteSymbolIds,
                         direction = filter.direction,
                         sorting = filter.sorting,
                     )
@@ -113,22 +113,25 @@ class MainViewModel
             observeSocket()
             observeReconnects()
             observeAuthState()
-            syncFavouriteTickers()
-            observeFavouriteTickers()
+            syncFavouriteSymbols()
+            observeFavouriteSymbols()
         }
 
         fun onSearchQueryChange(query: String) {
             _uiState.update { it.copy(searchQuery = query) }
         }
 
-        fun onFavouriteClick(ticker: String) {
+        fun onFavouriteClick(
+            symbolId: Long,
+            ticker: String,
+        ) {
             if (isGuest()) {
                 requireSignIn()
                 return
             }
 
             viewModelScope.launch {
-                toggleFavouriteTickerUseCase(ticker).onFailure { exception ->
+                toggleFavouriteSymbolUseCase(symbolId, ticker).onFailure { exception ->
                     _uiState.update { it.copy(error = exception.message ?: "Favourite toggle error") }
                 }
             }
@@ -263,10 +266,10 @@ class MainViewModel
             }
         }
 
-        fun syncFavouriteTickers() {
+        fun syncFavouriteSymbols() {
             viewModelScope.launch {
-                syncFavouriteTickersUseCase().onFailure { exception ->
-                    _uiState.update { it.copy(error = exception.message ?: "Couldn't sync favourite tickers") }
+                syncFavouriteSymbolsUseCase().onFailure { exception ->
+                    _uiState.update { it.copy(error = exception.message ?: "Couldn't sync favourites") }
                 }
             }
         }
@@ -289,10 +292,10 @@ class MainViewModel
             }
         }
 
-        private fun observeFavouriteTickers() {
+        private fun observeFavouriteSymbols() {
             viewModelScope.launch {
-                observeFavouriteTickersUseCase().collect { favourites ->
-                    _uiState.update { it.copy(favouriteTickers = favourites) }
+                observeFavouriteSymbolsUseCase().collect { favourites ->
+                    _uiState.update { it.copy(favouriteSymbolIds = favourites) }
                 }
             }
         }
@@ -304,7 +307,7 @@ class MainViewModel
         private data class PairsFilter(
             val query: String,
             val onlyFavourite: Boolean,
-            val favouriteTickers: Set<String>,
+            val favouriteSymbolIds: Set<Long>,
             val direction: CatalogDirection,
             val sorting: CatalogSorting,
         )

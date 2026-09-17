@@ -103,17 +103,17 @@ class PairsPagingQueryTest {
     @Test
     fun `an empty favourites list still produces valid sql`() {
         // IN () — синтаксическая ошибка; IN (NULL) не совпадает ни с чем
-        val sql = build(favouriteTickers = emptyList()).sql
+        val sql = build(favouriteSymbolIds = emptyList()).sql
 
         assertTrue(sql.contains("IN (NULL)"))
     }
 
     @Test
     fun `each favourite gets its own placeholder`() {
-        val query = build(favouriteTickers = listOf("BTCUSDT", "ETHUSDT", "SOLUSDT"))
+        val query = build(favouriteSymbolIds = listOf(1L, 2L, 3L))
 
         assertTrue(query.sql.contains("IN (?,?,?)"))
-        // запрос, запрос, флаг избранного, три тикера, три имени направления
+        // запрос, запрос, флаг избранного, три id символов, три имени направления
         assertEquals(9, query.argCount)
     }
 
@@ -145,13 +145,13 @@ class PairsPagingQueryTest {
     private fun build(
         query: String = "",
         onlyFavourite: Boolean = false,
-        favouriteTickers: List<String> = emptyList(),
+        favouriteSymbolIds: List<Long> = emptyList(),
         direction: CatalogDirection = CatalogDirection.ANY,
         sorting: CatalogSorting = CatalogSorting(),
     ) = PairsPagingQuery.build(
         query = query,
         onlyFavourite = onlyFavourite,
-        favouriteTickers = favouriteTickers,
+        favouriteSymbolIds = favouriteSymbolIds,
         direction = direction,
         sorting = sorting,
     )
