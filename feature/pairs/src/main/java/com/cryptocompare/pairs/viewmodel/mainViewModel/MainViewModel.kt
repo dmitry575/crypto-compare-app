@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
+import com.cryptocompare.domain.usecase.auth.ObserveAuthStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
 import com.cryptocompare.domain.usecase.pairs.LoadPairsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteTickersUseCase
@@ -54,6 +56,8 @@ class MainViewModel
         private val toggleFavouriteTickerUseCase: ToggleFavouriteTickerUseCase,
         private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
         private val refreshBestPricesUseCase: RefreshBestPricesUseCase,
+        private val observeAuthStateUseCase: ObserveAuthStateUseCase,
+        private val getCurrentUserUseCase: GetCurrentUserUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(MainUiState())
         val uiState = _uiState.asStateFlow()
@@ -108,6 +112,7 @@ class MainViewModel
         init {
             observeSocket()
             observeReconnects()
+            observeAuthState()
             syncFavouriteTickers()
             observeFavouriteTickers()
         }
@@ -117,6 +122,11 @@ class MainViewModel
         }
 
         fun onFavouriteClick(ticker: String) {
+            if (isGuest()) {
+                requireSignIn()
+                return
+            }
+
             viewModelScope.launch {
                 toggleFavouriteTickerUseCase(ticker).onFailure { exception ->
                     _uiState.update { it.copy(error = exception.message ?: "Favourite toggle error") }
@@ -125,7 +135,29 @@ class MainViewModel
         }
 
         fun onOnlyFavouriteChange(enabled: Boolean) {
+            // у гостя избранного нет вовсе: пустой список вместо объяснения выглядел
+            // бы поломкой
+            if (enabled && isGuest()) {
+                requireSignIn()
+                return
+            }
+
             _uiState.update { it.copy(onlyFavourite = enabled) }
+        }
+
+        fun onSignInRequestShown() {
+            _uiState.update { it.copy(signInRequired = false) }
+        }
+
+        /**
+         * Спрашиваем текущего пользователя, а не флаг из состояния: поток входа
+         * приезжает асинхронно, и звезда, нажатая в первые миллисекунды после
+         * запуска, у вошедшего пользователя просила бы вход.
+         */
+        private fun isGuest(): Boolean = runCatching { getCurrentUserUseCase() }.getOrNull() == null
+
+        private fun requireSignIn() {
+            _uiState.update { it.copy(signInRequired = true) }
         }
 
         fun onDirectionChange(direction: CatalogDirection) {
@@ -236,6 +268,24 @@ class MainViewModel
                 syncFavouriteTickersUseCase().onFailure { exception ->
                     _uiState.update { it.copy(error = exception.message ?: "Couldn't sync favourite tickers") }
                 }
+            }
+        }
+
+        /**
+         * Вход необязателен, поэтому избранное — единственное, что его требует:
+         * после выхода фильтр гаснет сам, иначе каталог остался бы пустым списком
+         * без объяснения.
+         */
+        private fun observeAuthState() {
+            viewModelScope.launch {
+                observeAuthStateUseCase()
+                    .map { user -> user != null }
+                    .distinctUntilChanged()
+                    .collect { signedIn ->
+                        if (!signedIn) {
+                            _uiState.update { uiState -> uiState.copy(onlyFavourite = false) }
+                        }
+                    }
             }
         }
 

@@ -1,13 +1,11 @@
 package com.cryptocompare.auth.viewmodel.splashviewmodel
 
 data class SplashUiState(
-    val isCheckAuth: Boolean = true,
-    val isAuthenticated: Boolean? = null,
-    val errorMessage: String? = null,
+    val isPreparing: Boolean = true,
     /**
-     * Онбординг ещё не показывали. Проверяется независимо от [isAuthenticated]:
-     * он рассказывает про продукт, а не про вход, поэтому идёт первым в любом
-     * случае — и вошедшему, и незнакомому.
+     * Онбординг ещё не показывали. Вход на запуске больше не проверяется:
+     * каталог открыт и гостю, так что единственная развилка старта — показывать
+     * ли рассказ о продукте.
      */
     val shouldShowOnboarding: Boolean = false,
 )

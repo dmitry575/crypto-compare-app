@@ -25,8 +25,6 @@
     <string name="register_sign_in">Войти</string>
 
     <!-- Экран заставки -->
-    <string name="splash_checking">Проверяем сессию…</string>
-    <string name="splash_retry">Повторить</string>
 
     <!-- Восстановление пароля -->
     <string name="forgot_password_title">Сброс пароля</string>

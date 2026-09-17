@@ -4,7 +4,7 @@ import com.cryptocompare.domain.repository.AuthRepository
 import com.cryptocompare.domain.repository.FavouriteTickerRepository
 import com.cryptocompare.domain.repository.LanguageRepository
 import com.cryptocompare.domain.repository.ThemeRepository
-import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
+import com.cryptocompare.domain.usecase.auth.ObserveAuthStateUseCase
 import com.cryptocompare.domain.usecase.profile.DeleteAccountUseCase
 import com.cryptocompare.domain.usecase.profile.SignOutUseCase
 import com.cryptocompare.domain.usecase.settings.ObserveLanguageUseCase
@@ -39,7 +39,7 @@ class ProfileViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val authRepository: AuthRepository = mockk(relaxed = true)
-    private val getCurrentUserUseCase = GetCurrentUserUseCase(authRepository)
+    private val observeAuthStateUseCase = ObserveAuthStateUseCase(authRepository)
     private val signOutUseCase = SignOutUseCase(authRepository)
     private val favouriteTickerRepository: FavouriteTickerRepository = mockk(relaxed = true)
     private val deleteAccountUseCase = DeleteAccountUseCase(authRepository, favouriteTickerRepository)
@@ -53,7 +53,7 @@ class ProfileViewModelTest {
     @Before
     fun setUp() {
         clearMocks(authRepository, themeRepository, languageRepository)
-        every { authRepository.currentUser } returns TEST_USER
+        every { authRepository.observeAuthState() } returns flowOf(TEST_USER)
         every { themeRepository.observeThemePreference() } returns flowOf(ThemePreference.SYSTEM)
         every { languageRepository.observeLanguage() } returns flowOf(AppLanguage.SYSTEM)
     }
@@ -62,9 +62,21 @@ class ProfileViewModelTest {
     fun `init exposes current user`() =
         runTest {
             val viewModel = createViewModel()
+            advanceUntilIdle()
 
             assertEquals(TEST_USER, viewModel.uiState.value.user)
-            assertFalse(viewModel.uiState.value.isSignedOut)
+        }
+
+    @Test
+    fun `without a session the screen shows a guest`() =
+        runTest {
+            every { authRepository.observeAuthState() } returns flowOf(null)
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            // гостю показывается приглашение войти вместо раздела аккаунта
+            assertNull(viewModel.uiState.value.user)
         }
 
     @Test
@@ -79,7 +91,7 @@ class ProfileViewModelTest {
         }
 
     @Test
-    fun `confirmed sign out calls use case and clears state`() =
+    fun `confirmed sign out calls use case and closes the dialog`() =
         runTest {
             val viewModel = createViewModel()
 
@@ -89,8 +101,6 @@ class ProfileViewModelTest {
 
             coVerify(exactly = 1) { authRepository.signOut() }
             val uiState = viewModel.uiState.value
-            assertNull(uiState.user)
-            assertTrue(uiState.isSignedOut)
             assertFalse(uiState.isLoading)
             assertFalse(uiState.showSignOutConfirmation)
             assertNull(uiState.errorMessage)
@@ -110,8 +120,6 @@ class ProfileViewModelTest {
             coVerify(exactly = 1) { favouriteTickerRepository.deleteAllFavorites() }
             coVerify(exactly = 1) { authRepository.deleteAccount() }
             val uiState = viewModel.uiState.value
-            assertNull(uiState.user)
-            assertTrue(uiState.isSignedOut)
             assertFalse(uiState.isLoading)
             assertFalse(uiState.showDeleteConfirmation)
             assertNull(uiState.errorMessage)
@@ -131,7 +139,6 @@ class ProfileViewModelTest {
 
             val uiState = viewModel.uiState.value
             assertEquals(TEST_USER, uiState.user)
-            assertFalse(uiState.isSignedOut)
             assertFalse(uiState.isLoading)
             assertEquals(RECENT_LOGIN_ERROR, uiState.errorMessage)
         }
@@ -173,7 +180,7 @@ class ProfileViewModelTest {
 
     private fun createViewModel(): ProfileViewModel =
         ProfileViewModel(
-            getCurrentUserUseCase = getCurrentUserUseCase,
+            observeAuthStateUseCase = observeAuthStateUseCase,
             signOutUseCase = signOutUseCase,
             deleteAccountUseCase = deleteAccountUseCase,
             setThemePreferenceUseCase = setThemePreferenceUseCase,

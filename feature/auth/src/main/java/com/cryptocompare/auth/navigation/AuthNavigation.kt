@@ -17,6 +17,7 @@ import com.cryptocompare.helpers.navigateAndClearStack
  */
 fun NavGraphBuilder.authNavigation(
     navController: NavHostController,
+    onReady: () -> Unit,
     onAuthenticated: () -> Unit,
 ) {
     navigation(
@@ -46,10 +47,7 @@ fun NavGraphBuilder.authNavigation(
 
         composable(AuthScreens.SplashScreen.route) {
             SplashScreen(
-                onNavigateHome = onAuthenticated,
-                onNavigateLogin = {
-                    navController.navigateAndClearStack(AuthScreens.LoginScreen.route, AuthScreens.SplashScreen.route)
-                },
+                onReady = onReady,
                 onNavigateOnboarding = {
                     navController.navigateAndClearStack(
                         AuthScreens.OnboardingScreen.route,

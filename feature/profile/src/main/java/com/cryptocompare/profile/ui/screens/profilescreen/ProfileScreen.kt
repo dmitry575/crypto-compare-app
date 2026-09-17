@@ -45,6 +45,7 @@ import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileConf
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileGroup
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileHeader
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileSectionTitle
+import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileSignInCard
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ThemeSelector
 import com.cryptocompare.profile.viewmodel.profileviewmodel.ProfileViewModel
 import com.cryptocompare.ui.theme.Dimensions
@@ -56,7 +57,7 @@ import com.cryptocompare.ui.theme.divider
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
-    onSignedOut: () -> Unit,
+    onSignInClick: () -> Unit,
     onChangePasswordClick: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
@@ -64,12 +65,6 @@ fun ProfileScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
     val context = LocalContext.current
-
-    LaunchedEffect(uiState.isSignedOut) {
-        if (uiState.isSignedOut) {
-            onSignedOut()
-        }
-    }
 
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { message ->
@@ -138,9 +133,16 @@ fun ProfileScreen(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
-            uiState.user?.let { user ->
+            val user = uiState.user
+
+            if (user != null) {
                 ProfileHeader(
                     user = user,
+                    modifier = Modifier.padding(horizontal = Dimensions.Padding.screenHorizontal),
+                )
+            } else {
+                ProfileSignInCard(
+                    onSignInClick = onSignInClick,
                     modifier = Modifier.padding(horizontal = Dimensions.Padding.screenHorizontal),
                 )
             }
@@ -195,19 +197,9 @@ fun ProfileScreen(
                 modifier = Modifier.padding(horizontal = Dimensions.Padding.screenHorizontal),
                 verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
             ) {
-                ProfileSectionTitle(text = stringResource(R.string.profile_account_section))
+                ProfileSectionTitle(text = stringResource(R.string.profile_about_section))
 
                 ProfileGroup {
-                    if (uiState.user?.hasPasswordProvider == true) {
-                        ProfileActionRow(
-                            text = stringResource(R.string.profile_change_password),
-                            icon = Icons.Outlined.Lock,
-                            onClick = onChangePasswordClick,
-                            enabled = !uiState.isLoading,
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.divider)
-                    }
-
                     ProfileActionRow(
                         text = stringResource(R.string.profile_privacy_policy),
                         icon = Icons.Outlined.Policy,
@@ -218,27 +210,48 @@ fun ProfileScreen(
                         },
                         enabled = !uiState.isLoading,
                     )
-
-                    HorizontalDivider(color = MaterialTheme.colorScheme.divider)
-
-                    ProfileActionRow(
-                        text = stringResource(R.string.profile_sign_out),
-                        icon = Icons.AutoMirrored.Filled.Logout,
-                        onClick = viewModel::onSignOutClick,
-                        enabled = !uiState.isLoading,
-                    )
                 }
+            }
 
-                // разрушающее действие отдельной группой: рядом с «Выйти» его
-                // слишком легко нажать по инерции
-                ProfileGroup {
-                    ProfileActionRow(
-                        text = stringResource(R.string.profile_delete_account),
-                        icon = Icons.Filled.DeleteForever,
-                        onClick = viewModel::onDeleteAccountClick,
-                        enabled = !uiState.isLoading,
-                        tint = MaterialTheme.colorScheme.cryptoError,
-                    )
+            // разделу аккаунта нечего показать гостю: выходить и менять пароль
+            // не из чего, а политика теперь живёт в разделе «О приложении»
+            if (user != null) {
+                Column(
+                    modifier = Modifier.padding(horizontal = Dimensions.Padding.screenHorizontal),
+                    verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
+                ) {
+                    ProfileSectionTitle(text = stringResource(R.string.profile_account_section))
+
+                    ProfileGroup {
+                        if (user.hasPasswordProvider) {
+                            ProfileActionRow(
+                                text = stringResource(R.string.profile_change_password),
+                                icon = Icons.Outlined.Lock,
+                                onClick = onChangePasswordClick,
+                                enabled = !uiState.isLoading,
+                            )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.divider)
+                        }
+
+                        ProfileActionRow(
+                            text = stringResource(R.string.profile_sign_out),
+                            icon = Icons.AutoMirrored.Filled.Logout,
+                            onClick = viewModel::onSignOutClick,
+                            enabled = !uiState.isLoading,
+                        )
+                    }
+
+                    // разрушающее действие отдельной группой: рядом с «Выйти» его
+                    // слишком легко нажать по инерции
+                    ProfileGroup {
+                        ProfileActionRow(
+                            text = stringResource(R.string.profile_delete_account),
+                            icon = Icons.Filled.DeleteForever,
+                            onClick = viewModel::onDeleteAccountClick,
+                            enabled = !uiState.isLoading,
+                            tint = MaterialTheme.colorScheme.cryptoError,
+                        )
+                    }
                 }
             }
         }

@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -68,6 +69,7 @@ import kotlin.math.ceil
 fun MainScreen(
     onPairClick: (ticker: String, symbolId: Long) -> Unit = { _, _ -> },
     onProfileClick: () -> Unit = {},
+    onSignInClick: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel(),
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle()
@@ -137,6 +139,24 @@ fun MainScreen(
         snapshotFlow { Triple(uiState.value.onlyFavourite, uiState.value.direction, uiState.value.sorting) }
             .drop(1)
             .collect { lazyList.scrollToItem(0) }
+    }
+
+    val signInPrompt = stringResource(R.string.pairs_sign_in_prompt)
+    val signInAction = stringResource(R.string.pairs_sign_in_action)
+
+    // избранное — единственное в каталоге, что требует аккаунта, поэтому
+    // приглашение живёт здесь же, в снекбаре, а не отдельным экраном
+    LaunchedEffect(uiState.value.signInRequired) {
+        if (!uiState.value.signInRequired) return@LaunchedEffect
+
+        val result =
+            snackbarHostState.showSnackbar(
+                message = signInPrompt,
+                actionLabel = signInAction,
+                withDismissAction = true,
+            )
+        viewModel.onSignInRequestShown()
+        if (result == SnackbarResult.ActionPerformed) onSignInClick()
     }
 
     LaunchedEffect(uiState.value.error) {

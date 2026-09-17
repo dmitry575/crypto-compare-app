@@ -12,6 +12,8 @@
     <string name="pairs_empty_direction">No pairs are moving that way right now</string>
 
     <!-- Sorting -->
+    <string name="pairs_sign_in_prompt">Sign in to keep favourites</string>
+    <string name="pairs_sign_in_action">Sign in</string>
     <string name="pairs_sort_title">Sort by</string>
     <string name="pairs_sort_name">Name</string>
     <string name="pairs_sort_price">Price</string>

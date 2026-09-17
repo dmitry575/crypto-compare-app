@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,34 +24,24 @@ import com.cryptocompare.auth.viewmodel.splashviewmodel.SplashViewModel
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.bgPrimary
 
+/**
+ * Заставка: ждёт минимальную паузу и уходит дальше.
+ *
+ * Развилка здесь одна — онбординг. Вход не проверяется: каталог открыт и гостю,
+ * а войти можно из профиля, когда понадобится избранное.
+ */
 @Composable
 fun SplashScreen(
-    onNavigateHome: () -> Unit,
-    onNavigateLogin: () -> Unit,
+    onReady: () -> Unit,
     onNavigateOnboarding: () -> Unit,
     viewModel: SplashViewModel = hiltViewModel(),
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
 
-    LaunchedEffect(
-        uiState.isCheckAuth,
-        uiState.isAuthenticated,
-        uiState.errorMessage,
-        uiState.shouldShowOnboarding,
-    ) {
-        val authState = uiState.isAuthenticated
-        if (uiState.isCheckAuth || authState == null) return@LaunchedEffect
+    LaunchedEffect(uiState.isPreparing, uiState.shouldShowOnboarding) {
+        if (uiState.isPreparing) return@LaunchedEffect
 
-        // онбординг идёт первым и при ошибке проверки входа тоже: он про продукт,
-        // а не про авторизацию, и сеть ему не нужна
-        if (uiState.shouldShowOnboarding) {
-            onNavigateOnboarding()
-            return@LaunchedEffect
-        }
-
-        if (uiState.errorMessage != null) return@LaunchedEffect
-
-        if (authState) onNavigateHome() else onNavigateLogin()
+        if (uiState.shouldShowOnboarding) onNavigateOnboarding() else onReady()
     }
 
     Column(
@@ -72,27 +61,7 @@ fun SplashScreen(
             color = MaterialTheme.colorScheme.onBackground,
             fontWeight = FontWeight.Bold,
         )
-        Spacer(modifier = Modifier.height(Dimensions.Spacing.sm))
-        if (uiState.isCheckAuth) {
-            Text(
-                text = stringResource(R.string.splash_checking),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
-            )
-            Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-        } else {
-            uiState.errorMessage?.let { message ->
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
-                Button(onClick = viewModel::checkAuthentification) {
-                    Text(text = stringResource(R.string.splash_retry))
-                }
-            }
-        }
+        Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
     }
 }

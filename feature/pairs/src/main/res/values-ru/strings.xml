@@ -10,6 +10,8 @@
     <string name="pairs_empty_direction">Сейчас таких пар нет</string>
 
     <!-- Сортировка -->
+    <string name="pairs_sign_in_prompt">Войдите, чтобы сохранять избранное</string>
+    <string name="pairs_sign_in_action">Войти</string>
     <string name="pairs_sort_title">Сортировка</string>
     <string name="pairs_sort_name">Название</string>
     <string name="pairs_sort_price">Цена</string>
