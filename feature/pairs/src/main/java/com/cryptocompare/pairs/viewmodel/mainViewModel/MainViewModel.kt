@@ -8,6 +8,7 @@ import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
 import com.cryptocompare.domain.usecase.auth.ObserveAuthStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
 import com.cryptocompare.domain.usecase.pairs.LoadPairsUseCase
+import com.cryptocompare.domain.usecase.pairs.ObserveConnectionStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteSymbolsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
@@ -24,6 +25,7 @@ import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
 import com.cryptocompare.pairs.util.PairsConstants
+import com.cryptocompare.pairs.util.StreamStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -56,6 +58,7 @@ class MainViewModel
         private val toggleFavouriteSymbolUseCase: ToggleFavouriteSymbolUseCase,
         private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
         private val refreshBestPricesUseCase: RefreshBestPricesUseCase,
+        private val observeConnectionStateUseCase: ObserveConnectionStateUseCase,
         private val observeAuthStateUseCase: ObserveAuthStateUseCase,
         private val getCurrentUserUseCase: GetCurrentUserUseCase,
     ) : ViewModel() {
@@ -111,6 +114,7 @@ class MainViewModel
 
         init {
             observeSocket()
+            observeConnectionState()
             observeReconnects()
             observeAuthState()
             syncFavouriteSymbols()
@@ -218,6 +222,16 @@ class MainViewModel
                 } catch (e: Exception) {
                     _uiState.update { it.copy(error = e.toUserMessage()) }
                 }
+            }
+        }
+
+        /** Живой ли поток — то, по чему пользователь понимает, верить ли числам. */
+        private fun observeConnectionState() {
+            viewModelScope.launch {
+                observeConnectionStateUseCase()
+                    .map(StreamStatus::of)
+                    .distinctUntilChanged()
+                    .collect { status -> _uiState.update { it.copy(streamStatus = status) } }
             }
         }
 

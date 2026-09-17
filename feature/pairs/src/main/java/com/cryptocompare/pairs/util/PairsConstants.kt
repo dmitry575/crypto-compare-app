@@ -24,6 +24,13 @@ object PairsConstants {
 
     object MainScreen {
         const val SEARCH_DEBOUNCE_MS = 300L
+
+        /** Точка состояния потока в шапке каталога. */
+        val STREAM_DOT_SIZE: Dp = 8.dp
+
+        /** Кружок ожидания вместо точки, пока связь восстанавливается. */
+        val STREAM_PROGRESS_SIZE: Dp = 10.dp
+        val STREAM_PROGRESS_STROKE: Dp = 1.5.dp
         const val PRICE_FLUSH_INTERVAL_MS = 500L
 
         /** Сколько символов базовой валюты влезает в значок пары. */

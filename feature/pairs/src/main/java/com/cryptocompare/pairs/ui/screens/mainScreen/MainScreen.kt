@@ -46,6 +46,7 @@ import androidx.paging.compose.itemKey
 import com.cryptocompare.helpers.toUserMessage
 import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.pairs.R
+import com.cryptocompare.pairs.ui.components.StreamStatusBadge
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.EmptyState
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.ErrorState
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairRow
@@ -187,6 +188,8 @@ fun MainScreen(
                         containerColor = MaterialTheme.colorScheme.bgPrimary,
                     ),
                 actions = {
+                    StreamStatusBadge(status = uiState.value.streamStatus)
+
                     IconButton(onClick = onProfileClick) {
                         Icon(
                             imageVector = Icons.Outlined.AccountCircle,
