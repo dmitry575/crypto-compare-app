@@ -13,6 +13,7 @@ import com.cryptocompare.data.repository.CryptoCompareRepositoryImpl
 import com.cryptocompare.data.repository.FavouriteSymbolRepositoryImpl
 import com.cryptocompare.data.repository.FirebaseCrashReporter
 import com.cryptocompare.data.repository.LanguageRepositoryImpl
+import com.cryptocompare.data.repository.MarketPreferencesRepositoryImpl
 import com.cryptocompare.data.repository.OnboardingRepositoryImpl
 import com.cryptocompare.data.repository.ThemeRepositoryImpl
 import com.cryptocompare.data.repository.TickerStreamRepositoryImpl
@@ -22,6 +23,7 @@ import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.domain.repository.FavouriteSymbolRepository
 import com.cryptocompare.domain.repository.LanguageRepository
+import com.cryptocompare.domain.repository.MarketPreferencesRepository
 import com.cryptocompare.domain.repository.OnboardingRepository
 import com.cryptocompare.domain.repository.ThemeRepository
 import com.cryptocompare.domain.repository.TickerStreamRepository
@@ -92,6 +94,11 @@ object RepositoryModule {
         @Named("wsUrl") wsUrl: String,
         crashReporter: CrashReporter,
     ): TickerStreamRepository = TickerStreamRepositoryImpl(webSocketClient, wsUrl, crashReporter)
+
+    @Provides
+    @Singleton
+    fun provideMarketPreferencesRepository(dataStore: DataStore<Preferences>): MarketPreferencesRepository =
+        MarketPreferencesRepositoryImpl(dataStore)
 
     @Provides
     @Singleton

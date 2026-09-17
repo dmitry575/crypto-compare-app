@@ -9,6 +9,15 @@
     <!-- Account actions -->
     <string name="profile_account_section">Account</string>
     <string name="profile_about_section">About</string>
+    <string name="profile_market_section">Market</string>
+    <string name="profile_default_exchange">Default exchange</string>
+    <string name="profile_default_exchange_any">First available</string>
+    <string name="profile_default_timeframe">Chart timeframe</string>
+    <string name="profile_timeframe_m15">15m</string>
+    <string name="profile_timeframe_h1">1h</string>
+    <string name="profile_timeframe_h4">4h</string>
+    <string name="profile_timeframe_d1">1d</string>
+    <string name="profile_timeframe_w1">1w</string>
     <string name="profile_guest_title">You are not signed in</string>
     <string name="profile_guest_text">Prices, the chart and the exchange comparison work without an account. Sign in to keep your favourites and see them on your other devices.</string>
     <string name="profile_sign_in">Sign in</string>

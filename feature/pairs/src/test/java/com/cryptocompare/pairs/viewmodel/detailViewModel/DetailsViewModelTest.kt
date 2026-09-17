@@ -11,10 +11,13 @@ import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SubscribeSingleTickerUseCase
+import com.cryptocompare.domain.usecase.settings.GetMarketPreferencesUseCase
 import com.cryptocompare.model.chart.Candle
+import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.model.provider.Provider
 import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.model.provider.ProviderStatus
+import com.cryptocompare.model.settings.MarketPreferences
 import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerDetail
 import com.cryptocompare.model.ticker.TickerPrice
@@ -90,6 +93,59 @@ class DetailsViewModelTest {
         close = close,
     )
 
+    @Test
+    fun `the pair opens on the exchange from settings`() =
+        runTest {
+            val vm =
+                makeVm(
+                    marketPreferences =
+                        marketPreferencesUseCaseMock(MarketPreferences(defaultProviderId = 2)),
+                )
+            runCurrent()
+
+            assertEquals(
+                2,
+                vm.uiState.value.selectedExchange
+                    ?.provider
+                    ?.id,
+            )
+        }
+
+    @Test
+    fun `a pair without the preferred exchange opens on the first one`() =
+        runTest {
+            // у половины пар выбранной площадки просто нет
+            val vm =
+                makeVm(
+                    marketPreferences =
+                        marketPreferencesUseCaseMock(MarketPreferences(defaultProviderId = 404)),
+                )
+            runCurrent()
+
+            assertEquals(
+                1,
+                vm.uiState.value.selectedExchange
+                    ?.provider
+                    ?.id,
+            )
+        }
+
+    @Test
+    fun `the chart opens in the timeframe from settings`() =
+        runTest {
+            val history = historyUseCaseMock(defaultHistory())
+            val vm =
+                makeVm(
+                    history = history,
+                    marketPreferences =
+                        marketPreferencesUseCaseMock(MarketPreferences(timeframe = ChartTimeframe.H4)),
+                )
+            runCurrent()
+
+            assertEquals(ChartTimeframe.H4, vm.uiState.value.timeframe)
+            coVerify { history.invoke(any(), any(), ChartTimeframe.H4, any(), any()) }
+        }
+
     private fun connectUseCaseMock(): StreamConnectUseCase = mockk(relaxed = true)
 
     private fun subscribeSingleUseCaseMock(): SubscribeSingleTickerUseCase = mockk(relaxed = true)
@@ -107,6 +163,10 @@ class DetailsViewModelTest {
 
     private fun observeEventsUseCaseMock(): ObserveTickerEventUseCase =
         mockk { every { this@mockk.invoke() } returns events }
+
+    private fun marketPreferencesUseCaseMock(
+        preferences: MarketPreferences = MarketPreferences(),
+    ): GetMarketPreferencesUseCase = mockk { coEvery { this@mockk.invoke() } returns preferences }
 
     private fun defaultExchanges(): List<ProviderDetail> =
         listOf(
@@ -127,6 +187,7 @@ class DetailsViewModelTest {
         details: GetTickerDetailUseCase = detailsUseCaseMock(defaultExchanges()),
         history: GetTickerHistoryUseCase = historyUseCaseMock(defaultHistory()),
         observeEvents: ObserveTickerEventUseCase = observeEventsUseCaseMock(),
+        marketPreferences: GetMarketPreferencesUseCase = marketPreferencesUseCaseMock(),
     ): DetailsViewModel =
         DetailsViewModel(
             savedStateHandle = SavedStateHandle(mapOf(PairsConstants.Navigation.TICKER_ARG to "BTCUSDT")),
@@ -138,6 +199,7 @@ class DetailsViewModelTest {
             observeTickerEventUseCase = observeEvents,
             observeStreamReconnectsUseCase = mockk { every { this@mockk.invoke() } returns reconnects },
             getBestPricesUseCase = bestPrices,
+            getMarketPreferencesUseCase = marketPreferences,
         )
 
     private fun tick(
@@ -350,6 +412,7 @@ class DetailsViewModelTest {
                     observeTickerEventUseCase = observeEventsUseCaseMock(),
                     observeStreamReconnectsUseCase = mockk { every { this@mockk.invoke() } returns reconnects },
                     getBestPricesUseCase = bestPrices,
+                    getMarketPreferencesUseCase = marketPreferencesUseCaseMock(),
                 )
             runCurrent()
 

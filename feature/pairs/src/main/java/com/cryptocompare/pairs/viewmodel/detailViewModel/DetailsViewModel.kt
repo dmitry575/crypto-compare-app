@@ -11,9 +11,12 @@ import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SubscribeSingleTickerUseCase
+import com.cryptocompare.domain.usecase.settings.GetMarketPreferencesUseCase
 import com.cryptocompare.helpers.toUserMessage
 import com.cryptocompare.helpers.withUpdates
 import com.cryptocompare.model.chart.ChartTimeframe
+import com.cryptocompare.model.provider.ProviderDetail
+import com.cryptocompare.model.settings.MarketPreferences
 import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
@@ -46,6 +49,7 @@ class DetailsViewModel
         private val observeTickerEventUseCase: ObserveTickerEventUseCase,
         private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
         private val getBestPricesUseCase: GetBestPricesUseCase,
+        private val getMarketPreferencesUseCase: GetMarketPreferencesUseCase,
     ) : ViewModel() {
         /** Символ пары: биржи, лучшая пара и живые события берутся только его. */
         private val symbolId: Long? =
@@ -245,6 +249,10 @@ class DetailsViewModel
             _uiState.update { it.copy(loading = true, error = null) }
             viewModelScope.launch {
                 try {
+                    // настройки читаются до деталей: с чего открыть пару, решают они,
+                    // а сбой чтения не должен мешать экрану открыться
+                    val preferences = runCatching { getMarketPreferencesUseCase() }.getOrDefault(MarketPreferences())
+
                     val result = getPairDetailsUseCase(ticker, symbolId)
                     result.fold(
                         onSuccess = { details ->
@@ -253,10 +261,11 @@ class DetailsViewModel
                                     loading = false,
                                     networks = details.networks,
                                     exchanges = details.exchanges,
-                                    selectedExchangeIndex = 0,
+                                    selectedExchangeIndex = details.exchanges.preferredIndex(preferences),
+                                    timeframe = preferences.timeframe,
                                 )
                             }
-                            // график строится по выбранной бирже (по умолчанию — первой в списке)
+                            // график строится по выбранной бирже
                             _uiState.value.selectedExchange?.provider?.id?.let { providerId ->
                                 loadCandles(providerId, ticker, _uiState.value.timeframe)
                             }
@@ -272,6 +281,13 @@ class DetailsViewModel
                 }
             }
         }
+
+        /**
+         * Биржа, с которой открывается пара: из настроек, если она у этой пары есть,
+         * иначе первая — у половины пар выбранной площадки просто нет.
+         */
+        private fun List<ProviderDetail>.preferredIndex(preferences: MarketPreferences): Int =
+            indexOfFirst { it.provider.id == preferences.defaultProviderId }.takeIf { it >= 0 } ?: 0
 
         fun onTimeframeSelected(timeframe: ChartTimeframe) {
             if (_uiState.value.timeframe == timeframe) return
