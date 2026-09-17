@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Policy
+import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -38,6 +39,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cryptocompare.helpers.openExternalUrl
 import com.cryptocompare.helpers.util.AppConstants
 import com.cryptocompare.profile.R
+import com.cryptocompare.profile.ui.screens.profilescreen.components.ChartTimeframeSelector
+import com.cryptocompare.profile.ui.screens.profilescreen.components.DefaultExchangeSheet
 import com.cryptocompare.profile.ui.screens.profilescreen.components.LanguageSelector
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileActionRow
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileComingSoonRow
@@ -46,6 +49,7 @@ import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileGrou
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileHeader
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileSectionTitle
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileSignInCard
+import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileValueRow
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ThemeSelector
 import com.cryptocompare.profile.viewmodel.profileviewmodel.ProfileViewModel
 import com.cryptocompare.ui.theme.Dimensions
@@ -91,6 +95,15 @@ fun ProfileScreen(
             onConfirm = viewModel::onDeleteAccountConfirmed,
             onDismiss = viewModel::onDeleteAccountDismissed,
             confirmColor = MaterialTheme.colorScheme.cryptoError,
+        )
+    }
+
+    if (uiState.showExchangePicker) {
+        DefaultExchangeSheet(
+            providers = uiState.providers,
+            selectedProviderId = uiState.marketPreferences.defaultProviderId,
+            onSelect = viewModel::onDefaultExchangeSelected,
+            onDismiss = viewModel::onDefaultExchangeDismissed,
         )
     }
 
@@ -190,6 +203,43 @@ fun ProfileScreen(
                         text = stringResource(R.string.profile_base_currency),
                         icon = Icons.Outlined.CurrencyExchange,
                     )
+                }
+            }
+
+            Column(
+                modifier = Modifier.padding(horizontal = Dimensions.Padding.screenHorizontal),
+                verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
+            ) {
+                ProfileSectionTitle(text = stringResource(R.string.profile_market_section))
+
+                ProfileGroup {
+                    ProfileValueRow(
+                        text = stringResource(R.string.profile_default_exchange),
+                        value =
+                            uiState.marketPreferences.defaultProviderId
+                                ?.let { providerId ->
+                                    uiState.providers.firstOrNull { it.id == providerId }?.name
+                                }?.takeIf { it.isNotBlank() }
+                                ?: stringResource(R.string.profile_default_exchange_any),
+                        icon = Icons.Outlined.Storefront,
+                        onClick = viewModel::onDefaultExchangeClick,
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.divider)
+
+                    Column(
+                        modifier = Modifier.padding(Dimensions.Padding.cardMedium),
+                        verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.profile_default_timeframe),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        ChartTimeframeSelector(
+                            selected = uiState.marketPreferences.timeframe,
+                            onSelect = viewModel::onDefaultTimeframeChange,
+                        )
+                    }
                 }
             }
 

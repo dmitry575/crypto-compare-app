@@ -7,6 +7,8 @@ object DataConstants {
         const val THEME_KEY = "theme_preference"
         const val LANGUAGE_KEY = "app_language"
         const val ONBOARDING_SEEN_KEY = "onboarding_seen"
+        const val DEFAULT_PROVIDER_KEY = "default_provider_id"
+        const val DEFAULT_TIMEFRAME_KEY = "default_timeframe"
     }
 
     object Migrations {

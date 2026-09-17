@@ -1,18 +1,28 @@
 package com.cryptocompare.profile
 
 import com.cryptocompare.domain.repository.AuthRepository
+import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.domain.repository.FavouriteSymbolRepository
 import com.cryptocompare.domain.repository.LanguageRepository
+import com.cryptocompare.domain.repository.MarketPreferencesRepository
 import com.cryptocompare.domain.repository.ThemeRepository
 import com.cryptocompare.domain.usecase.auth.ObserveAuthStateUseCase
+import com.cryptocompare.domain.usecase.pairs.GetProvidersUseCase
 import com.cryptocompare.domain.usecase.profile.DeleteAccountUseCase
 import com.cryptocompare.domain.usecase.profile.SignOutUseCase
 import com.cryptocompare.domain.usecase.settings.ObserveLanguageUseCase
+import com.cryptocompare.domain.usecase.settings.ObserveMarketPreferencesUseCase
 import com.cryptocompare.domain.usecase.settings.ObserveThemePreferenceUseCase
+import com.cryptocompare.domain.usecase.settings.SetDefaultProviderUseCase
+import com.cryptocompare.domain.usecase.settings.SetDefaultTimeframeUseCase
 import com.cryptocompare.domain.usecase.settings.SetLanguageUseCase
 import com.cryptocompare.domain.usecase.settings.SetThemePreferenceUseCase
 import com.cryptocompare.model.auth.AuthUser
+import com.cryptocompare.model.chart.ChartTimeframe
+import com.cryptocompare.model.provider.Provider
+import com.cryptocompare.model.provider.ProviderStatus
 import com.cryptocompare.model.settings.AppLanguage
+import com.cryptocompare.model.settings.MarketPreferences
 import com.cryptocompare.model.settings.ThemePreference
 import com.cryptocompare.profile.viewmodel.profileviewmodel.ProfileViewModel
 import com.cryptocompare.testing.MainDispatcherRule
@@ -49,10 +59,24 @@ class ProfileViewModelTest {
     private val languageRepository: LanguageRepository = mockk(relaxed = true)
     private val setLanguageUseCase = SetLanguageUseCase(languageRepository)
     private val observeLanguageUseCase = ObserveLanguageUseCase(languageRepository)
+    private val marketPreferencesRepository: MarketPreferencesRepository = mockk(relaxed = true)
+    private val observeMarketPreferencesUseCase = ObserveMarketPreferencesUseCase(marketPreferencesRepository)
+    private val setDefaultProviderUseCase = SetDefaultProviderUseCase(marketPreferencesRepository)
+    private val setDefaultTimeframeUseCase = SetDefaultTimeframeUseCase(marketPreferencesRepository)
+    private val cryptoCompareRepository: CryptoCompareRepository = mockk(relaxed = true)
+    private val getProvidersUseCase = GetProvidersUseCase(cryptoCompareRepository)
 
     @Before
     fun setUp() {
-        clearMocks(authRepository, themeRepository, languageRepository)
+        clearMocks(
+            authRepository,
+            themeRepository,
+            languageRepository,
+            marketPreferencesRepository,
+            cryptoCompareRepository,
+        )
+        every { marketPreferencesRepository.observeMarketPreferences() } returns flowOf(MarketPreferences())
+        coEvery { cryptoCompareRepository.getProviders() } returns Result.success(PROVIDERS)
         every { authRepository.observeAuthState() } returns flowOf(TEST_USER)
         every { themeRepository.observeThemePreference() } returns flowOf(ThemePreference.SYSTEM)
         every { languageRepository.observeLanguage() } returns flowOf(AppLanguage.SYSTEM)
@@ -178,6 +202,67 @@ class ProfileViewModelTest {
             coVerify(exactly = 1) { themeRepository.setThemePreference(ThemePreference.LIGHT) }
         }
 
+    @Test
+    fun `market preferences reach the ui state`() =
+        runTest {
+            every { marketPreferencesRepository.observeMarketPreferences() } returns
+                flowOf(MarketPreferences(defaultProviderId = 19, timeframe = ChartTimeframe.H4))
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals(19, viewModel.uiState.value.marketPreferences.defaultProviderId)
+            assertEquals(ChartTimeframe.H4, viewModel.uiState.value.marketPreferences.timeframe)
+        }
+
+    @Test
+    fun `the exchange list is loaded for the picker`() =
+        runTest {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals(PROVIDERS, viewModel.uiState.value.providers)
+        }
+
+    @Test
+    fun `choosing an exchange stores it and closes the picker`() =
+        runTest {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onDefaultExchangeClick()
+            assertTrue(viewModel.uiState.value.showExchangePicker)
+
+            viewModel.onDefaultExchangeSelected(19)
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.showExchangePicker)
+            coVerify(exactly = 1) { marketPreferencesRepository.setDefaultProvider(19) }
+        }
+
+    @Test
+    fun `choosing the first available exchange clears the stored one`() =
+        runTest {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.onDefaultExchangeSelected(null)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { marketPreferencesRepository.setDefaultProvider(null) }
+        }
+
+    @Test
+    fun `choosing a timeframe is persisted`() =
+        runTest {
+            val viewModel = createViewModel()
+
+            viewModel.onDefaultTimeframeChange(ChartTimeframe.M15)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { marketPreferencesRepository.setDefaultTimeframe(ChartTimeframe.M15) }
+        }
+
     private fun createViewModel(): ProfileViewModel =
         ProfileViewModel(
             observeAuthStateUseCase = observeAuthStateUseCase,
@@ -187,9 +272,19 @@ class ProfileViewModelTest {
             setLanguageUseCase = setLanguageUseCase,
             observeThemePreferenceUseCase = observeThemePreferenceUseCase,
             observeLanguageUseCase = observeLanguageUseCase,
+            observeMarketPreferencesUseCase = observeMarketPreferencesUseCase,
+            setDefaultProviderUseCase = setDefaultProviderUseCase,
+            setDefaultTimeframeUseCase = setDefaultTimeframeUseCase,
+            getProvidersUseCase = getProvidersUseCase,
         )
 
     private companion object {
+        val PROVIDERS =
+            listOf(
+                Provider(id = 1, name = "mexc", referralUrl = null, status = ProviderStatus.Enabled),
+                Provider(id = 19, name = "binance", referralUrl = null, status = ProviderStatus.Enabled),
+            )
+
         const val RECENT_LOGIN_ERROR = "This operation requires recent authentication"
 
         val TEST_USER =

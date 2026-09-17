@@ -3,13 +3,18 @@ package com.cryptocompare.profile.viewmodel.profileviewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cryptocompare.domain.usecase.auth.ObserveAuthStateUseCase
+import com.cryptocompare.domain.usecase.pairs.GetProvidersUseCase
 import com.cryptocompare.domain.usecase.profile.DeleteAccountUseCase
 import com.cryptocompare.domain.usecase.profile.SignOutUseCase
 import com.cryptocompare.domain.usecase.settings.ObserveLanguageUseCase
+import com.cryptocompare.domain.usecase.settings.ObserveMarketPreferencesUseCase
 import com.cryptocompare.domain.usecase.settings.ObserveThemePreferenceUseCase
+import com.cryptocompare.domain.usecase.settings.SetDefaultProviderUseCase
+import com.cryptocompare.domain.usecase.settings.SetDefaultTimeframeUseCase
 import com.cryptocompare.domain.usecase.settings.SetLanguageUseCase
 import com.cryptocompare.domain.usecase.settings.SetThemePreferenceUseCase
 import com.cryptocompare.helpers.toUserMessage
+import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.model.settings.AppLanguage
 import com.cryptocompare.model.settings.ThemePreference
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,9 +32,13 @@ class ProfileViewModel
         private val deleteAccountUseCase: DeleteAccountUseCase,
         private val setThemePreferenceUseCase: SetThemePreferenceUseCase,
         private val setLanguageUseCase: SetLanguageUseCase,
+        private val setDefaultProviderUseCase: SetDefaultProviderUseCase,
+        private val setDefaultTimeframeUseCase: SetDefaultTimeframeUseCase,
+        private val getProvidersUseCase: GetProvidersUseCase,
         observeAuthStateUseCase: ObserveAuthStateUseCase,
         observeThemePreferenceUseCase: ObserveThemePreferenceUseCase,
         observeLanguageUseCase: ObserveLanguageUseCase,
+        observeMarketPreferencesUseCase: ObserveMarketPreferencesUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ProfileUiState())
         val uiState = _uiState.asStateFlow()
@@ -38,10 +47,33 @@ class ProfileViewModel
             observeUser(observeAuthStateUseCase)
             observeTheme(observeThemePreferenceUseCase)
             observeLanguage(observeLanguageUseCase)
+            observeMarketPreferences(observeMarketPreferencesUseCase)
+            loadProviders()
         }
 
         fun onThemePreferenceChange(preference: ThemePreference) {
             viewModelScope.launch { setThemePreferenceUseCase(preference) }
+        }
+
+        fun onDefaultTimeframeChange(timeframe: ChartTimeframe) {
+            viewModelScope.launch { setDefaultTimeframeUseCase(timeframe) }
+        }
+
+        fun onDefaultExchangeClick() {
+            // справочник бирж мог не приехать при открытии экрана — пробуем ещё раз,
+            // раз он понадобился прямо сейчас
+            if (_uiState.value.providers.isEmpty()) loadProviders()
+
+            _uiState.update { uiState -> uiState.copy(showExchangePicker = true) }
+        }
+
+        fun onDefaultExchangeDismissed() {
+            _uiState.update { uiState -> uiState.copy(showExchangePicker = false) }
+        }
+
+        fun onDefaultExchangeSelected(providerId: Int?) {
+            _uiState.update { uiState -> uiState.copy(showExchangePicker = false) }
+            viewModelScope.launch { setDefaultProviderUseCase(providerId) }
         }
 
         fun onLanguageChange(language: AppLanguage) {
@@ -94,6 +126,23 @@ class ProfileViewModel
             viewModelScope.launch {
                 observeThemePreferenceUseCase().collect { preference ->
                     _uiState.update { uiState -> uiState.copy(themePreference = preference) }
+                }
+            }
+        }
+
+        private fun observeMarketPreferences(observeMarketPreferencesUseCase: ObserveMarketPreferencesUseCase) {
+            viewModelScope.launch {
+                observeMarketPreferencesUseCase().collect { preferences ->
+                    _uiState.update { uiState -> uiState.copy(marketPreferences = preferences) }
+                }
+            }
+        }
+
+        /** Список бирж нужен только для выбора площадки: ошибку не показываем, шторка просто останется с «Первой доступной». */
+        private fun loadProviders() {
+            viewModelScope.launch {
+                getProvidersUseCase().onSuccess { providers ->
+                    _uiState.update { uiState -> uiState.copy(providers = providers) }
                 }
             }
         }

@@ -9,6 +9,15 @@
     <!-- Действия с аккаунтом -->
     <string name="profile_account_section">Аккаунт</string>
     <string name="profile_about_section">О приложении</string>
+    <string name="profile_market_section">Рынок</string>
+    <string name="profile_default_exchange">Биржа по умолчанию</string>
+    <string name="profile_default_exchange_any">Первая доступная</string>
+    <string name="profile_default_timeframe">Масштаб графика</string>
+    <string name="profile_timeframe_m15">15м</string>
+    <string name="profile_timeframe_h1">1ч</string>
+    <string name="profile_timeframe_h4">4ч</string>
+    <string name="profile_timeframe_d1">1д</string>
+    <string name="profile_timeframe_w1">1н</string>
     <string name="profile_guest_title">Вы не вошли</string>
     <string name="profile_guest_text">Цены, график и сравнение бирж работают без аккаунта. Войдите, чтобы избранное сохранялось и было доступно на других устройствах.</string>
     <string name="profile_sign_in">Войти</string>
