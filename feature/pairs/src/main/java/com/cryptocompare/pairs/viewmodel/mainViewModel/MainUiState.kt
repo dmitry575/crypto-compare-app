@@ -2,9 +2,12 @@ package com.cryptocompare.pairs.viewmodel.mainViewModel
 
 import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSorting
+import com.cryptocompare.pairs.util.StreamStatus
 
 data class MainUiState(
     val searchQuery: String = "",
+    /** Живые ли цены. На старте — «подключение»: сокет открывается вместе с каталогом. */
+    val streamStatus: StreamStatus = StreamStatus.RECONNECTING,
     val error: String? = null,
     val subscribedTickers: Set<String> = emptySet(),
     /** Избранное — по символам: у тикера их столько, сколько наборов сетей. */

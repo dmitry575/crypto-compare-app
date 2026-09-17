@@ -12,6 +12,9 @@
     <string name="pairs_empty_direction">No pairs are moving that way right now</string>
 
     <!-- Sorting -->
+    <string name="pairs_stream_live">Live</string>
+    <string name="pairs_stream_reconnecting">Connecting…</string>
+    <string name="pairs_stream_offline">Offline</string>
     <string name="pairs_sign_in_prompt">Sign in to keep favourites</string>
     <string name="pairs_sign_in_action">Sign in</string>
     <string name="pairs_sort_title">Sort by</string>

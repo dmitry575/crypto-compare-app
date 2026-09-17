@@ -5,6 +5,7 @@ import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
 import com.cryptocompare.domain.usecase.auth.ObserveAuthStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
 import com.cryptocompare.domain.usecase.pairs.LoadPairsUseCase
+import com.cryptocompare.domain.usecase.pairs.ObserveConnectionStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteSymbolsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
@@ -19,8 +20,10 @@ import com.cryptocompare.model.symbol.CatalogSort
 import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.ticker.TickerBestPrice
+import com.cryptocompare.model.ticker.TickerConnectionState
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
+import com.cryptocompare.pairs.util.StreamStatus
 import com.cryptocompare.pairs.viewmodel.mainViewModel.MainViewModel
 import com.cryptocompare.testing.MainDispatcherRule
 import io.mockk.coEvery
@@ -95,6 +98,9 @@ class MainViewModelTest {
     private fun getCurrentUserUseCaseMock(user: AuthUser?): GetCurrentUserUseCase =
         mockk { every { this@mockk.invoke() } returns user }
 
+    private fun observeConnectionStateUseCaseMock(flow: Flow<TickerConnectionState>): ObserveConnectionStateUseCase =
+        mockk { every { this@mockk.invoke() } returns flow }
+
     private fun makeVm(
         loadPairsUseCase: LoadPairsUseCase = loadPairsUseCaseMock(),
         observeTickerEventUseCase: ObserveTickerEventUseCase = observeTickerEventUseCaseMock(emptyFlow()),
@@ -114,6 +120,8 @@ class MainViewModelTest {
             mockk { coEvery { this@mockk.invoke(any()) } returns Result.success(Unit) },
         observeAuthStateUseCase: ObserveAuthStateUseCase = observeAuthStateUseCaseMock(flowOf(SIGNED_IN_USER)),
         getCurrentUserUseCase: GetCurrentUserUseCase = getCurrentUserUseCaseMock(SIGNED_IN_USER),
+        observeConnectionStateUseCase: ObserveConnectionStateUseCase =
+            observeConnectionStateUseCaseMock(emptyFlow()),
     ): MainViewModel =
         MainViewModel(
             loadPairsUseCase = loadPairsUseCase,
@@ -128,6 +136,7 @@ class MainViewModelTest {
             refreshBestPricesUseCase = refreshBestPricesUseCase,
             observeAuthStateUseCase = observeAuthStateUseCase,
             getCurrentUserUseCase = getCurrentUserUseCase,
+            observeConnectionStateUseCase = observeConnectionStateUseCase,
         )
 
     /** Событие типа 5: лучшая пара по тикеру. Каталог слушает только его. */
@@ -379,6 +388,24 @@ class MainViewModelTest {
             favouritesFlow.emit(setOf(1L, 14805L))
             yield()
             assertEquals(setOf(1L, 14805L), vm.uiState.value.favouriteSymbolIds)
+        }
+
+    @Test
+    fun `socket state reaches the ui state`() =
+        runTest {
+            val connectionState = MutableStateFlow<TickerConnectionState>(TickerConnectionState.Connecting)
+            val vm = makeVm(observeConnectionStateUseCase = observeConnectionStateUseCaseMock(connectionState))
+
+            yield()
+            assertEquals(StreamStatus.RECONNECTING, vm.uiState.value.streamStatus)
+
+            connectionState.value = TickerConnectionState.Connected
+            yield()
+            assertEquals(StreamStatus.LIVE, vm.uiState.value.streamStatus)
+
+            connectionState.value = TickerConnectionState.Error("host unreachable")
+            yield()
+            assertEquals(StreamStatus.OFFLINE, vm.uiState.value.streamStatus)
         }
 
     @Test

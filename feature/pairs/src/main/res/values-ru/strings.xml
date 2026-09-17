@@ -10,6 +10,9 @@
     <string name="pairs_empty_direction">Сейчас таких пар нет</string>
 
     <!-- Сортировка -->
+    <string name="pairs_stream_live">Онлайн</string>
+    <string name="pairs_stream_reconnecting">Подключение…</string>
+    <string name="pairs_stream_offline">Офлайн</string>
     <string name="pairs_sign_in_prompt">Войдите, чтобы сохранять избранное</string>
     <string name="pairs_sign_in_action">Войти</string>
     <string name="pairs_sort_title">Сортировка</string>
