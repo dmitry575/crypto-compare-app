@@ -12,8 +12,10 @@ import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SubscribeSingleTickerUseCase
 import com.cryptocompare.domain.usecase.settings.GetMarketPreferencesUseCase
+import com.cryptocompare.domain.usecase.settings.SetChartIndicatorsUseCase
 import com.cryptocompare.helpers.toUserMessage
 import com.cryptocompare.helpers.withUpdates
+import com.cryptocompare.model.chart.ChartIndicator
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.model.settings.MarketPreferences
@@ -50,6 +52,7 @@ class DetailsViewModel
         private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
         private val getBestPricesUseCase: GetBestPricesUseCase,
         private val getMarketPreferencesUseCase: GetMarketPreferencesUseCase,
+        private val setChartIndicatorsUseCase: SetChartIndicatorsUseCase,
     ) : ViewModel() {
         /** Символ пары: биржи, лучшая пара и живые события берутся только его. */
         private val symbolId: Long? =
@@ -263,6 +266,7 @@ class DetailsViewModel
                                     exchanges = details.exchanges,
                                     selectedExchangeIndex = details.exchanges.preferredIndex(preferences),
                                     timeframe = preferences.timeframe,
+                                    indicators = preferences.indicators,
                                 )
                             }
                             // график строится по выбранной бирже
@@ -288,6 +292,18 @@ class DetailsViewModel
          */
         private fun List<ProviderDetail>.preferredIndex(preferences: MarketPreferences): Int =
             indexOfFirst { it.provider.id == preferences.defaultProviderId }.takeIf { it >= 0 } ?: 0
+
+        /** Средняя включается и выключается на самом графике: набор общий и запоминается. */
+        fun onIndicatorToggled(indicator: ChartIndicator) {
+            val updated =
+                _uiState.value.indicators
+                    .toMutableSet()
+                    .apply { if (!add(indicator)) remove(indicator) }
+                    .toSet()
+
+            _uiState.update { it.copy(indicators = updated) }
+            viewModelScope.launch { setChartIndicatorsUseCase(updated) }
+        }
 
         fun onTimeframeSelected(timeframe: ChartTimeframe) {
             if (_uiState.value.timeframe == timeframe) return
