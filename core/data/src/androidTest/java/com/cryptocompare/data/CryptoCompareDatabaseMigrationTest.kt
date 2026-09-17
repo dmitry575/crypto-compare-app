@@ -184,6 +184,23 @@ class CryptoCompareDatabaseMigrationTest {
     }
 
     @Test
+    fun migrate10To11AddsPortfolioAndKeepsFavourites() {
+        helper.createDatabase(TEST_DB, 10).apply {
+            execSQL(
+                "INSERT INTO favourite_symbols (userId, symbolId, ticker, updatedAt) " +
+                    "VALUES ('u', 143, 'ETHUSDC', 2)",
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 11, true, *AssetMigrations.loadAll(context))
+
+        // портфель появляется пустым, избранное на месте
+        assertEquals(0, db.count("portfolio_positions"))
+        assertEquals(1, db.count("favourite_symbols"))
+    }
+
+    @Test
     fun migrate5ToCurrentKeepsFavouritesAlongTheWholeChain() {
         // устройство, пропустившее несколько обновлений, проходит всю цепочку разом
         helper.createDatabase(TEST_DB, 5).apply {
@@ -256,6 +273,6 @@ class CryptoCompareDatabaseMigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** Держать равной `version` в `@Database`: иначе тест открывает не ту схему, что у пользователя. */
-        const val CURRENT_VERSION = 10
+        const val CURRENT_VERSION = 11
     }
 }

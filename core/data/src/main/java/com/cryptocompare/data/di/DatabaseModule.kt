@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.cryptocompare.data.local.CryptoCompareDatabase
 import com.cryptocompare.data.local.dao.FavouriteSymbolDao
 import com.cryptocompare.data.local.dao.PendingFavouriteOperationDao
+import com.cryptocompare.data.local.dao.PortfolioPositionDao
 import com.cryptocompare.data.local.dao.ProviderDao
 import com.cryptocompare.data.local.dao.SymbolDao
 import com.cryptocompare.data.local.migrations.AssetMigrations
@@ -44,6 +45,10 @@ object DatabaseModule {
 
     @Provides
     fun provideFavouriteSymbolDao(database: CryptoCompareDatabase): FavouriteSymbolDao = database.favouriteSymbolDao()
+
+    @Provides
+    fun providePortfolioPositionDao(database: CryptoCompareDatabase): PortfolioPositionDao =
+        database.portfolioPositionDao()
 
     @Provides
     fun providePendingFavouriteOperationDao(database: CryptoCompareDatabase): PendingFavouriteOperationDao =

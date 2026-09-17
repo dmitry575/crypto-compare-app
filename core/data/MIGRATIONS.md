@@ -61,6 +61,7 @@ SQLite не умеет `ALTER TABLE ... DROP COLUMN` и смену типа: ч�
 | 8 | `symbols` пересоздана под лучшую пару цен: вместо одного `providerId` и `priceSell`/`priceBuy` — `bestAskProviderId`/`bestAskPrice`, `bestBidProviderId`/`bestBidPrice`, `spreadPercent` и время каждой стороны; внешний ключ на `providers` снят (`migration_7_8.sql`) |
 | 9 | в `symbols` добавлена `network` — сети символа строкой в формате источника; `catalog_remote_key` очищена, чтобы каталог перекачался уже с сетями (`migration_8_9.sql`) |
 | 10 | избранное переехало с тикера на символ: `favourite_tickers` заменена на `favourite_symbols` (`userId`, `symbolId`, `ticker`), очередь правок пересоздана под тот же ключ (`migration_9_10.sql`) |
+| 11 | добавлена `portfolio_positions` — ручной портфель на устройстве, позиция на символ (`migration_10_11.sql`) |
 
 Версия 8 пересоздаёт `symbols` без переливки данных: это кеш каталога, он
 перекачивается с бэкенда, а форма строки поменялась целиком — старые
