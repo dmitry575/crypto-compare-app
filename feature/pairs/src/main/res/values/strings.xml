@@ -13,6 +13,10 @@
 
     <!-- Sorting -->
     <string name="pairs_stream_live">Live</string>
+    <string name="pairs_stale_prices">Prices are not updating</string>
+    <string name="pairs_stale_prices_at">Prices are not updating · %1$s</string>
+    <string name="pairs_stale_refresh">Refresh</string>
+    <string name="pairs_refresh_failed">Could not reach the prices</string>
     <string name="pairs_stream_reconnecting">Connecting…</string>
     <string name="pairs_stream_offline">Offline</string>
     <string name="pairs_sign_in_prompt">Sign in to keep favourites</string>

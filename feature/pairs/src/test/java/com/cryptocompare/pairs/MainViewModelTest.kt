@@ -4,6 +4,7 @@ import androidx.paging.PagingData
 import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
 import com.cryptocompare.domain.usecase.auth.ObserveAuthStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
+import com.cryptocompare.domain.usecase.pairs.GetCatalogLastUpdateUseCase
 import com.cryptocompare.domain.usecase.pairs.LoadPairsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveConnectionStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteSymbolsUseCase
@@ -23,6 +24,7 @@ import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerConnectionState
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
+import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.util.StreamStatus
 import com.cryptocompare.pairs.viewmodel.mainViewModel.MainViewModel
 import com.cryptocompare.testing.MainDispatcherRule
@@ -101,6 +103,9 @@ class MainViewModelTest {
     private fun observeConnectionStateUseCaseMock(flow: Flow<TickerConnectionState>): ObserveConnectionStateUseCase =
         mockk { every { this@mockk.invoke() } returns flow }
 
+    private fun getCatalogLastUpdateUseCaseMock(lastUpdate: Long?): GetCatalogLastUpdateUseCase =
+        mockk { coEvery { this@mockk.invoke() } returns lastUpdate }
+
     private fun makeVm(
         loadPairsUseCase: LoadPairsUseCase = loadPairsUseCaseMock(),
         observeTickerEventUseCase: ObserveTickerEventUseCase = observeTickerEventUseCaseMock(emptyFlow()),
@@ -117,11 +122,12 @@ class MainViewModelTest {
         observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase =
             mockk { every { this@mockk.invoke() } returns emptyFlow() },
         refreshBestPricesUseCase: RefreshBestPricesUseCase =
-            mockk { coEvery { this@mockk.invoke(any()) } returns Result.success(Unit) },
+            mockk { coEvery { this@mockk.invoke(any()) } returns Result.success(1) },
         observeAuthStateUseCase: ObserveAuthStateUseCase = observeAuthStateUseCaseMock(flowOf(SIGNED_IN_USER)),
         getCurrentUserUseCase: GetCurrentUserUseCase = getCurrentUserUseCaseMock(SIGNED_IN_USER),
         observeConnectionStateUseCase: ObserveConnectionStateUseCase =
             observeConnectionStateUseCaseMock(emptyFlow()),
+        getCatalogLastUpdateUseCase: GetCatalogLastUpdateUseCase = getCatalogLastUpdateUseCaseMock(null),
     ): MainViewModel =
         MainViewModel(
             loadPairsUseCase = loadPairsUseCase,
@@ -137,6 +143,7 @@ class MainViewModelTest {
             observeAuthStateUseCase = observeAuthStateUseCase,
             getCurrentUserUseCase = getCurrentUserUseCase,
             observeConnectionStateUseCase = observeConnectionStateUseCase,
+            getCatalogLastUpdateUseCase = getCatalogLastUpdateUseCase,
         )
 
     /** Событие типа 5: лучшая пара по тикеру. Каталог слушает только его. */
@@ -247,8 +254,7 @@ class MainViewModelTest {
             val reconnects = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
             val refresh =
                 mockk<RefreshBestPricesUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns
-                        Result.success(Unit)
+                    coEvery { this@mockk.invoke(any()) } returns Result.success(1)
                 }
             val vm =
                 makeVm(
@@ -406,6 +412,102 @@ class MainViewModelTest {
             connectionState.value = TickerConnectionState.Error("host unreachable")
             yield()
             assertEquals(StreamStatus.OFFLINE, vm.uiState.value.streamStatus)
+        }
+
+    @Test
+    fun `a short break does not raise the stale notice`() =
+        runTest {
+            val connectionState = MutableStateFlow<TickerConnectionState>(TickerConnectionState.Connected)
+            val vm = makeVm(observeConnectionStateUseCase = observeConnectionStateUseCaseMock(connectionState))
+
+            yield()
+            connectionState.value = TickerConnectionState.Reconnecting(attempts = 1, timeDelay = 1_000L)
+            advanceTimeBy(PairsConstants.MainScreen.STALE_NOTICE_DELAY_MS / 2)
+            runCurrent()
+
+            assertFalse(vm.uiState.value.isStale)
+
+            connectionState.value = TickerConnectionState.Connected
+            advanceTimeBy(PairsConstants.MainScreen.STALE_NOTICE_DELAY_MS)
+            runCurrent()
+
+            assertFalse(vm.uiState.value.isStale)
+        }
+
+    @Test
+    fun `a break that lasts raises the stale notice and a reconnect lowers it`() =
+        runTest {
+            val connectionState = MutableStateFlow<TickerConnectionState>(TickerConnectionState.Connected)
+            val vm = makeVm(observeConnectionStateUseCase = observeConnectionStateUseCaseMock(connectionState))
+
+            yield()
+            connectionState.value = TickerConnectionState.Error("host unreachable")
+            advanceTimeBy(PairsConstants.MainScreen.STALE_NOTICE_DELAY_MS + 1)
+            runCurrent()
+
+            assertTrue(vm.uiState.value.isStale)
+
+            connectionState.value = TickerConnectionState.Connected
+            runCurrent()
+
+            assertFalse(vm.uiState.value.isStale)
+        }
+
+    @Test
+    fun `the last catalog sync is the starting point for the stale notice`() =
+        runTest {
+            val vm = makeVm(getCatalogLastUpdateUseCase = getCatalogLastUpdateUseCaseMock(1_700_000_000_000L))
+
+            yield()
+            runCurrent()
+
+            assertEquals(1_700_000_000_000L, vm.uiState.value.lastUpdateMillis)
+        }
+
+    @Test
+    fun `refresh pulls visible tickers and moves the update time`() =
+        runTest {
+            val refreshBestPricesUseCase: RefreshBestPricesUseCase =
+                mockk { coEvery { this@mockk.invoke(any()) } returns Result.success(1) }
+            val vm =
+                makeVm(
+                    refreshBestPricesUseCase = refreshBestPricesUseCase,
+                    getCatalogLastUpdateUseCase = getCatalogLastUpdateUseCaseMock(1_700_000_000_000L),
+                )
+
+            yield()
+            runCurrent()
+
+            vm.onVisibleTickersChange(listOf("BTCUSDT"))
+            vm.onRefreshClick()
+            runCurrent()
+
+            coVerify(exactly = 1) { refreshBestPricesUseCase.invoke(setOf("btcusdt")) }
+            assertTrue(vm.uiState.value.lastUpdateMillis!! > 1_700_000_000_000L)
+        }
+
+    @Test
+    fun `a refresh that brings nothing says so instead of moving the time`() =
+        runTest {
+            // офлайн ни один запрос не проходит, а use case глотает ошибки по
+            // отдельным тикерам и отвечает успехом с нулём
+            val refreshBestPricesUseCase: RefreshBestPricesUseCase =
+                mockk { coEvery { this@mockk.invoke(any()) } returns Result.success(0) }
+            val vm =
+                makeVm(
+                    refreshBestPricesUseCase = refreshBestPricesUseCase,
+                    getCatalogLastUpdateUseCase = getCatalogLastUpdateUseCaseMock(1_700_000_000_000L),
+                )
+
+            yield()
+            runCurrent()
+
+            vm.onVisibleTickersChange(listOf("BTCUSDT"))
+            vm.onRefreshClick()
+            runCurrent()
+
+            assertTrue(vm.uiState.value.refreshFailed)
+            assertEquals(1_700_000_000_000L, vm.uiState.value.lastUpdateMillis)
         }
 
     @Test

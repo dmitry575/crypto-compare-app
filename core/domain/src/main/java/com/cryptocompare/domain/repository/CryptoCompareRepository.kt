@@ -46,4 +46,7 @@ interface CryptoCompareRepository {
     suspend fun applyBestPriceUpdates(updates: List<TickerBestPrice>): Result<Unit>
 
     suspend fun refreshCatalog(): Result<Unit>
+
+    /** Когда каталог последний раз приезжал с бэкенда; 0 — не приезжал ни разу. */
+    suspend fun getCatalogLastUpdate(): Long
 }
