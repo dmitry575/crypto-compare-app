@@ -8,6 +8,18 @@ data class MainUiState(
     val searchQuery: String = "",
     /** Живые ли цены. На старте — «подключение»: сокет открывается вместе с каталогом. */
     val streamStatus: StreamStatus = StreamStatus.RECONNECTING,
+    /**
+     * Когда цены последний раз менялись: тик сокета, догонка через REST, а на
+     * холодном старте — время последней загрузки каталога из базы.
+     */
+    val lastUpdateMillis: Long? = null,
+    /** Поток лежит дольше, чем стоит списывать на короткий разрыв. */
+    val isStale: Boolean = false,
+    /**
+     * «Обновить» нажали, но ни одна котировка не приехала. Разовое событие:
+     * экран показывает снекбар и гасит флаг.
+     */
+    val refreshFailed: Boolean = false,
     val error: String? = null,
     val subscribedTickers: Set<String> = emptySet(),
     /** Избранное — по символам: у тикера их столько, сколько наборов сетей. */

@@ -263,6 +263,8 @@ class CryptoCompareRepositoryImpl
                 }
             }
 
+        override suspend fun getCatalogLastUpdate(): Long = withContext(ioDispatcher) { symbolDao.getLastUpdate() }
+
         // full catalog sync, used by the background refresh worker
         private suspend fun refreshSymbols() {
             var skip = 0

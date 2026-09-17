@@ -7,6 +7,7 @@ import androidx.paging.cachedIn
 import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
 import com.cryptocompare.domain.usecase.auth.ObserveAuthStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
+import com.cryptocompare.domain.usecase.pairs.GetCatalogLastUpdateUseCase
 import com.cryptocompare.domain.usecase.pairs.LoadPairsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveConnectionStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteSymbolsUseCase
@@ -37,6 +38,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -59,6 +62,7 @@ class MainViewModel
         private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
         private val refreshBestPricesUseCase: RefreshBestPricesUseCase,
         private val observeConnectionStateUseCase: ObserveConnectionStateUseCase,
+        private val getCatalogLastUpdateUseCase: GetCatalogLastUpdateUseCase,
         private val observeAuthStateUseCase: ObserveAuthStateUseCase,
         private val getCurrentUserUseCase: GetCurrentUserUseCase,
     ) : ViewModel() {
@@ -115,6 +119,8 @@ class MainViewModel
         init {
             observeSocket()
             observeConnectionState()
+            observeStaleStream()
+            loadLastUpdate()
             observeReconnects()
             observeAuthState()
             syncFavouriteSymbols()
@@ -202,6 +208,33 @@ class MainViewModel
             _uiState.update { it.copy(subscribedTickers = updatedSubscribedTickers) }
         }
 
+        /**
+         * «Обновить» на полоске устаревших цен: сокет ещё переподключается с
+         * бэкоффом, а цены видимых строк можно взять по REST прямо сейчас.
+         */
+        fun onRefreshClick() {
+            viewModelScope.launch {
+                val visibleTickers = subscribedTickers.toSet()
+
+                refreshBestPricesUseCase(visibleTickers)
+                    .onSuccess { updated ->
+                        // ноль обновлений при непустом списке — это «ни один запрос не
+                        // прошёл»: use case глотает ошибки по отдельным тикерам, и
+                        // молча оставить время нетронутым значило бы сделать вид,
+                        // что кнопка сработала
+                        if (updated > 0) {
+                            markUpdated()
+                        } else if (visibleTickers.isNotEmpty()) {
+                            _uiState.update { it.copy(refreshFailed = true) }
+                        }
+                    }.onFailure { exception -> _uiState.update { it.copy(error = exception.toUserMessage()) } }
+            }
+        }
+
+        fun onRefreshFailureShown() {
+            _uiState.update { it.copy(refreshFailed = false) }
+        }
+
         fun onErrorShown() {
             _uiState.update { it.copy(error = null) }
         }
@@ -225,6 +258,46 @@ class MainViewModel
             }
         }
 
+        private fun markUpdated() {
+            _uiState.update { it.copy(lastUpdateMillis = System.currentTimeMillis()) }
+        }
+
+        /** Отправная точка для «обновлено в 13:48», когда приложение открыли без сети. */
+        private fun loadLastUpdate() {
+            viewModelScope.launch {
+                val lastUpdate = runCatching { getCatalogLastUpdateUseCase() }.getOrNull() ?: return@launch
+
+                _uiState.update { uiState ->
+                    if (uiState.lastUpdateMillis == null) uiState.copy(lastUpdateMillis = lastUpdate) else uiState
+                }
+            }
+        }
+
+        /**
+         * Полоска «цены не обновляются» показывается не на первой же секунде без
+         * связи: разрыв на пару секунд чинится сам, и полоска на нём только
+         * мигала бы.
+         */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        private fun observeStaleStream() {
+            viewModelScope.launch {
+                _uiState
+                    .map { it.streamStatus }
+                    .distinctUntilChanged()
+                    .flatMapLatest { status ->
+                        if (status == StreamStatus.LIVE) {
+                            flowOf(false)
+                        } else {
+                            flow {
+                                delay(PairsConstants.MainScreen.STALE_NOTICE_DELAY_MS.milliseconds)
+                                emit(true)
+                            }
+                        }
+                    }.distinctUntilChanged()
+                    .collect { stale -> _uiState.update { it.copy(isStale = stale) } }
+            }
+        }
+
         /** Живой ли поток — то, по чему пользователь понимает, верить ли числам. */
         private fun observeConnectionState() {
             viewModelScope.launch {
@@ -244,7 +317,9 @@ class MainViewModel
         private fun observeReconnects() {
             viewModelScope.launch {
                 observeStreamReconnectsUseCase().collect {
-                    refreshBestPricesUseCase(subscribedTickers.toSet())
+                    refreshBestPricesUseCase(subscribedTickers.toSet()).onSuccess { updated ->
+                        if (updated > 0) markUpdated()
+                    }
                 }
             }
         }
@@ -273,9 +348,11 @@ class MainViewModel
                             pendingPriceUpdates.values.toList().also { pendingPriceUpdates.clear() }
                         }
 
-                    applyBestPriceChangesUseCase(batch).onFailure { exception ->
-                        _uiState.update { it.copy(error = exception.toUserMessage()) }
-                    }
+                    applyBestPriceChangesUseCase(batch)
+                        .onSuccess { markUpdated() }
+                        .onFailure { exception ->
+                            _uiState.update { it.copy(error = exception.toUserMessage()) }
+                        }
                 }
             }
         }

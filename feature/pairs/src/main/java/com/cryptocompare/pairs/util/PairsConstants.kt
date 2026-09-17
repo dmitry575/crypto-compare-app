@@ -25,6 +25,17 @@ object PairsConstants {
     object MainScreen {
         const val SEARCH_DEBOUNCE_MS = 300L
 
+        /** Время последнего обновления цен: сегодняшнее — часами, старее — датой. */
+        const val LAST_UPDATE_TIME_PATTERN = "HH:mm"
+        const val LAST_UPDATE_DATE_PATTERN = "dd.MM"
+
+        /**
+         * Сколько поток должен пролежать, чтобы экран сказал «цены не обновляются».
+         * Короткий разрыв чинится сам за секунду-другую, и полоска на нём только
+         * мигала бы.
+         */
+        const val STALE_NOTICE_DELAY_MS = 4_000L
+
         /** Точка состояния потока в шапке каталога. */
         val STREAM_DOT_SIZE: Dp = 8.dp
 

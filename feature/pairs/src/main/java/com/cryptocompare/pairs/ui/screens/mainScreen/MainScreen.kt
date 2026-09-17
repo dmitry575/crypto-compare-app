@@ -46,6 +46,7 @@ import androidx.paging.compose.itemKey
 import com.cryptocompare.helpers.toUserMessage
 import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.pairs.R
+import com.cryptocompare.pairs.ui.components.StaleDataNotice
 import com.cryptocompare.pairs.ui.components.StreamStatusBadge
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.EmptyState
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.ErrorState
@@ -160,6 +161,15 @@ fun MainScreen(
         if (result == SnackbarResult.ActionPerformed) onSignInClick()
     }
 
+    val refreshFailedMessage = stringResource(R.string.pairs_refresh_failed)
+
+    LaunchedEffect(uiState.value.refreshFailed) {
+        if (!uiState.value.refreshFailed) return@LaunchedEffect
+
+        snackbarHostState.showSnackbar(refreshFailedMessage)
+        viewModel.onRefreshFailureShown()
+    }
+
     LaunchedEffect(uiState.value.error) {
         uiState.value.error?.let { message ->
             snackbarHostState.showSnackbar(message)
@@ -254,6 +264,13 @@ fun MainScreen(
             // подписи к числам строки — один раз над списком: в самой строке на
             // них нет места. Легенда стоит снаружи LazyColumn, потому что ниже
             // индексы его видимых элементов сопоставляются тикерам для подписок
+            if (uiState.value.isStale) {
+                StaleDataNotice(
+                    lastUpdateMillis = uiState.value.lastUpdateMillis,
+                    onRefresh = viewModel::onRefreshClick,
+                )
+            }
+
             PairsListLegend(showVolume = showVolumeInRow)
 
             when {

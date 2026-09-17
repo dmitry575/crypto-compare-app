@@ -15,15 +15,18 @@ import javax.inject.Inject
  * поэтому запросов немного.
  *
  * Тикер, по которому запрос не прошёл, пропускается: остальные обновятся, а он
- * дождётся сокета, как и раньше.
+ * дождётся сокета, как и раньше. Поэтому наружу идёт **число** обновлённых
+ * котировок, а не `Unit`: без сети не проходит ни один запрос, и «успех» с нулём
+ * — это не «цены свежие», а «не удалось». Экран по этому числу и решает, двигать
+ * ли время последнего обновления.
  */
 class RefreshBestPricesUseCase
     @Inject
     constructor(
         private val cryptoCompareRepository: CryptoCompareRepository,
     ) {
-        suspend operator fun invoke(tickers: Set<String>): Result<Unit> {
-            if (tickers.isEmpty()) return Result.success(Unit)
+        suspend operator fun invoke(tickers: Set<String>): Result<Int> {
+            if (tickers.isEmpty()) return Result.success(0)
 
             val updates =
                 coroutineScope {
@@ -33,8 +36,8 @@ class RefreshBestPricesUseCase
                         .filterNotNull()
                         .flatten()
                 }
-            if (updates.isEmpty()) return Result.success(Unit)
+            if (updates.isEmpty()) return Result.success(0)
 
-            return cryptoCompareRepository.applyBestPriceUpdates(updates)
+            return cryptoCompareRepository.applyBestPriceUpdates(updates).map { updates.size }
         }
     }
