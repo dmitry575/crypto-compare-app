@@ -2,6 +2,7 @@ package com.cryptocompare.pairs.viewmodel.detailViewModel
 
 import com.cryptocompare.helpers.widest
 import com.cryptocompare.model.chart.Candle
+import com.cryptocompare.model.chart.ChartIndicator
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.model.ticker.TickerBestPrice
@@ -31,6 +32,8 @@ data class DetailUiState(
     /** Есть ли что грузить глубже в историю. */
     val chartCanLoadOlder: Boolean = false,
     val timeframe: ChartTimeframe = ChartTimeframe.DEFAULT,
+    /** Включённые скользящие средние; набор общий для всех пар и переживает выход. */
+    val indicators: Set<ChartIndicator> = emptySet(),
     /** Лучшие пары бэкенда по символам тикера — из них берётся блок разницы. */
     val bestPrices: List<TickerBestPrice> = emptyList(),
 ) {

@@ -96,4 +96,10 @@
         <item quantity="one">%d exchange</item>
         <item quantity="other">%d exchanges</item>
     </plurals>
+    <!-- SMA и EMA — общепринятые сокращения, одинаковые во всех языках -->
+    <string name="chart_indicator_sma_20" translatable="false">SMA 20</string>
+    <string name="chart_indicator_sma_50" translatable="false">SMA 50</string>
+    <string name="chart_indicator_ema_20" translatable="false">EMA 20</string>
+    <string name="chart_indicator_ema_50" translatable="false">EMA 50</string>
+    <string name="chart_indicators_title">Indicators</string>
 </resources>

@@ -41,6 +41,7 @@ import com.cryptocompare.pairs.ui.components.TitleWithNetworks
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.CandlestickChart
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.ExchangeInfoCard
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.ExchangeSelector
+import com.cryptocompare.pairs.ui.screens.detailScreen.components.IndicatorSelector
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.SpreadBar
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.TimeframeSelector
 import com.cryptocompare.pairs.util.PairsConstants
@@ -191,6 +192,7 @@ fun DetailsScreen(
                                         canLoadOlder = state.chartCanLoadOlder,
                                         onLoadOlder = viewModel::loadOlderCandles,
                                         modifier = Modifier.fillMaxSize(),
+                                        indicators = state.indicators,
                                     )
                                 }
 
@@ -205,6 +207,16 @@ fun DetailsScreen(
                                 }
                             }
                         }
+                    }
+
+                    // Средние живут под графиком, а не над ним: ряд чипов сверху
+                    // отодвинул бы свечи, ради которых экран и открывают
+                    if (state.candles.isNotEmpty()) {
+                        IndicatorSelector(
+                            selected = state.indicators,
+                            onIndicatorToggled = viewModel::onIndicatorToggled,
+                            modifier = contentPadding,
+                        )
                     }
 
                     if (state.candles.isNotEmpty()) {

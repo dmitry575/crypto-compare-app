@@ -9,6 +9,7 @@ object DataConstants {
         const val ONBOARDING_SEEN_KEY = "onboarding_seen"
         const val DEFAULT_PROVIDER_KEY = "default_provider_id"
         const val DEFAULT_TIMEFRAME_KEY = "default_timeframe"
+        const val CHART_INDICATORS_KEY = "chart_indicators"
     }
 
     object Migrations {

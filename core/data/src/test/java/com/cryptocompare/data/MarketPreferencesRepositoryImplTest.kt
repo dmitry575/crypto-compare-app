@@ -3,6 +3,7 @@ package com.cryptocompare.data
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import com.cryptocompare.data.repository.MarketPreferencesRepositoryImpl
+import com.cryptocompare.model.chart.ChartIndicator
 import com.cryptocompare.model.chart.ChartTimeframe
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -49,6 +50,43 @@ class MarketPreferencesRepositoryImplTest {
             repository.setDefaultProvider(null)
 
             assertNull(repository.observeMarketPreferences().first().defaultProviderId)
+        }
+
+    @Test
+    fun `chosen indicators are read back and can be cleared`() =
+        runTest {
+            repository.setChartIndicators(setOf(ChartIndicator.SMA_20, ChartIndicator.EMA_50))
+
+            assertEquals(
+                setOf(ChartIndicator.SMA_20, ChartIndicator.EMA_50),
+                repository.observeMarketPreferences().first().indicators,
+            )
+
+            repository.setChartIndicators(emptySet())
+
+            assertEquals(emptySet<ChartIndicator>(), repository.observeMarketPreferences().first().indicators)
+        }
+
+    @Test
+    fun `a renamed or broken indicator is dropped, the rest survive`() =
+        runTest {
+            repository.setChartIndicators(setOf(ChartIndicator.SMA_20))
+            dataStore.updateData { preferences ->
+                preferences.toMutablePreferences().apply {
+                    set(
+                        androidx.datastore.preferences.core
+                            .stringSetPreferencesKey(
+                                com.cryptocompare.data.util.DataConstants.Preferences.CHART_INDICATORS_KEY,
+                            ),
+                        setOf("SMA_20", "RSI_14"),
+                    )
+                }
+            }
+
+            assertEquals(
+                setOf(ChartIndicator.SMA_20),
+                repository.observeMarketPreferences().first().indicators,
+            )
         }
 
     @Test

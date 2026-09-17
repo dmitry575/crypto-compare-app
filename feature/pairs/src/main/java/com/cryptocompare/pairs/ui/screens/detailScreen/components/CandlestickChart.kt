@@ -24,7 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -36,6 +39,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import com.cryptocompare.helpers.toPriceString
 import com.cryptocompare.model.chart.Candle
+import com.cryptocompare.model.chart.ChartIndicator
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.pairs.util.ChartPriceRange
 import com.cryptocompare.pairs.util.ChartViewport
@@ -43,6 +47,7 @@ import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.util.chartPriceRange
 import com.cryptocompare.pairs.util.clampedTo
 import com.cryptocompare.pairs.util.freshEdgeViewport
+import com.cryptocompare.pairs.util.movingAverage
 import com.cryptocompare.pairs.util.needsOlderPage
 import com.cryptocompare.pairs.util.pinnedToFreshEdge
 import com.cryptocompare.pairs.util.priceLabels
@@ -52,6 +57,7 @@ import com.cryptocompare.pairs.util.visibleIndices
 import com.cryptocompare.pairs.util.zoomedBy
 import com.cryptocompare.ui.theme.NumericType
 import com.cryptocompare.ui.theme.chartNegative
+import com.cryptocompare.ui.theme.chartNeutral
 import com.cryptocompare.ui.theme.chartPositive
 import com.cryptocompare.ui.theme.divider
 import com.cryptocompare.ui.theme.textSecondary
@@ -88,8 +94,19 @@ fun CandlestickChart(
     canLoadOlder: Boolean,
     onLoadOlder: () -> Unit,
     modifier: Modifier = Modifier,
+    indicators: Set<ChartIndicator> = emptySet(),
 ) {
     if (candles.isEmpty()) return
+
+    // средние считаются по всей загруженной истории, а не по кадру: SMA 50 у левого
+    // края кадра берёт полсотни свечей левее него
+    val indicatorSeries =
+        remember(candles, indicators) {
+            indicators.associateWith { indicator -> candles.movingAverage(indicator) }
+        }
+
+    val indicatorFastColor = MaterialTheme.colorScheme.textSecondary
+    val indicatorSlowColor = MaterialTheme.colorScheme.chartNeutral
 
     val serverCount = candles.size - liveCount
     val oldestAbs = 1 - serverCount
@@ -220,6 +237,18 @@ fun CandlestickChart(
             formatCandleLabel(it, timeFormat)
         }
         clipRect(left = left, top = 0f, right = size.width, bottom = bottom) {
+            drawIndicators(
+                series = indicatorSeries,
+                visible = visible,
+                viewport = viewport,
+                serverCount = serverCount,
+                range = range,
+                plotLeft = left,
+                plotWidth = width,
+                plotBottom = bottom,
+                fastColor = indicatorFastColor,
+                slowColor = indicatorSlowColor,
+            )
             drawCandles(
                 candles = candles,
                 visible = visible,
@@ -333,6 +362,73 @@ private fun DrawScope.drawTimeAxis(
         val layout = textMeasurer.measure(text, labelStyle)
         val labelLeft = (x - layout.size.width / 2f).coerceIn(0f, size.width - layout.size.width)
         drawText(layout, topLeft = Offset(labelLeft, plotBottom + gap))
+    }
+}
+
+/**
+ * Скользящие средние поверх свечей.
+ *
+ * Линия рисуется только там, где у средней есть значение: у SMA 50 первые
+ * полсотни свечей его нет, и тянуть линию от края значило бы показать тренд,
+ * которого нет. Кадр по цене считается по свечам, поэтому средняя, ушедшая выше
+ * или ниже видимых цен, обрезается вместе с ними — иначе одна линия сплющивала
+ * бы свечи, ради которых график и открыт.
+ */
+private fun DrawScope.drawIndicators(
+    series: Map<ChartIndicator, List<Double?>>,
+    visible: IntRange,
+    viewport: ChartViewport,
+    serverCount: Int,
+    range: ChartPriceRange,
+    plotLeft: Float,
+    plotWidth: Float,
+    plotBottom: Float,
+    fastColor: Color,
+    slowColor: Color,
+) {
+    if (series.isEmpty()) return
+
+    val perCandle = plotWidth / viewport.visibleCount
+    val dash =
+        PathEffect.dashPathEffect(
+            floatArrayOf(PairsConstants.Chart.INDICATOR_DASH_ON, PairsConstants.Chart.INDICATOR_DASH_OFF),
+        )
+
+    series.forEach { (indicator, values) ->
+        // соседняя свеча за кадром нужна, чтобы линия уходила за край, а не
+        // обрывалась на первой видимой точке
+        val from = (visible.first - 1).coerceAtLeast(0)
+        val to = (visible.last + 1).coerceAtMost(values.lastIndex)
+
+        val path = Path()
+        var started = false
+
+        for (index in from..to) {
+            val value = values[index] ?: continue
+            val absIndex = index - (serverCount - 1)
+            val x = plotLeft + (absIndex - viewport.leftEdge + 0.5f) * perCandle
+            val y = range.yOf(value, plotBottom)
+
+            if (started) path.lineTo(x, y) else path.moveTo(x, y).also { started = true }
+        }
+
+        if (!started) return@forEach
+
+        val fast = indicator.period == PairsConstants.Chart.INDICATOR_FAST_PERIOD
+        drawPath(
+            path = path,
+            color = if (fast) fastColor else slowColor,
+            style =
+                Stroke(
+                    width =
+                        if (fast) {
+                            PairsConstants.Chart.indicatorFastWidth.toPx()
+                        } else {
+                            PairsConstants.Chart.indicatorSlowWidth.toPx()
+                        },
+                    pathEffect = if (indicator.exponential) dash else null,
+                ),
+        )
     }
 }
 

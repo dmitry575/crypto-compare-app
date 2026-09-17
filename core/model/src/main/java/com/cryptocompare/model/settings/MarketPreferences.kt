@@ -1,5 +1,6 @@
 package com.cryptocompare.model.settings
 
+import com.cryptocompare.model.chart.ChartIndicator
 import com.cryptocompare.model.chart.ChartTimeframe
 
 /**
@@ -12,4 +13,6 @@ data class MarketPreferences(
     /** Биржа по умолчанию. `null` — первая доступная у самой пары, как было. */
     val defaultProviderId: Int? = null,
     val timeframe: ChartTimeframe = ChartTimeframe.DEFAULT,
+    /** Скользящие средние поверх свечей. Пусто — чистый график, как было. */
+    val indicators: Set<ChartIndicator> = emptySet(),
 )

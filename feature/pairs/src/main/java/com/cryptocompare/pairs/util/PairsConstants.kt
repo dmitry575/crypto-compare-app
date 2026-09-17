@@ -165,6 +165,17 @@ object PairsConstants {
         /** Пол для тела свечи: при спокойном рынке иначе рисуется нить. */
         val minCandleBodyHeight: Dp = 2.dp
         val candleWickWidth: Dp = 1.dp
+
+        /**
+         * Линии скользящих средних. Цвета не заводим: зелёный и красный на графике
+         * заняты направлением свечи, поэтому средние различаются толщиной (период 20
+         * против 50) и штрихом (EMA против SMA).
+         */
+        val indicatorFastWidth: Dp = 1.5.dp
+        val indicatorSlowWidth: Dp = 1.dp
+        val INDICATOR_DASH_ON = 6f
+        val INDICATOR_DASH_OFF = 4f
+        const val INDICATOR_FAST_PERIOD = 20
         val gridLineWidth: Dp = 1.dp
 
         /** Отступ подписей осей от поля графика. */

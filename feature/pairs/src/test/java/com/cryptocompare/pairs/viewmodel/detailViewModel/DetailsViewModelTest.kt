@@ -12,7 +12,9 @@ import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SubscribeSingleTickerUseCase
 import com.cryptocompare.domain.usecase.settings.GetMarketPreferencesUseCase
+import com.cryptocompare.domain.usecase.settings.SetChartIndicatorsUseCase
 import com.cryptocompare.model.chart.Candle
+import com.cryptocompare.model.chart.ChartIndicator
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.model.provider.Provider
 import com.cryptocompare.model.provider.ProviderDetail
@@ -146,6 +148,40 @@ class DetailsViewModelTest {
             coVerify { history.invoke(any(), any(), ChartTimeframe.H4, any(), any()) }
         }
 
+    @Test
+    fun `the chart opens with the indicators from settings`() =
+        runTest {
+            val vm =
+                makeVm(
+                    marketPreferences =
+                        marketPreferencesUseCaseMock(
+                            MarketPreferences(indicators = setOf(ChartIndicator.SMA_20)),
+                        ),
+                )
+            runCurrent()
+
+            assertEquals(setOf(ChartIndicator.SMA_20), vm.uiState.value.indicators)
+        }
+
+    @Test
+    fun `toggling an indicator adds it, stores it and takes it back off`() =
+        runTest {
+            val setChartIndicators: SetChartIndicatorsUseCase = mockk(relaxed = true)
+            val vm = makeVm(setChartIndicators = setChartIndicators)
+            runCurrent()
+
+            vm.onIndicatorToggled(ChartIndicator.EMA_50)
+            runCurrent()
+            assertEquals(setOf(ChartIndicator.EMA_50), vm.uiState.value.indicators)
+
+            vm.onIndicatorToggled(ChartIndicator.EMA_50)
+            runCurrent()
+            assertEquals(emptySet<ChartIndicator>(), vm.uiState.value.indicators)
+
+            coVerify(exactly = 1) { setChartIndicators.invoke(setOf(ChartIndicator.EMA_50)) }
+            coVerify(exactly = 1) { setChartIndicators.invoke(emptySet()) }
+        }
+
     private fun connectUseCaseMock(): StreamConnectUseCase = mockk(relaxed = true)
 
     private fun subscribeSingleUseCaseMock(): SubscribeSingleTickerUseCase = mockk(relaxed = true)
@@ -188,6 +224,7 @@ class DetailsViewModelTest {
         history: GetTickerHistoryUseCase = historyUseCaseMock(defaultHistory()),
         observeEvents: ObserveTickerEventUseCase = observeEventsUseCaseMock(),
         marketPreferences: GetMarketPreferencesUseCase = marketPreferencesUseCaseMock(),
+        setChartIndicators: SetChartIndicatorsUseCase = mockk(relaxed = true),
     ): DetailsViewModel =
         DetailsViewModel(
             savedStateHandle = SavedStateHandle(mapOf(PairsConstants.Navigation.TICKER_ARG to "BTCUSDT")),
@@ -200,6 +237,7 @@ class DetailsViewModelTest {
             observeStreamReconnectsUseCase = mockk { every { this@mockk.invoke() } returns reconnects },
             getBestPricesUseCase = bestPrices,
             getMarketPreferencesUseCase = marketPreferences,
+            setChartIndicatorsUseCase = setChartIndicators,
         )
 
     private fun tick(
@@ -413,6 +451,7 @@ class DetailsViewModelTest {
                     observeStreamReconnectsUseCase = mockk { every { this@mockk.invoke() } returns reconnects },
                     getBestPricesUseCase = bestPrices,
                     getMarketPreferencesUseCase = marketPreferencesUseCaseMock(),
+                    setChartIndicatorsUseCase = mockk(relaxed = true),
                 )
             runCurrent()
 
