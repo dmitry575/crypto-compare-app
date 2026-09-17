@@ -30,6 +30,6 @@ class CryptoCompareApp :
         super.onCreate()
         ProcessLifecycleOwner.get().lifecycle.addObserver(tickerStreamLifecycleObserver)
         WorkScheduler.scheduleDailyRefreshCatalog(this)
-        WorkScheduler.scheduleFavouriteTickersSync(this)
+        WorkScheduler.scheduleFavouritesSync(this)
     }
 }

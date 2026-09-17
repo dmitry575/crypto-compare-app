@@ -159,7 +159,32 @@ class CryptoCompareDatabaseMigrationTest {
     }
 
     @Test
-    fun migrate5To8KeepsFavouritesAlongTheWholeChain() {
+    fun migrate9To10SplitsFavouritesBySymbol() {
+        helper.createDatabase(TEST_DB, 9).apply {
+            execSQL("INSERT INTO favourite_tickers (userId, ticker, updatedAt) VALUES ('u', 'ETHUSDC', 2)")
+            // у тикера две сети — значит два символа, и звезда должна достаться обоим
+            insertSymbol(id = 143, ticker = "ethusdc")
+            insertSymbol(id = 144, ticker = "ETHUSDC")
+            insertSymbol(id = 200, ticker = "solusdt")
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 10, true, *AssetMigrations.loadAll(context))
+
+        db.query("SELECT symbolId, ticker FROM favourite_symbols ORDER BY symbolId").use { cursor ->
+            assertEquals(2, cursor.count)
+            assertTrue(cursor.moveToFirst())
+            assertEquals(143, cursor.getInt(0))
+            assertEquals("ETHUSDC", cursor.getString(1))
+            assertTrue(cursor.moveToNext())
+            assertEquals(144, cursor.getInt(0))
+        }
+        // чужой символ звезду не получает
+        assertEquals(0, db.count("favourite_symbols WHERE symbolId = 200"))
+    }
+
+    @Test
+    fun migrate5ToCurrentKeepsFavouritesAlongTheWholeChain() {
         // устройство, пропустившее несколько обновлений, проходит всю цепочку разом
         helper.createDatabase(TEST_DB, 5).apply {
             execSQL("INSERT INTO favourite_tickers (userId, ticker, updatedAt) VALUES ('u', 'BTCUSDT', 1)")
@@ -167,15 +192,33 @@ class CryptoCompareDatabaseMigrationTest {
             close()
         }
 
+        // каталог версии 5 пересоздаётся миграцией 7→8, поэтому символы для
+        // разворота избранного появляются только здесь
+        val afterEight = helper.runMigrationsAndValidate(TEST_DB, 9, true, *AssetMigrations.loadAll(context))
+        afterEight.insertSymbol(id = 1, ticker = "btcusdt")
+        afterEight.insertSymbol(id = 2, ticker = "solusdt")
+        afterEight.close()
+
         val db = helper.runMigrationsAndValidate(TEST_DB, CURRENT_VERSION, true, *AssetMigrations.loadAll(context))
 
-        db.query("SELECT ticker FROM favourite_tickers ORDER BY ticker").use { cursor ->
+        db.query("SELECT ticker FROM favourite_symbols ORDER BY ticker").use { cursor ->
             assertEquals(2, cursor.count)
             assertTrue(cursor.moveToFirst())
             assertEquals("BTCUSDT", cursor.getString(0))
             assertTrue(cursor.moveToNext())
             assertEquals("SOLUSDT", cursor.getString(0))
         }
+    }
+
+    private fun SupportSQLiteDatabase.insertSymbol(
+        id: Int,
+        ticker: String,
+    ) {
+        execSQL(
+            "INSERT INTO symbols (id, ticker, symbol, bestAskProviderId, bestAskPrice, bestBidProviderId, " +
+                "bestBidPrice, spreadPercent, updatedAt, syncedAtMillis) " +
+                "VALUES ($id, '$ticker', '$ticker', 18, 1.0, 3, 1.0, 0.0, '2026-09-17T00:00:00Z', 1)",
+        )
     }
 
     private fun SupportSQLiteDatabase.insertFavouritesAndPendingOperation() {
@@ -213,6 +256,6 @@ class CryptoCompareDatabaseMigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** Держать равной `version` в `@Database`: иначе тест открывает не ту схему, что у пользователя. */
-        const val CURRENT_VERSION = 9
+        const val CURRENT_VERSION = 10
     }
 }

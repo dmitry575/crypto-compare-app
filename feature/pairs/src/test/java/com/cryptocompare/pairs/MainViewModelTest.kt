@@ -5,14 +5,14 @@ import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
 import com.cryptocompare.domain.usecase.auth.ObserveAuthStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
 import com.cryptocompare.domain.usecase.pairs.LoadPairsUseCase
-import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteTickersUseCase
+import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteSymbolsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RefreshBestPricesUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamDisconnectUseCase
-import com.cryptocompare.domain.usecase.pairs.SyncFavouriteTickersUseCase
+import com.cryptocompare.domain.usecase.pairs.SyncFavouriteSymbolsUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
-import com.cryptocompare.domain.usecase.pairs.ToggleFavouriteTickerUseCase
+import com.cryptocompare.domain.usecase.pairs.ToggleFavouriteSymbolUseCase
 import com.cryptocompare.model.auth.AuthUser
 import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSort
@@ -78,16 +78,16 @@ class MainViewModelTest {
         result: Result<Unit> = Result.success(Unit),
     ): ApplyBestPriceChangesUseCase = mockk { coEvery { this@mockk.invoke(any()) } returns result }
 
-    private fun observeFavoriteTickersUseCaseMock(flow: Flow<Set<String>>): ObserveFavouriteTickersUseCase =
+    private fun observeFavouriteSymbolsUseCaseMock(flow: Flow<Set<Long>>): ObserveFavouriteSymbolsUseCase =
         mockk { every { this@mockk.invoke() } returns flow }
 
-    private fun toggleFavoriteTickerUseCaseMock(
+    private fun toggleFavouriteSymbolUseCaseMock(
         result: Result<Boolean> = Result.success(true),
-    ): ToggleFavouriteTickerUseCase = mockk { coEvery { this@mockk.invoke(any()) } returns result }
+    ): ToggleFavouriteSymbolUseCase = mockk { coEvery { this@mockk.invoke(any(), any()) } returns result }
 
-    private fun syncFavoriteTickersUseCaseMock(
+    private fun syncFavouriteSymbolsUseCaseMock(
         result: Result<Unit> = Result.success(Unit),
-    ): SyncFavouriteTickersUseCase = mockk { coEvery { this@mockk.invoke() } returns result }
+    ): SyncFavouriteSymbolsUseCase = mockk { coEvery { this@mockk.invoke() } returns result }
 
     private fun observeAuthStateUseCaseMock(flow: Flow<AuthUser?>): ObserveAuthStateUseCase =
         mockk { every { this@mockk.invoke() } returns flow }
@@ -104,10 +104,10 @@ class MainViewModelTest {
             },
         streamDisconnectUseCase: StreamDisconnectUseCase = streamDisconnectUseCaseMock(),
         applyBestPriceChangesUseCase: ApplyBestPriceChangesUseCase = applyBestPriceChangesUseCaseMock(),
-        observeFavouriteTickersUseCase: ObserveFavouriteTickersUseCase =
-            observeFavoriteTickersUseCaseMock(flowOf(emptySet())),
-        toggleFavouriteTickerUseCase: ToggleFavouriteTickerUseCase = toggleFavoriteTickerUseCaseMock(),
-        syncFavouriteTickersUseCase: SyncFavouriteTickersUseCase = syncFavoriteTickersUseCaseMock(),
+        observeFavouriteSymbolsUseCase: ObserveFavouriteSymbolsUseCase =
+            observeFavouriteSymbolsUseCaseMock(flowOf(emptySet())),
+        toggleFavouriteSymbolUseCase: ToggleFavouriteSymbolUseCase = toggleFavouriteSymbolUseCaseMock(),
+        syncFavouriteSymbolsUseCase: SyncFavouriteSymbolsUseCase = syncFavouriteSymbolsUseCaseMock(),
         observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase =
             mockk { every { this@mockk.invoke() } returns emptyFlow() },
         refreshBestPricesUseCase: RefreshBestPricesUseCase =
@@ -121,9 +121,9 @@ class MainViewModelTest {
             streamDisconnectUseCase = streamDisconnectUseCase,
             observeTickerEventUseCase = observeTickerEventUseCase,
             applyBestPriceChangesUseCase = applyBestPriceChangesUseCase,
-            observeFavouriteTickersUseCase = observeFavouriteTickersUseCase,
-            toggleFavouriteTickerUseCase = toggleFavouriteTickerUseCase,
-            syncFavouriteTickersUseCase = syncFavouriteTickersUseCase,
+            observeFavouriteSymbolsUseCase = observeFavouriteSymbolsUseCase,
+            toggleFavouriteSymbolUseCase = toggleFavouriteSymbolUseCase,
+            syncFavouriteSymbolsUseCase = syncFavouriteSymbolsUseCase,
             observeStreamReconnectsUseCase = observeStreamReconnectsUseCase,
             refreshBestPricesUseCase = refreshBestPricesUseCase,
             observeAuthStateUseCase = observeAuthStateUseCase,
@@ -348,57 +348,56 @@ class MainViewModelTest {
         }
 
     @Test
-    fun `init observes favourites and updates favouriteTickers in uiState`() =
+    fun `init observes favourites and updates favouriteSymbolIds in uiState`() =
         runTest {
             val vm =
                 makeVm(
-                    observeFavouriteTickersUseCase =
-                        observeFavoriteTickersUseCaseMock(flowOf(setOf("BTCUSDT", "ETHUSDT"))),
+                    observeFavouriteSymbolsUseCase = observeFavouriteSymbolsUseCaseMock(flowOf(setOf(1L, 14805L))),
                 )
 
             yield()
 
-            assertEquals(setOf("BTCUSDT", "ETHUSDT"), vm.uiState.value.favouriteTickers)
+            assertEquals(setOf(1L, 14805L), vm.uiState.value.favouriteSymbolIds)
         }
 
     @Test
-    fun `favouriteTickers updates when flow emits new set`() =
+    fun `favouriteSymbolIds update when the flow emits a new set`() =
         runTest {
-            val favouritesFlow = MutableSharedFlow<Set<String>>(extraBufferCapacity = 1)
+            val favouritesFlow = MutableSharedFlow<Set<Long>>(extraBufferCapacity = 1)
             val vm =
                 makeVm(
-                    observeFavouriteTickersUseCase = observeFavoriteTickersUseCaseMock(favouritesFlow),
+                    observeFavouriteSymbolsUseCase = observeFavouriteSymbolsUseCaseMock(favouritesFlow),
                 )
 
             yield()
-            assertEquals(emptySet<String>(), vm.uiState.value.favouriteTickers)
+            assertEquals(emptySet<Long>(), vm.uiState.value.favouriteSymbolIds)
 
-            favouritesFlow.emit(setOf("BTCUSDT"))
+            favouritesFlow.emit(setOf(1L))
             yield()
-            assertEquals(setOf("BTCUSDT"), vm.uiState.value.favouriteTickers)
+            assertEquals(setOf(1L), vm.uiState.value.favouriteSymbolIds)
 
-            favouritesFlow.emit(setOf("BTCUSDT", "ETHUSDT"))
+            favouritesFlow.emit(setOf(1L, 14805L))
             yield()
-            assertEquals(setOf("BTCUSDT", "ETHUSDT"), vm.uiState.value.favouriteTickers)
+            assertEquals(setOf(1L, 14805L), vm.uiState.value.favouriteSymbolIds)
         }
 
     @Test
     fun `guest star tap asks for sign in instead of toggling`() =
         runTest {
-            val toggleFavouriteTickerUseCase = toggleFavoriteTickerUseCaseMock()
+            val toggleFavouriteSymbolUseCase = toggleFavouriteSymbolUseCaseMock()
             val vm =
                 makeVm(
-                    toggleFavouriteTickerUseCase = toggleFavouriteTickerUseCase,
+                    toggleFavouriteSymbolUseCase = toggleFavouriteSymbolUseCase,
                     observeAuthStateUseCase = observeAuthStateUseCaseMock(flowOf(null)),
                     getCurrentUserUseCase = getCurrentUserUseCaseMock(null),
                 )
 
             yield()
-            vm.onFavouriteClick("BTCUSDT")
+            vm.onFavouriteClick(SYMBOL_ID, "BTCUSDT")
             yield()
 
             assertTrue(vm.uiState.value.signInRequired)
-            coVerify(exactly = 0) { toggleFavouriteTickerUseCase.invoke(any()) }
+            coVerify(exactly = 0) { toggleFavouriteSymbolUseCase.invoke(any(), any()) }
         }
 
     @Test
@@ -428,7 +427,7 @@ class MainViewModelTest {
                 )
 
             yield()
-            vm.onFavouriteClick("BTCUSDT")
+            vm.onFavouriteClick(SYMBOL_ID, "BTCUSDT")
             yield()
             vm.onSignInRequestShown()
 
@@ -458,11 +457,11 @@ class MainViewModelTest {
         runTest {
             val vm =
                 makeVm(
-                    toggleFavouriteTickerUseCase = toggleFavoriteTickerUseCaseMock(Result.success(true)),
+                    toggleFavouriteSymbolUseCase = toggleFavouriteSymbolUseCaseMock(Result.success(true)),
                 )
 
             yield()
-            vm.onFavouriteClick("BTCUSDT")
+            vm.onFavouriteClick(SYMBOL_ID, "BTCUSDT")
             yield()
 
             assertNull(vm.uiState.value.error)
@@ -473,12 +472,12 @@ class MainViewModelTest {
         runTest {
             val vm =
                 makeVm(
-                    toggleFavouriteTickerUseCase =
-                        toggleFavoriteTickerUseCaseMock(Result.failure(IllegalStateException("toggle failed"))),
+                    toggleFavouriteSymbolUseCase =
+                        toggleFavouriteSymbolUseCaseMock(Result.failure(IllegalStateException("toggle failed"))),
                 )
 
             yield()
-            vm.onFavouriteClick("BTCUSDT")
+            vm.onFavouriteClick(SYMBOL_ID, "BTCUSDT")
             yield()
 
             assertEquals("toggle failed", vm.uiState.value.error)
@@ -489,12 +488,12 @@ class MainViewModelTest {
         runTest {
             val vm =
                 makeVm(
-                    toggleFavouriteTickerUseCase =
-                        toggleFavoriteTickerUseCaseMock(Result.failure(IllegalStateException(null as String?))),
+                    toggleFavouriteSymbolUseCase =
+                        toggleFavouriteSymbolUseCaseMock(Result.failure(IllegalStateException(null as String?))),
                 )
 
             yield()
-            vm.onFavouriteClick("BTCUSDT")
+            vm.onFavouriteClick(SYMBOL_ID, "BTCUSDT")
             yield()
 
             assertEquals("Favourite toggle error", vm.uiState.value.error)
@@ -627,12 +626,12 @@ class MainViewModelTest {
         runTest {
             val vm =
                 makeVm(
-                    toggleFavouriteTickerUseCase =
-                        toggleFavoriteTickerUseCaseMock(Result.failure(IllegalStateException("toggle failed"))),
+                    toggleFavouriteSymbolUseCase =
+                        toggleFavouriteSymbolUseCaseMock(Result.failure(IllegalStateException("toggle failed"))),
                 )
 
             yield()
-            vm.onFavouriteClick("BTCUSDT")
+            vm.onFavouriteClick(SYMBOL_ID, "BTCUSDT")
             yield()
             assertEquals("toggle failed", vm.uiState.value.error)
 
@@ -646,8 +645,8 @@ class MainViewModelTest {
         runTest {
             val vm =
                 makeVm(
-                    syncFavouriteTickersUseCase =
-                        syncFavoriteTickersUseCaseMock(Result.failure(IllegalStateException("sync failed"))),
+                    syncFavouriteSymbolsUseCase =
+                        syncFavouriteSymbolsUseCaseMock(Result.failure(IllegalStateException("sync failed"))),
                 )
 
             yield()
@@ -656,6 +655,8 @@ class MainViewModelTest {
         }
 
     private companion object {
+        const val SYMBOL_ID = 1L
+
         val SIGNED_IN_USER =
             AuthUser(
                 uid = "uid",

@@ -7,7 +7,8 @@ data class MainUiState(
     val searchQuery: String = "",
     val error: String? = null,
     val subscribedTickers: Set<String> = emptySet(),
-    val favouriteTickers: Set<String> = emptySet(),
+    /** Избранное — по символам: у тикера их столько, сколько наборов сетей. */
+    val favouriteSymbolIds: Set<Long> = emptySet(),
     val onlyFavourite: Boolean = false,
     /**
      * Гость попросил избранное. Экран показывает приглашение войти и гасит

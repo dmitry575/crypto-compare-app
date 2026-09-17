@@ -3,7 +3,7 @@ package com.cryptocompare.data.di
 import android.content.Context
 import androidx.room.Room
 import com.cryptocompare.data.local.CryptoCompareDatabase
-import com.cryptocompare.data.local.dao.FavouriteTickerDao
+import com.cryptocompare.data.local.dao.FavouriteSymbolDao
 import com.cryptocompare.data.local.dao.PendingFavouriteOperationDao
 import com.cryptocompare.data.local.dao.ProviderDao
 import com.cryptocompare.data.local.dao.SymbolDao
@@ -43,11 +43,11 @@ object DatabaseModule {
     fun provideSymbolDao(database: CryptoCompareDatabase): SymbolDao = database.symbolDao()
 
     @Provides
-    fun provideFavouriteTickerDao(database: CryptoCompareDatabase): FavouriteTickerDao = database.favouriteTickerDao()
+    fun provideFavouriteSymbolDao(database: CryptoCompareDatabase): FavouriteSymbolDao = database.favouriteSymbolDao()
 
     @Provides
     fun providePendingFavouriteOperationDao(database: CryptoCompareDatabase): PendingFavouriteOperationDao =
-        database.pendingFavoriteOperationDao()
+        database.pendingFavouriteOperationDao()
 
     @Provides
     @Singleton

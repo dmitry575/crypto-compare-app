@@ -29,7 +29,7 @@ class LoadPairsUseCaseTest {
             useCase(
                 query = "",
                 onlyFavourite = false,
-                favouriteTickers = emptySet(),
+                favouriteSymbolIds = emptySet(),
                 direction = CatalogDirection.ANY,
                 sorting = CatalogSorting(),
             )
@@ -40,7 +40,7 @@ class LoadPairsUseCaseTest {
     @Test
     fun `search and filter arguments reach the repository unchanged`() =
         runTest {
-            val favourites = setOf("btcusdt", "ethusdt")
+            val favourites = setOf(1L, 14805L)
             every {
                 cryptoCompareRepository.getPairsPaged(
                     "btc",
@@ -55,7 +55,7 @@ class LoadPairsUseCaseTest {
                 useCase(
                     query = "btc",
                     onlyFavourite = true,
-                    favouriteTickers = favourites,
+                    favouriteSymbolIds = favourites,
                     direction = CatalogDirection.GAINERS,
                     sorting = CatalogSorting(),
                 )
@@ -83,7 +83,7 @@ class LoadPairsUseCaseTest {
             useCase(
                 query = "",
                 onlyFavourite = false,
-                favouriteTickers = emptySet(),
+                favouriteSymbolIds = emptySet(),
                 direction = CatalogDirection.ANY,
                 sorting = CatalogSorting(),
             ).test {

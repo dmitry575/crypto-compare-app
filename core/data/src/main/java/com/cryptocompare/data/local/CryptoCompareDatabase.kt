@@ -3,13 +3,13 @@ package com.cryptocompare.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.cryptocompare.data.local.dao.CatalogRemoteKeyDao
-import com.cryptocompare.data.local.dao.FavouriteTickerDao
+import com.cryptocompare.data.local.dao.FavouriteSymbolDao
 import com.cryptocompare.data.local.dao.PendingFavouriteOperationDao
 import com.cryptocompare.data.local.dao.ProviderDao
 import com.cryptocompare.data.local.dao.SymbolDao
 import com.cryptocompare.data.local.entity.CatalogRemoteKeyEntity
-import com.cryptocompare.data.local.entity.FavouriteTickerEntity
-import com.cryptocompare.data.local.entity.PendingFavoriteOperationEntity
+import com.cryptocompare.data.local.entity.FavouriteSymbolEntity
+import com.cryptocompare.data.local.entity.PendingFavouriteOperationEntity
 import com.cryptocompare.data.local.entity.ProviderEntity
 import com.cryptocompare.data.local.entity.SymbolEntity
 
@@ -17,11 +17,11 @@ import com.cryptocompare.data.local.entity.SymbolEntity
     entities = [
         SymbolEntity::class,
         ProviderEntity::class,
-        FavouriteTickerEntity::class,
+        FavouriteSymbolEntity::class,
         CatalogRemoteKeyEntity::class,
-        PendingFavoriteOperationEntity::class,
+        PendingFavouriteOperationEntity::class,
     ],
-    version = 9,
+    version = 10,
     // схемы уезжают в core/data/schemas и коммитятся: без них Room не с чем
     // сверять миграцию, а MigrationTestHelper не может собрать старую базу
     exportSchema = true,
@@ -31,9 +31,9 @@ abstract class CryptoCompareDatabase : RoomDatabase() {
 
     abstract fun providerDao(): ProviderDao
 
-    abstract fun favouriteTickerDao(): FavouriteTickerDao
+    abstract fun favouriteSymbolDao(): FavouriteSymbolDao
 
     abstract fun catalogRemoteKeyDao(): CatalogRemoteKeyDao
 
-    abstract fun pendingFavoriteOperationDao(): PendingFavouriteOperationDao
+    abstract fun pendingFavouriteOperationDao(): PendingFavouriteOperationDao
 }

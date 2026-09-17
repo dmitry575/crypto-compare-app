@@ -117,12 +117,11 @@ class CryptoCompareRepositoryImpl
         override fun getPairsPaged(
             query: String,
             onlyFavourite: Boolean,
-            favouriteTickers: Set<String>,
+            favouriteSymbolIds: Set<Long>,
             direction: CatalogDirection,
             sorting: CatalogSorting,
         ): Flow<PagingData<PairUiItem>> {
             val normalizedQuery = query.trim()
-            val normalizedFavourites = favouriteTickers.map { it.trim().uppercase() }
 
             return Pager(
                 config =
@@ -141,7 +140,7 @@ class CryptoCompareRepositoryImpl
                         PairsPagingQuery.build(
                             query = normalizedQuery,
                             onlyFavourite = onlyFavourite,
-                            favouriteTickers = normalizedFavourites,
+                            favouriteSymbolIds = favouriteSymbolIds.toList(),
                             direction = direction,
                             sorting = sorting,
                         ),

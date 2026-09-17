@@ -60,7 +60,7 @@ internal object PairsPagingQuery {
     fun build(
         query: String,
         onlyFavourite: Boolean,
-        favouriteTickers: List<String>,
+        favouriteSymbolIds: List<Long>,
         direction: CatalogDirection,
         sorting: CatalogSorting,
     ): SupportSQLiteQuery {
@@ -73,12 +73,12 @@ internal object PairsPagingQuery {
         // IN () — синтаксическая ошибка, поэтому пустой список превращается в NULL:
         // такой IN не совпадает ни с чем, что и требуется
         val favouritePlaceholders =
-            if (favouriteTickers.isEmpty()) {
+            if (favouriteSymbolIds.isEmpty()) {
                 "NULL"
             } else {
-                favouriteTickers.joinToString(separator = ",") { "?" }
+                favouriteSymbolIds.joinToString(separator = ",") { "?" }
             }
-        args.addAll(favouriteTickers)
+        args.addAll(favouriteSymbolIds)
 
         repeat(DIRECTION_ARG_COUNT) { args += direction.name }
 
@@ -87,7 +87,7 @@ internal object PairsPagingQuery {
             $SELECT_AND_FROM
             WHERE symbols.ticker IS NOT NULL AND TRIM(symbols.ticker) != ''
                 AND (? = '' OR symbols.ticker LIKE '%' || ? || '%')
-                AND (? = 0 OR UPPER(symbols.ticker) IN ($favouritePlaceholders))
+                AND (? = 0 OR symbols.id IN ($favouritePlaceholders))
                 AND (
                     ? = 'ANY'
                     OR (? = '${CatalogDirection.GAINERS.name}' AND symbols.change24h > 0)

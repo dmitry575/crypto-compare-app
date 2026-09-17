@@ -5,11 +5,11 @@ import androidx.room.withTransaction
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.cryptocompare.data.local.CryptoCompareDatabase
-import com.cryptocompare.data.local.dao.FavouriteTickerDao
+import com.cryptocompare.data.local.dao.FavouriteSymbolDao
 import com.cryptocompare.data.local.dao.PendingFavouriteOperationDao
-import com.cryptocompare.data.local.entity.FavouriteTickerEntity
-import com.cryptocompare.data.local.entity.PendingFavoriteOperationEntity
-import com.cryptocompare.data.repository.FavouriteTickerRepositoryImpl
+import com.cryptocompare.data.local.entity.FavouriteSymbolEntity
+import com.cryptocompare.data.local.entity.PendingFavouriteOperationEntity
+import com.cryptocompare.data.repository.FavouriteSymbolRepositoryImpl
 import com.cryptocompare.data.transactionrunner.DatabaseTransactionRunner
 import com.cryptocompare.data.transactionrunner.DatabaseTransactionRunnerImpl
 import com.cryptocompare.data.util.DataConstants
@@ -43,18 +43,18 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Инструментальные тесты на реальном in-memory Room + реальных DAO.
  * Firebase остаётся замоканным — нас интересует только SQLite-часть
- * гарантии: что syncFavouriteTickers() и toggleFavouriteTicker() не могут
+ * гарантии: что syncFavouriteSymbols() и toggleFavouriteSymbol() не могут
  * интерливиться на уровне отдельных DAO-вызовов.
  *
- * mockk-юнит-тесты (FavouriteTickerRepositoryImplTest) этого не проверяют:
+ * mockk-юнит-тесты (FavouriteSymbolRepositoryImplTest) этого не проверяют:
  * там transactionRunner — фейк, вызывающий block() напрямую, и он ничего
  * не говорит о том, сериализует ли реальная Room-транзакция параллельные
  * вызовы. Здесь — говорит.
  */
 @RunWith(AndroidJUnit4::class)
-class FavouriteTickerRepositoryRaceTest {
+class FavouriteSymbolRepositoryRaceTest {
     private lateinit var database: CryptoCompareDatabase
-    private lateinit var favouriteDao: FavouriteTickerDao
+    private lateinit var favouriteDao: FavouriteSymbolDao
     private lateinit var pendingDao: PendingFavouriteOperationDao
 
     /** Снимок «удалённого» состояния Firestore-мока; читается в проверках. */
@@ -65,6 +65,11 @@ class FavouriteTickerRepositoryRaceTest {
 
     private val userId = "user-1"
 
+    private companion object {
+        const val SYMBOL_ID = 1L
+        const val TICKER = "BTCUSDT"
+    }
+
     @Before
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
@@ -72,8 +77,8 @@ class FavouriteTickerRepositoryRaceTest {
             Room
                 .inMemoryDatabaseBuilder(context, CryptoCompareDatabase::class.java)
                 .build()
-        favouriteDao = database.favouriteTickerDao()
-        pendingDao = database.pendingFavoriteOperationDao()
+        favouriteDao = database.favouriteSymbolDao()
+        pendingDao = database.pendingFavouriteOperationDao()
 
         val user = mockk<FirebaseUser> { every { uid } returns userId }
         every { auth.currentUser } returns user
@@ -92,41 +97,41 @@ class FavouriteTickerRepositoryRaceTest {
     @Test
     fun sequentialBaselineToggleCommittedBeforeSyncIsVisibleToSync() =
         runBlocking {
-            favouriteDao.upsert(FavouriteTickerEntity(userId, "BTCUSDT", 1L))
+            favouriteDao.upsert(FavouriteSymbolEntity(userId, SYMBOL_ID, TICKER, 1L))
             firestoreReturns(emptyList()) // remote ещё не знает про BTC
 
             val repository = createRepository(DatabaseTransactionRunnerImpl(database))
 
-            val toggleResult = repository.toggleFavouriteTicker("BTCUSDT")
+            val toggleResult = repository.toggleFavouriteSymbol(SYMBOL_ID, TICKER)
             assertTrue(toggleResult.isSuccess)
             assertEquals(false, toggleResult.getOrNull()) // ticker уже был => сняли
 
-            assertTrue(favouriteDao.getUserTickers(userId).isEmpty())
+            assertTrue(favouriteDao.getUserSymbols(userId).isEmpty())
             val pending = pendingDao.getAllByUser(userId)
             assertEquals(1, pending.size)
-            assertEquals(PendingFavoriteOperationEntity.Operation.DELETE, pending.single().operation)
+            assertEquals(PendingFavouriteOperationEntity.Operation.DELETE, pending.single().operation)
         }
 
     @Test
     fun sequentialBaselineSyncMergeCommittedThenToggleOverwritesItCorrectly() =
         runBlocking {
-            firestoreReturns(listOf("BTCUSDT" to 1L)) // remote уже содержит BTC
+            firestoreReturns(listOf(SYMBOL_ID.toString() to 1L)) // remote уже содержит BTC
 
             val repository = createRepository(DatabaseTransactionRunnerImpl(database))
 
-            val syncResult = repository.syncFavouriteTickers()
+            val syncResult = repository.syncFavouriteSymbols()
             assertTrue(syncResult.isSuccess)
-            assertEquals(listOf("BTCUSDT"), favouriteDao.getUserTickers(userId).map { it.ticker })
+            assertEquals(listOf(SYMBOL_ID), favouriteDao.getUserSymbols(userId).map { it.symbolId })
 
             // sync полностью завершился (включая push в Firestore) —
             // только теперь пользователь тапает звёздочку
-            val toggleResult = repository.toggleFavouriteTicker("BTCUSDT")
+            val toggleResult = repository.toggleFavouriteSymbol(SYMBOL_ID, TICKER)
 
             assertTrue(toggleResult.isSuccess)
             assertEquals(false, toggleResult.getOrNull())
-            assertTrue(favouriteDao.getUserTickers(userId).isEmpty())
+            assertTrue(favouriteDao.getUserSymbols(userId).isEmpty())
             assertEquals(
-                PendingFavoriteOperationEntity.Operation.DELETE,
+                PendingFavouriteOperationEntity.Operation.DELETE,
                 pendingDao.getAllByUser(userId).single().operation,
             )
         }
@@ -139,17 +144,17 @@ class FavouriteTickerRepositoryRaceTest {
     @Test
     fun syncTransactionFullyBlocksConcurrentToggleTransactionUntilItCommits() =
         runBlocking {
-            favouriteDao.upsert(FavouriteTickerEntity(userId, "BTCUSDT", 1L))
-            firestoreReturns(listOf("BTCUSDT" to 1L))
+            favouriteDao.upsert(FavouriteSymbolEntity(userId, SYMBOL_ID, TICKER, 1L))
+            firestoreReturns(listOf(SYMBOL_ID.toString() to 1L))
 
             val blockingRunner = BlockingTransactionRunner(database)
             val repository = createRepository(blockingRunner)
 
-            val syncJob = launch { repository.syncFavouriteTickers() }
+            val syncJob = launch { repository.syncFavouriteSymbols() }
             // sync's merge-транзакция уже открыта на уровне Room, но ещё не закоммичена
             blockingRunner.transactionStarted.await()
 
-            val toggleJob = async { repository.toggleFavouriteTicker("BTCUSDT") }
+            val toggleJob = async { repository.toggleFavouriteSymbol(SYMBOL_ID, TICKER) }
 
             // Даём toggleJob шанс продвинуться. Если бы Room не сериализовала
             // транзакции, он бы успел выполниться здесь — вызов
@@ -165,10 +170,10 @@ class FavouriteTickerRepositoryRaceTest {
 
             assertTrue(toggleResult.isSuccess)
             // toggle применился ПОСЛЕ merge — его удаление не потерялось
-            assertTrue(favouriteDao.getUserTickers(userId).isEmpty())
+            assertTrue(favouriteDao.getUserSymbols(userId).isEmpty())
             val pending = pendingDao.getAllByUser(userId)
             assertEquals(1, pending.size)
-            assertEquals(PendingFavoriteOperationEntity.Operation.DELETE, pending.single().operation)
+            assertEquals(PendingFavouriteOperationEntity.Operation.DELETE, pending.single().operation)
         }
 
     @Test
@@ -177,13 +182,13 @@ class FavouriteTickerRepositoryRaceTest {
             repeat(100) { iteration ->
                 favouriteDao.deleteByUser(userId)
                 pendingDao.deleteByUser(userId)
-                favouriteDao.upsert(FavouriteTickerEntity(userId, "BTCUSDT", 1L))
-                firestoreReturns(listOf("BTCUSDT" to 1L))
+                favouriteDao.upsert(FavouriteSymbolEntity(userId, SYMBOL_ID, TICKER, 1L))
+                firestoreReturns(listOf(SYMBOL_ID.toString() to 1L))
 
                 val repository = createRepository(DatabaseTransactionRunnerImpl(database))
 
-                val syncJob = async { repository.syncFavouriteTickers() }
-                val toggleJob = async { repository.toggleFavouriteTicker("BTCUSDT") }
+                val syncJob = async { repository.syncFavouriteSymbols() }
+                val toggleJob = async { repository.toggleFavouriteSymbol(SYMBOL_ID, TICKER) }
 
                 val syncResult = syncJob.await()
                 val toggleResult = toggleJob.await()
@@ -200,12 +205,12 @@ class FavouriteTickerRepositoryRaceTest {
                     )
                 }
 
-                val local = favouriteDao.getUserTickers(userId)
+                val local = favouriteDao.getUserSymbols(userId)
                 val pending = pendingDao.getAllByUser(userId)
 
                 assertTrue(
                     "Iteration $iteration: BTC was resurrected in Room",
-                    local.none { it.ticker == "BTCUSDT" },
+                    local.none { it.symbolId == SYMBOL_ID },
                 )
                 // Удаление не должно потеряться, но допустимы ДВА консистентных исхода:
                 //  1) sync поймал гонку и не тронул очередь — DELETE ещё в pending,
@@ -214,10 +219,10 @@ class FavouriteTickerRepositoryRaceTest {
                 //     протолкнул DELETE в Firestore и очистил pending (remote чист).
                 // Потеря — только если BTC остался в remote, а в очереди нет DELETE,
                 // который бы его убрал: тогда следующий sync воскресил бы избранное.
-                val remoteHasBtc = remoteState.containsKey("BTCUSDT")
+                val remoteHasBtc = remoteState.containsKey(SYMBOL_ID.toString())
                 val pendingHasDelete =
                     pending.any {
-                        it.ticker == "BTCUSDT" && it.operation == PendingFavoriteOperationEntity.Operation.DELETE
+                        it.symbolId == SYMBOL_ID && it.operation == PendingFavouriteOperationEntity.Operation.DELETE
                     }
                 assertTrue(
                     "Iteration $iteration: удаление потеряно — BTC остался в remote без DELETE в очереди",
@@ -238,18 +243,18 @@ class FavouriteTickerRepositoryRaceTest {
             firestoreReturns(emptyList())
             val repository = createRepository(DatabaseTransactionRunnerImpl(database))
 
-            val first = repository.toggleFavouriteTicker("BTCUSDT")
+            val first = repository.toggleFavouriteSymbol(SYMBOL_ID, TICKER)
             assertTrue(first.isSuccess)
             assertEquals(true, first.getOrNull())
 
-            val second = repository.toggleFavouriteTicker("BTCUSDT")
+            val second = repository.toggleFavouriteSymbol(SYMBOL_ID, TICKER)
             assertTrue(second.isSuccess)
             assertEquals(false, second.getOrNull())
 
-            assertTrue(favouriteDao.getUserTickers(userId).isEmpty())
+            assertTrue(favouriteDao.getUserSymbols(userId).isEmpty())
             val pending = pendingDao.getAllByUser(userId)
             assertEquals(1, pending.size)
-            assertEquals(PendingFavoriteOperationEntity.Operation.DELETE, pending.single().operation)
+            assertEquals(PendingFavouriteOperationEntity.Operation.DELETE, pending.single().operation)
         }
 
     @Test
@@ -258,28 +263,29 @@ class FavouriteTickerRepositoryRaceTest {
             firestoreReturns(emptyList())
             val repository = createRepository(DatabaseTransactionRunnerImpl(database))
 
-            repository.toggleFavouriteTicker("BTCUSDT")
-            repository.toggleFavouriteTicker("BTCUSDT")
-            repository.toggleFavouriteTicker("BTCUSDT")
+            repository.toggleFavouriteSymbol(SYMBOL_ID, TICKER)
+            repository.toggleFavouriteSymbol(SYMBOL_ID, TICKER)
+            repository.toggleFavouriteSymbol(SYMBOL_ID, TICKER)
 
-            val local = favouriteDao.getUserTickers(userId)
+            val local = favouriteDao.getUserSymbols(userId)
             assertEquals(1, local.size)
-            assertEquals("BTCUSDT", local.single().ticker)
+            assertEquals(SYMBOL_ID, local.single().symbolId)
 
             val pending = pendingDao.getAllByUser(userId)
             assertEquals(1, pending.size)
-            assertEquals(PendingFavoriteOperationEntity.Operation.ADD, pending.single().operation)
+            assertEquals(PendingFavouriteOperationEntity.Operation.ADD, pending.single().operation)
         }
 
     // ---------------------------------------------------------------
     // Инфраструктура теста
     // ---------------------------------------------------------------
 
-    private fun createRepository(transactionRunner: DatabaseTransactionRunner): FavouriteTickerRepositoryImpl =
-        FavouriteTickerRepositoryImpl(
+    private fun createRepository(transactionRunner: DatabaseTransactionRunner): FavouriteSymbolRepositoryImpl =
+        FavouriteSymbolRepositoryImpl(
             firestore = firestore,
-            favouriteTickerDao = favouriteDao,
+            favouriteSymbolDao = favouriteDao,
             pendingFavouriteOperationDao = pendingDao,
+            symbolDao = database.symbolDao(),
             transactionRunner = transactionRunner,
             auth = auth,
             ioDispatcher = Dispatchers.IO,
@@ -296,9 +302,9 @@ class FavouriteTickerRepositoryRaceTest {
      * тем же клиентом непосредственно перед чтением, следующее чтение
      * увидит.
      */
-    private fun firestoreReturns(initialTickers: List<Pair<String, Long>>) {
-        remoteState = ConcurrentHashMap<String, Long>().apply { putAll(initialTickers) }
-        val docRefsByTicker = ConcurrentHashMap<String, DocumentReference>()
+    private fun firestoreReturns(initialFavourites: List<Pair<String, Long>>) {
+        remoteState = ConcurrentHashMap<String, Long>().apply { putAll(initialFavourites) }
+        val docRefsById = ConcurrentHashMap<String, DocumentReference>()
 
         val usersCol = mockk<CollectionReference>()
         val userDoc = mockk<DocumentReference>()
@@ -309,16 +315,16 @@ class FavouriteTickerRepositoryRaceTest {
         every { userDoc.collection(FirestoreConstants.FAVORITES_COLLECTION) } returns favoritesCol
 
         every { favoritesCol.document(any()) } answers {
-            val ticker = firstArg<String>()
-            docRefsByTicker.getOrPut(ticker) {
+            val documentId = firstArg<String>()
+            docRefsById.getOrPut(documentId) {
                 mockk<DocumentReference> {
                     every { set(any<Map<String, Any>>()) } answers {
                         val data = firstArg<Map<String, Any>>()
-                        remoteState[ticker] = data[FirestoreConstants.UPDATED_AT_FIELD] as Long
+                        remoteState[documentId] = data[FirestoreConstants.UPDATED_AT_FIELD] as Long
                         Tasks.forResult(null)
                     }
                     every { delete() } answers {
-                        remoteState.remove(ticker)
+                        remoteState.remove(documentId)
                         Tasks.forResult(null)
                     }
                 }
@@ -327,10 +333,11 @@ class FavouriteTickerRepositoryRaceTest {
 
         every { favoritesCol.get() } answers {
             val documents =
-                remoteState.map { (ticker, updatedAt) ->
+                remoteState.map { (documentId, updatedAt) ->
                     mockk<DocumentSnapshot> {
-                        every { getString(FirestoreConstants.TICKER_FIELD) } returns ticker
+                        every { getString(FirestoreConstants.TICKER_FIELD) } returns TICKER
                         every { getLong(FirestoreConstants.UPDATED_AT_FIELD) } returns updatedAt
+                        every { getLong(FirestoreConstants.SYMBOL_ID_FIELD) } returns documentId.toLong()
                     }
                 }
             Tasks.forResult(mockk<QuerySnapshot> { every { this@mockk.documents } returns documents })
@@ -340,13 +347,13 @@ class FavouriteTickerRepositoryRaceTest {
         every { firestore.batch() } returns batch
         every { batch.set(any(), any<Map<String, Any>>()) } answers {
             val data = secondArg<Map<String, Any>>()
-            remoteState[data[FirestoreConstants.TICKER_FIELD] as String] =
+            remoteState[(data[FirestoreConstants.SYMBOL_ID_FIELD] as Long).toString()] =
                 data[FirestoreConstants.UPDATED_AT_FIELD] as Long
             batch
         }
         every { batch.delete(any()) } answers {
             val docRef = firstArg<DocumentReference>()
-            docRefsByTicker.entries.find { it.value === docRef }?.let { remoteState.remove(it.key) }
+            docRefsById.entries.find { it.value === docRef }?.let { remoteState.remove(it.key) }
             batch
         }
         every { batch.commit() } returns Tasks.forResult(null)
