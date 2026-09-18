@@ -26,6 +26,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +50,7 @@ import com.cryptocompare.ui.theme.bgCard
 import com.cryptocompare.ui.theme.bgPrimary
 import com.cryptocompare.ui.theme.borderPrimary
 import com.cryptocompare.ui.theme.textTertiary
+import kotlinx.coroutines.delay
 
 /**
  * Сравнение котировок пары по биржам.
@@ -133,9 +136,16 @@ private fun ComparisonContent(
     comparison: PairComparison,
     modifier: Modifier = Modifier,
 ) {
-    // отметка о несвежести считается на каждой перерисовке, а перерисовка
-    // случается на каждом флаше тиков — отдельный таймер тут не нужен
-    val now = System.currentTimeMillis()
+    // отметка о несвежести сверяется с часами, которые идут сами. Раньше время
+    // бралось на перерисовке, а перерисовка бывает только на флаше тиков: на
+    // тихой паре её нет вовсе, и биржа, переставшая обновляться, так и
+    // оставалась бы белой
+    val now by produceState(initialValue = System.currentTimeMillis()) {
+        while (true) {
+            delay(PairsConstants.ComparisonScreen.STALENESS_RECHECK_MS)
+            value = System.currentTimeMillis()
+        }
+    }
     val contentPadding = Modifier.padding(horizontal = Dimensions.Padding.screenHorizontal)
 
     Column(
