@@ -221,7 +221,7 @@ class DetailsViewModel
         private fun applyLiveTick(tick: TickerPrice) {
             val state = _uiState.value
             // цены карточек двигаем всегда: у каждой биржи свой тик
-            val exchanges = state.exchanges.withLivePrices(tick)
+            val exchanges = state.exchanges.withLivePrices(tick, System.currentTimeMillis())
 
             // последний бар графика двигает только тик выбранной биржи — по ней он и построен
             val selectedProviderId = state.selectedExchange?.provider?.id

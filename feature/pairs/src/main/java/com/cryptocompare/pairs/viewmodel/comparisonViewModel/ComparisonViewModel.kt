@@ -195,12 +195,16 @@ class ComparisonViewModel
             quotes: List<TickerPrice>,
             bestPrices: List<TickerBestPrice>,
         ) {
+            // тики копятся за интервал и применяются разом: время применения отстаёт
+            // от получения на доли секунды, против порога устаревания это ничто
+            val receivedAt = System.currentTimeMillis()
+
             _uiState.update { state ->
                 val comparison = state.comparison ?: return@update state
 
                 val withQuotes =
                     comparison.copy(
-                        quotes = quotes.fold(comparison.quotes) { acc, tick -> acc.withLivePrices(tick) },
+                        quotes = quotes.fold(comparison.quotes) { acc, tick -> acc.withLivePrices(tick, receivedAt) },
                     )
 
                 state.copy(comparison = applyComparisonBestPricesUseCase(withQuotes, bestPrices))
