@@ -97,4 +97,5 @@
         <item quantity="other">%d биржи</item>
     </plurals>
     <string name="chart_indicators_title">Индикаторы</string>
+    <string name="pair_detail_add_to_portfolio">Добавить в портфель</string>
 </resources>

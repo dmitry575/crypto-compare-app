@@ -19,6 +19,7 @@ fun NavGraphBuilder.pairsNavigation(
     navController: NavHostController,
     onProfileClick: () -> Unit,
     onSignInClick: () -> Unit,
+    onAddToPortfolio: (symbolId: Long, ticker: String, price: Double?) -> Unit,
 ) {
     navigation(
         route = PairsDestination.ROUTE,
@@ -43,6 +44,7 @@ fun NavGraphBuilder.pairsNavigation(
                 onCompareClick = { ticker, symbolId ->
                     navController.navigate(PairsScreens.ComparisonScreen.createRoute(ticker, symbolId))
                 },
+                onAddToPortfolio = onAddToPortfolio,
             )
         }
 

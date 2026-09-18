@@ -2,4 +2,6 @@
     <string name="app_name" translatable="false">Coins Compare</string>
 
 
+    <string name="tab_pairs">Pairs</string>
+    <string name="tab_portfolio">Portfolio</string>
 </resources>
