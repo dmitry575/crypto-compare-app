@@ -102,4 +102,5 @@
     <string name="chart_indicator_ema_20" translatable="false">EMA 20</string>
     <string name="chart_indicator_ema_50" translatable="false">EMA 50</string>
     <string name="chart_indicators_title">Indicators</string>
+    <string name="pair_detail_add_to_portfolio">Add to portfolio</string>
 </resources>

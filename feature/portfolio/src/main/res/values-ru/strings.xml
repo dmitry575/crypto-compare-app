@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="portfolio_title">Портфель</string>
+    <string name="portfolio_back">Назад</string>
+    <string name="portfolio_empty_title">Портфель пуст</string>
+    <string name="portfolio_empty_text">Откройте пару и нажмите значок портфеля вверху — позиция появится здесь. Портфель хранится только на этом устройстве.</string>
+    <string name="portfolio_open_pairs">К парам</string>
+    <string name="portfolio_average_price">Средняя цена %1$s</string>
+    <string name="portfolio_amount">Количество</string>
+    <string name="portfolio_amount_hint">0,42</string>
+    <string name="portfolio_buy_price">Средняя цена покупки</string>
+    <string name="portfolio_buy_price_hint">72 000</string>
+    <string name="portfolio_save">Сохранить</string>
+    <string name="portfolio_delete">Убрать из портфеля</string>
+    <string name="portfolio_save_failed">Не удалось сохранить позицию</string>
+</resources>

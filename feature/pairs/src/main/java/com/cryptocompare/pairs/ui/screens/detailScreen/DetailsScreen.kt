@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -58,6 +59,7 @@ import kotlinx.coroutines.launch
 fun DetailsScreen(
     onBack: () -> Unit,
     onCompareClick: (ticker: String, symbolId: Long?) -> Unit,
+    onAddToPortfolio: (symbolId: Long, ticker: String, price: Double?) -> Unit = { _, _, _ -> },
     viewModel: DetailsViewModel = hiltViewModel(),
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle()
@@ -92,6 +94,25 @@ fun DetailsScreen(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.pair_detail_back),
                         )
+                    }
+                },
+                actions = {
+                    // позиция в портфеле привязана к символу: у пары, открытой по
+                    // тикеру целиком, добавлять нечего — сети неизвестны
+                    val symbolId = state.symbolId
+                    if (symbolId != null && !state.loading) {
+                        IconButton(
+                            onClick = {
+                                // цена покупки по умолчанию — ask выбранной биржи: по нему
+                                // и покупают, когда смотрят на эту пару
+                                onAddToPortfolio(symbolId, state.ticker, state.selectedExchange?.priceSell)
+                            },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.AccountBalanceWallet,
+                                contentDescription = stringResource(R.string.pair_detail_add_to_portfolio),
+                            )
+                        }
                     }
                 },
             )

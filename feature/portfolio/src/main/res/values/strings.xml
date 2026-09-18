@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="portfolio_title">Portfolio</string>
+    <string name="portfolio_back">Back</string>
+    <string name="portfolio_empty_title">Your portfolio is empty</string>
+    <string name="portfolio_empty_text">Open a pair and tap the portfolio icon at the top — the position will appear here. The portfolio is kept on this device only.</string>
+    <string name="portfolio_open_pairs">Go to pairs</string>
+    <string name="portfolio_average_price">Average price %1$s</string>
+    <string name="portfolio_amount">Amount</string>
+    <string name="portfolio_amount_hint">0.42</string>
+    <string name="portfolio_buy_price">Average buy price</string>
+    <string name="portfolio_buy_price_hint">72 000</string>
+    <string name="portfolio_save">Save</string>
+    <string name="portfolio_delete">Remove from portfolio</string>
+    <string name="portfolio_save_failed">Could not save the position</string>
+</resources>

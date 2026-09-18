@@ -71,6 +71,7 @@ dependencies {
     implementation(project(":feature:pairs"))
     implementation(project(":feature:auth"))
     implementation(project(":feature:profile"))
+    implementation(project(":feature:portfolio"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
