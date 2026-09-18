@@ -6,6 +6,7 @@ import com.cryptocompare.data.BuildConfig
 import com.cryptocompare.data.local.CryptoCompareDatabase
 import com.cryptocompare.data.local.dao.FavouriteSymbolDao
 import com.cryptocompare.data.local.dao.PendingFavouriteOperationDao
+import com.cryptocompare.data.local.dao.PortfolioPositionDao
 import com.cryptocompare.data.local.dao.ProviderDao
 import com.cryptocompare.data.local.dao.SymbolDao
 import com.cryptocompare.data.repository.AuthRepositoryImpl
@@ -15,6 +16,7 @@ import com.cryptocompare.data.repository.FirebaseCrashReporter
 import com.cryptocompare.data.repository.LanguageRepositoryImpl
 import com.cryptocompare.data.repository.MarketPreferencesRepositoryImpl
 import com.cryptocompare.data.repository.OnboardingRepositoryImpl
+import com.cryptocompare.data.repository.PortfolioRepositoryImpl
 import com.cryptocompare.data.repository.ThemeRepositoryImpl
 import com.cryptocompare.data.repository.TickerStreamRepositoryImpl
 import com.cryptocompare.data.transactionrunner.DatabaseTransactionRunner
@@ -25,6 +27,7 @@ import com.cryptocompare.domain.repository.FavouriteSymbolRepository
 import com.cryptocompare.domain.repository.LanguageRepository
 import com.cryptocompare.domain.repository.MarketPreferencesRepository
 import com.cryptocompare.domain.repository.OnboardingRepository
+import com.cryptocompare.domain.repository.PortfolioRepository
 import com.cryptocompare.domain.repository.ThemeRepository
 import com.cryptocompare.domain.repository.TickerStreamRepository
 import com.cryptocompare.network.api.CryptoCompareApi
@@ -94,6 +97,13 @@ object RepositoryModule {
         @Named("wsUrl") wsUrl: String,
         crashReporter: CrashReporter,
     ): TickerStreamRepository = TickerStreamRepositoryImpl(webSocketClient, wsUrl, crashReporter)
+
+    @Provides
+    @Singleton
+    fun providePortfolioRepository(
+        portfolioPositionDao: PortfolioPositionDao,
+        @Named("ioDispatcher") ioDispatcher: CoroutineDispatcher,
+    ): PortfolioRepository = PortfolioRepositoryImpl(portfolioPositionDao, ioDispatcher)
 
     @Provides
     @Singleton
