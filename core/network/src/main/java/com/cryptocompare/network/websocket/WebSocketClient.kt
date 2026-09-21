@@ -94,7 +94,7 @@ class WebSocketClient
 
         private val _messages =
             MutableSharedFlow<SocketDtoMessage>(
-                extraBufferCapacity = 256,
+                extraBufferCapacity = WebSocketConstants.EVENT_BUFFER_CAPACITY,
                 onBufferOverflow = BufferOverflow.DROP_OLDEST,
             )
         val messages = _messages.asSharedFlow()

@@ -21,6 +21,14 @@ object WebSocketConstants {
      */
     const val MAX_SUBSCRIPTIONS = 8
 
+    /**
+     * Запас сообщений в потоке событий. Тики идут десятками в секунду, а экран
+     * между ними успевает и в базу сходить: без запаса поток либо тормозил бы
+     * приём, либо ронял свежие сообщения. Переполнение выбрасывает самые
+     * старые — цена минутной давности не нужна никому.
+     */
+    const val EVENT_BUFFER_CAPACITY = 256
+
     const val NORMAL_CLOSURE_STATUS = 1000
     const val BASE_RECONNECT_DELAY_MS = 1_000L
     const val MAX_RECONNECT_DELAY_MS = 30_000L

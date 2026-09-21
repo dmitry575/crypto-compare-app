@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.cryptocompare.data.local.preferencesOrEmpty
 import com.cryptocompare.data.util.DataConstants
 import com.cryptocompare.domain.repository.MarketPreferencesRepository
 import com.cryptocompare.model.chart.ChartIndicator
@@ -25,7 +26,7 @@ class MarketPreferencesRepositoryImpl
         private val indicatorsKey = stringSetPreferencesKey(DataConstants.Preferences.CHART_INDICATORS_KEY)
 
         override fun observeMarketPreferences(): Flow<MarketPreferences> =
-            dataStore.data.map { preferences ->
+            dataStore.preferencesOrEmpty().map { preferences ->
                 MarketPreferences(
                     defaultProviderId = preferences[providerKey],
                     // хранится имя константы: испорченное значение или переименованный

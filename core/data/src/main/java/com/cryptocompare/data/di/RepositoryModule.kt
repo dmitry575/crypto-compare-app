@@ -96,7 +96,8 @@ object RepositoryModule {
         webSocketClient: WebSocketClient,
         @Named("wsUrl") wsUrl: String,
         crashReporter: CrashReporter,
-    ): TickerStreamRepository = TickerStreamRepositoryImpl(webSocketClient, wsUrl, crashReporter)
+        @Named("ioDispatcher") ioDispatcher: CoroutineDispatcher,
+    ): TickerStreamRepository = TickerStreamRepositoryImpl(webSocketClient, wsUrl, crashReporter, ioDispatcher)
 
     @Provides
     @Singleton

@@ -15,13 +15,19 @@ import com.cryptocompare.network.websocket.WebSocketClient
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verifyOrder
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class TickerStreamRepositoryImplTest {
     @Test
     fun `connectionState maps network states to model states`() =
@@ -94,6 +100,7 @@ class TickerStreamRepositoryImplTest {
             val (repository, _, networkMessages) = createRepository()
 
             repository.event.test {
+                networkMessages.awaitCollector()
                 networkMessages.emit(
                     SocketDtoMessage.Welcome(
                         id = "welcome-id",
@@ -158,11 +165,32 @@ class TickerStreamRepositoryImplTest {
         }
 
     @Test
+    fun `two screens listening at once both get the event`() =
+        runTest {
+            // разбор общий, но получать событие должен каждый: каталог и портфель
+            // слушают поток одновременно
+            val (repository, _, networkMessages) = createRepository()
+
+            val catalog = async { repository.event.first() }
+            val portfolio = async { repository.event.first() }
+            networkMessages.awaitCollector()
+            advanceUntilIdle()
+
+            networkMessages.emit(
+                SocketDtoMessage.Welcome(id = "shared-id", data = WelcomeData(message = "Connected")),
+            )
+
+            assertEquals("shared-id", catalog.await().id)
+            assertEquals("shared-id", portfolio.await().id)
+        }
+
+    @Test
     fun `welcome dto maps to welcome domain event`() =
         runTest {
             val (repository, _, networkMessages) = createRepository()
 
             repository.event.test {
+                networkMessages.awaitCollector()
                 networkMessages.emit(
                     SocketDtoMessage.Welcome(
                         id = "welcome-only-id",
@@ -182,6 +210,7 @@ class TickerStreamRepositoryImplTest {
             val (repository, _, networkMessages) = createRepository()
 
             repository.event.test {
+                networkMessages.awaitCollector()
                 networkMessages.emit(
                     SocketDtoMessage.Error(
                         id = "error-only-id",
@@ -202,6 +231,7 @@ class TickerStreamRepositoryImplTest {
             val (repository, _, networkMessages) = createRepository()
 
             repository.event.test {
+                networkMessages.awaitCollector()
                 networkMessages.emit(
                     SocketDtoMessage.SymbolPriceChange(
                         id = "price-1",
@@ -321,7 +351,12 @@ class TickerStreamRepositoryImplTest {
             val opened = MutableStateFlow(3)
             every { fixture.webSocketClient.openedConnections } returns opened
             val repository =
-                TickerStreamRepositoryImpl(fixture.webSocketClient, "ws://localhost:8081", mockk(relaxed = true))
+                TickerStreamRepositoryImpl(
+                    webSocketClient = fixture.webSocketClient,
+                    wsUrl = "ws://localhost:8081",
+                    crashReporter = mockk(relaxed = true),
+                    ioDispatcher = UnconfinedTestDispatcher(),
+                )
 
             repository.reconnects.test {
                 // три открытия было до подписки — это не реконнект для того, кто слушает сейчас
@@ -357,6 +392,11 @@ class TickerStreamRepositoryImplTest {
         return { current.toSet() }
     }
 
+    /** Разбор сообщений общий на всех подписчиков и встаёт на поток не мгновенно. */
+    private suspend fun MutableSharedFlow<SocketDtoMessage>.awaitCollector() {
+        subscriptionCount.first { collectors -> collectors > 0 }
+    }
+
     private fun createRepository(wsUrl: String = "ws://localhost:8081"): RepositoryFixture {
         val networkState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
         val networkMessages = MutableSharedFlow<SocketDtoMessage>()
@@ -367,7 +407,13 @@ class TickerStreamRepositoryImplTest {
                 every { messages } returns networkMessages
             }
 
-        val repository = TickerStreamRepositoryImpl(webSocketClient, wsUrl, crashReporter)
+        val repository =
+            TickerStreamRepositoryImpl(
+                webSocketClient = webSocketClient,
+                wsUrl = wsUrl,
+                crashReporter = crashReporter,
+                ioDispatcher = UnconfinedTestDispatcher(),
+            )
         return RepositoryFixture(repository, networkState, networkMessages, webSocketClient, crashReporter)
     }
 

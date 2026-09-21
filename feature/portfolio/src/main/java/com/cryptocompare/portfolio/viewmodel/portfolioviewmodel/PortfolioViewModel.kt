@@ -65,6 +65,10 @@ class PortfolioViewModel
         /** Кого уже дотянули по REST в этот заход — чтобы не ходить за той же ценой дважды. */
         private val refreshedTickers = mutableSetOf<String>()
 
+        /** Кто в пути прямо сейчас: без этого повторная правка позиций слала бы те же запросы заново. */
+        private val refreshingTickers = mutableSetOf<String>()
+
+        private var portfolioJob: Job? = null
         private var liveJob: Job? = null
         private var subscriptionsTakenOver = false
 
@@ -79,12 +83,13 @@ class PortfolioViewModel
         private val pendingBestPrices = mutableMapOf<Long, TickerBestPrice>()
         private var isFlushScheduled = false
 
-        init {
-            observePortfolio()
-        }
-
         /**
-         * Экран показался: соединение, захват подписок и догонка цен по REST.
+         * Экран показался: считаем портфель, берём соединение, захватываем
+         * подписки и догоняем цены по REST.
+         *
+         * Всё это начинается здесь, а не в `init`: ViewModel вкладки переживает
+         * уход с неё, и запущенный в `init` сбор пересчитывал бы портфель на
+         * каждый сброс цен каталога — при закрытом портфеле и никому не нужный.
          *
          * Догонка нужна ровно потому, что портфель живёт отдельно от каталога:
          * его пары могли ни разу не попасть на экран, и цена у них — со времени
@@ -92,6 +97,8 @@ class PortfolioViewModel
          */
         fun onScreenShown() {
             if (subscriptionsTakenOver) return
+
+            observePortfolio()
 
             streamConnectUseCase()
             // забираем слоты себе пустым набором, а кем их занять — решает
@@ -105,14 +112,22 @@ class PortfolioViewModel
             observeLivePrices()
         }
 
-        /** Экран ушёл: возвращаем подписки каталогу и перестаём слушать тики. */
+        /**
+         * Экран ушёл: возвращаем подписки каталогу, перестаём слушать тики и
+         * считать портфель. Состояние остаётся на месте — при следующем показе
+         * Room отдаёт позиции сразу, и список не мигает загрузкой.
+         */
         fun onScreenHidden() {
             if (!subscriptionsTakenOver) return
 
+            portfolioJob?.cancel()
+            portfolioJob = null
             liveJob?.cancel()
             liveJob = null
             pendingBestPrices.clear()
             subscribedTickers.clear()
+            refreshedTickers.clear()
+            refreshingTickers.clear()
             subscriptionsTakenOver = false
             restoreTickerSubscriptionsUseCase()
         }
@@ -126,30 +141,31 @@ class PortfolioViewModel
          */
         @OptIn(ExperimentalCoroutinesApi::class)
         private fun observePortfolio() {
-            viewModelScope.launch {
-                observePortfolioUseCase()
-                    .flatMapLatest { positions ->
-                        observePortfolioPricesUseCase(positions.map(PortfolioPosition::symbolId).toSet())
-                            .map { prices -> positions to calculatePortfolioUseCase(positions, prices) }
-                    }.collect { (positions, portfolio) ->
-                        positionTickers = positions.map { it.ticker }
+            portfolioJob =
+                viewModelScope.launch {
+                    observePortfolioUseCase()
+                        .flatMapLatest { positions ->
+                            observePortfolioPricesUseCase(positions.map(PortfolioPosition::symbolId).toSet())
+                                .map { prices -> positions to calculatePortfolioUseCase(positions, prices) }
+                        }.collect { (positions, portfolio) ->
+                            positionTickers = positions.map { it.ticker }
 
-                        _uiState.update {
-                            it.copy(
-                                holdings = portfolio.holdings,
-                                summary = portfolio.summary,
-                                loading = false,
-                            )
-                        }
+                            _uiState.update {
+                                it.copy(
+                                    holdings = portfolio.holdings,
+                                    summary = portfolio.summary,
+                                    loading = false,
+                                )
+                            }
 
-                        // позиция могла появиться, пока экран открыт: её пара в
-                        // подписках не числится, а цену ей взять неоткуда
-                        if (subscriptionsTakenOver) {
-                            syncSubscriptions()
-                            refreshPrices(force = false)
+                            // позиция могла появиться, пока экран открыт: её пара в
+                            // подписках не числится, а цену ей взять неоткуда
+                            if (subscriptionsTakenOver) {
+                                syncSubscriptions()
+                                refreshPrices(force = false)
+                            }
                         }
-                    }
-            }
+                }
         }
 
         private fun syncSubscriptions() {
@@ -165,14 +181,24 @@ class PortfolioViewModel
          * Иначе догоняются только те, за кем ещё не ходили.
          */
         private fun refreshPrices(force: Boolean) {
-            if (force) refreshedTickers.clear()
+            if (force) {
+                refreshedTickers.clear()
+                refreshingTickers.clear()
+            }
 
-            val tickers = positionTickers.map { it.lowercase() }.toSet() - refreshedTickers
+            val tickers = positionTickers.map { it.lowercase() }.toSet() - refreshedTickers - refreshingTickers
             if (tickers.isEmpty()) return
 
-            refreshedTickers += tickers
+            refreshingTickers += tickers
             viewModelScope.launch {
-                refreshBestPricesUseCase(tickers).onFailure { refreshedTickers -= tickers }
+                // Ноль обновлённых котировок — это «не прошёл ни один запрос», а не
+                // «цены свежие»: use case глотает ошибки по отдельным тикерам. Пометить
+                // такие тикеры догнанными значило бы не вернуться к ним никогда — в
+                // офлайне так и было бы: экран открыт, цены старые, повторов нет.
+                val updated = refreshBestPricesUseCase(tickers).getOrDefault(0)
+
+                refreshingTickers -= tickers
+                if (updated > 0) refreshedTickers += tickers
             }
         }
 
