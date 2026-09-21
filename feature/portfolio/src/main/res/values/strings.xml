@@ -5,7 +5,12 @@
     <string name="portfolio_empty_title">Your portfolio is empty</string>
     <string name="portfolio_empty_text">Open a pair and tap the portfolio icon at the top — the position will appear here. The portfolio is kept on this device only.</string>
     <string name="portfolio_open_pairs">Go to pairs</string>
-    <string name="portfolio_average_price">Average price %1$s</string>
+    <string name="portfolio_total_value">Current value</string>
+    <string name="portfolio_invested">Invested</string>
+    <string name="portfolio_missing_prices">Some positions have no price yet — they are left out of the total</string>
+    <!-- количество × средняя цена покупки: знаки одинаковы во всех языках -->
+    <string name="portfolio_position_cost" translatable="false">%1$s × %2$s</string>
+    <string name="portfolio_profit_percent" translatable="false">(%1$s)</string>
     <string name="portfolio_amount">Amount</string>
     <string name="portfolio_amount_hint">0.42</string>
     <string name="portfolio_buy_price">Average buy price</string>

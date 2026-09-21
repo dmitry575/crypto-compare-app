@@ -24,6 +24,7 @@ import com.cryptocompare.data.paging.SymbolsRemoteMediator
 import com.cryptocompare.data.util.DataConstants
 import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.helpers.util.CryptoCompareRepositoryConstants
+import com.cryptocompare.helpers.validPriceOrNull
 import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.model.provider.Provider
@@ -36,6 +37,7 @@ import com.cryptocompare.network.api.CryptoCompareApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -229,6 +231,23 @@ class CryptoCompareRepositoryImpl
                     }
                 }
             }
+
+        /**
+         * Цены символов портфеля прямо из каталога: их и так держит свежими
+         * сокет, а отдельного эндпоинта «цены по списку символов» у бэкенда нет.
+         *
+         * Нулевые и нечисловые цены отбрасываются здесь, а не в портфеле: ноль
+         * у биржи означает «стороны стакана нет», и как стоимость позиции он
+         * читался бы обнулением вложенного.
+         */
+        override fun observeSellPrices(symbolIds: Set<Long>): Flow<Map<Long, Double>> =
+            symbolDao
+                .observeSellPrices(symbolIds.toList())
+                .map { rows ->
+                    rows
+                        .mapNotNull { row -> row.sellPrice.validPriceOrNull()?.let { price -> row.symbolId to price } }
+                        .toMap()
+                }.distinctUntilChanged()
 
         override suspend fun applyBestPriceUpdates(updates: List<TickerBestPrice>): Result<Unit> =
             withContext(ioDispatcher) {

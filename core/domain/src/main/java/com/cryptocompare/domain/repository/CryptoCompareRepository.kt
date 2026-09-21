@@ -45,6 +45,12 @@ interface CryptoCompareRepository {
 
     suspend fun applyBestPriceUpdates(updates: List<TickerBestPrice>): Result<Unit>
 
+    /**
+     * Цены продажи символов из каталога, ключ — `symbolId`. Символа без цены в
+     * выдаче нет: у портфеля «цены не знаем» и «стоит ноль» — разные ответы.
+     */
+    fun observeSellPrices(symbolIds: Set<Long>): Flow<Map<Long, Double>>
+
     suspend fun refreshCatalog(): Result<Unit>
 
     /** Когда каталог последний раз приезжал с бэкенда; 0 — не приезжал ни разу. */

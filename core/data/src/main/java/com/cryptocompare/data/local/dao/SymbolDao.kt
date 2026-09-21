@@ -10,6 +10,7 @@ import androidx.room.Transaction
 import androidx.sqlite.db.SupportSQLiteQuery
 import com.cryptocompare.data.local.entity.SymbolEntity
 import com.cryptocompare.model.symbol.PairAggregateRow
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SymbolDao {
@@ -73,6 +74,17 @@ interface SymbolDao {
             )
         }
     }
+
+    /**
+     * Цены продажи выбранных символов — по ним портфель считает стоимость позиций.
+     *
+     * Берётся именно bid: позицию закрывают продажей, и стоимость по цене
+     * покупки обещала бы пользователю деньги, которых он за актив не получит.
+     * Символа может не быть в каталоге совсем — тогда строки просто нет, и
+     * позиция остаётся без цены.
+     */
+    @Query("SELECT id AS symbolId, bestBidPrice AS sellPrice FROM symbols WHERE id IN (:symbolIds)")
+    fun observeSellPrices(symbolIds: List<Long>): Flow<List<SymbolSellPrice>>
 
     @Query("DELETE FROM symbols")
     suspend fun deleteAll()

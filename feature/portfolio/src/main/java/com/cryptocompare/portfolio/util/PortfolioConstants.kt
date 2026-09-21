@@ -1,7 +1,12 @@
 package com.cryptocompare.portfolio.util
 
-/** Константы портфеля: навигация и разбор ввода. */
+/** Константы портфеля: экран, навигация и разбор ввода. */
 object PortfolioConstants {
+    object Screen {
+        /** Ключ карточки итога в списке: позицией она не является, и symbolId у неё нет. */
+        const val SUMMARY_KEY = "summary"
+    }
+
     object Navigation {
         const val SYMBOL_ID_ARG = "symbolId"
         const val TICKER_ARG = "ticker"
