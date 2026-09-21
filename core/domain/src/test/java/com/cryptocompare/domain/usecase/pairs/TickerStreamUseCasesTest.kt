@@ -99,18 +99,18 @@ class TickerStreamUseCasesTest {
     }
 
     @Test
-    fun `SubscribeSingleTickerUseCase begins a single-ticker takeover`() {
+    fun `TakeOverTickerSubscriptionsUseCase begins a takeover with the screen's tickers`() {
         // дифф подписок и сохранение базы каталога теперь на репозитории — здесь
         // проверяем только делегацию
-        SubscribeSingleTickerUseCase(repository)("adausdt")
+        TakeOverTickerSubscriptionsUseCase(repository)(setOf("ADAUSDT"))
 
-        verify(exactly = 1) { repository.beginSingleTickerTakeover("adausdt") }
+        verify(exactly = 1) { repository.beginTickerTakeover(setOf("adausdt")) }
     }
 
     @Test
     fun `RestoreTickerSubscriptionsUseCase ends the takeover`() {
         RestoreTickerSubscriptionsUseCase(repository)()
 
-        verify(exactly = 1) { repository.endSingleTickerTakeover() }
+        verify(exactly = 1) { repository.endTickerTakeover() }
     }
 }

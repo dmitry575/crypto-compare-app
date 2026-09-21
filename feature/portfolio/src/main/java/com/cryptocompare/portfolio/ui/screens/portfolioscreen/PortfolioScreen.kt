@@ -18,6 +18,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +43,14 @@ fun PortfolioScreen(
     viewModel: PortfolioViewModel = hiltViewModel(),
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
+
+    // Подписки сокета живут ровно столько, сколько экран на виду: вкладка
+    // сохраняет свою ViewModel, и по её жизни каталог ждал бы свои подписки
+    // до закрытия приложения.
+    DisposableEffect(viewModel) {
+        viewModel.onScreenShown()
+        onDispose { viewModel.onScreenHidden() }
+    }
 
     Scaffold(
         topBar = {

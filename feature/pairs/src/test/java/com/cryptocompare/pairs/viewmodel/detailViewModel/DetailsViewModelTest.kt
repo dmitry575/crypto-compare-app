@@ -10,7 +10,7 @@ import com.cryptocompare.domain.usecase.pairs.GetTickerHistoryUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
-import com.cryptocompare.domain.usecase.pairs.SubscribeSingleTickerUseCase
+import com.cryptocompare.domain.usecase.pairs.TakeOverTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.settings.GetMarketPreferencesUseCase
 import com.cryptocompare.domain.usecase.settings.SetChartIndicatorsUseCase
 import com.cryptocompare.model.chart.Candle
@@ -184,7 +184,7 @@ class DetailsViewModelTest {
 
     private fun connectUseCaseMock(): StreamConnectUseCase = mockk(relaxed = true)
 
-    private fun subscribeSingleUseCaseMock(): SubscribeSingleTickerUseCase = mockk(relaxed = true)
+    private fun takeOverSubscriptionsUseCaseMock(): TakeOverTickerSubscriptionsUseCase = mockk(relaxed = true)
 
     private fun restoreUseCaseMock(): RestoreTickerSubscriptionsUseCase = mockk(relaxed = true)
 
@@ -218,7 +218,7 @@ class DetailsViewModelTest {
 
     private fun makeVm(
         connect: StreamConnectUseCase = connectUseCaseMock(),
-        subscribeSingle: SubscribeSingleTickerUseCase = subscribeSingleUseCaseMock(),
+        takeOverSubscriptions: TakeOverTickerSubscriptionsUseCase = takeOverSubscriptionsUseCaseMock(),
         restore: RestoreTickerSubscriptionsUseCase = restoreUseCaseMock(),
         details: GetTickerDetailUseCase = detailsUseCaseMock(defaultExchanges()),
         history: GetTickerHistoryUseCase = historyUseCaseMock(defaultHistory()),
@@ -231,7 +231,7 @@ class DetailsViewModelTest {
             getPairDetailsUseCase = details,
             getTickerHistoryUseCase = history,
             streamConnectUseCase = connect,
-            subscribeSingleTickerUseCase = subscribeSingle,
+            takeOverTickerSubscriptionsUseCase = takeOverSubscriptions,
             restoreTickerSubscriptionsUseCase = restore,
             observeTickerEventUseCase = observeEvents,
             observeStreamReconnectsUseCase = mockk { every { this@mockk.invoke() } returns reconnects },
@@ -261,13 +261,13 @@ class DetailsViewModelTest {
     fun `init connects and takes over subscriptions for the pair ticker`() =
         runTest {
             val connect = connectUseCaseMock()
-            val subscribeSingle = subscribeSingleUseCaseMock()
+            val takeOverSubscriptions = takeOverSubscriptionsUseCaseMock()
 
-            makeVm(connect = connect, subscribeSingle = subscribeSingle)
+            makeVm(connect = connect, takeOverSubscriptions = takeOverSubscriptions)
             runCurrent()
 
             verify(exactly = 1) { connect.invoke() }
-            verify(exactly = 1) { subscribeSingle.invoke("btcusdt") }
+            verify(exactly = 1) { takeOverSubscriptions.invoke(setOf("btcusdt")) }
         }
 
     @Test
@@ -445,7 +445,7 @@ class DetailsViewModelTest {
                     getPairDetailsUseCase = details,
                     getTickerHistoryUseCase = historyUseCaseMock(defaultHistory()),
                     streamConnectUseCase = connectUseCaseMock(),
-                    subscribeSingleTickerUseCase = subscribeSingleUseCaseMock(),
+                    takeOverTickerSubscriptionsUseCase = takeOverSubscriptionsUseCaseMock(),
                     restoreTickerSubscriptionsUseCase = restoreUseCaseMock(),
                     observeTickerEventUseCase = observeEventsUseCaseMock(),
                     observeStreamReconnectsUseCase = mockk { every { this@mockk.invoke() } returns reconnects },

@@ -146,27 +146,25 @@ class TickerStreamRepositoryImpl
             webSocketClient.unsubscribe(ticker)
         }
 
-        override fun beginSingleTickerTakeover(ticker: String) {
-            val normalizedTicker = ticker.lowercase()
+        override fun beginTickerTakeover(tickers: Set<String>) {
+            val normalizedTickers = tickers.mapNotNull { it.lowercase().takeIf(String::isNotBlank) }.toSet()
 
             synchronized(takeoverLock) {
                 // база снимается только у первого захвата: вложенный экран не должен
-                // запомнить как «каталог» уже урезанный до одного тикера набор
+                // запомнить как «каталог» уже урезанный набор
                 if (activeTakeovers == 0) {
                     catalogBaseline = webSocketClient.activeSubscriptions
                 }
                 activeTakeovers++
             }
 
-            // оставляем в соединении единственный тикер экрана
+            // оставляем в соединении ровно тикеры экрана
             val current = webSocketClient.activeSubscriptions
-            (current - normalizedTicker).forEach(webSocketClient::unsubscribe)
-            if (normalizedTicker.isNotBlank() && normalizedTicker !in current) {
-                webSocketClient.subscribe(normalizedTicker)
-            }
+            (current - normalizedTickers).forEach(webSocketClient::unsubscribe)
+            (normalizedTickers - current).forEach(webSocketClient::subscribe)
         }
 
-        override fun endSingleTickerTakeover() {
+        override fun endTickerTakeover() {
             val baseline =
                 synchronized(takeoverLock) {
                     if (activeTakeovers > 0) activeTakeovers--

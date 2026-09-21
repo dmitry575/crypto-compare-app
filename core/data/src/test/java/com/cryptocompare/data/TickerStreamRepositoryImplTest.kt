@@ -259,14 +259,27 @@ class TickerStreamRepositoryImplTest {
     }
 
     @Test
-    fun `takeover leaves only the screen ticker and restores the catalog on release`() {
+    fun `takeover leaves only the screen tickers and restores the catalog on release`() {
         val fixture = createRepository()
         val subscriptions = simulateSubscriptions(fixture.webSocketClient, initial = setOf("btcusdt", "ethusdt"))
 
-        fixture.repository.beginSingleTickerTakeover("ADAUSDT")
+        fixture.repository.beginTickerTakeover(setOf("ADAUSDT"))
         assertEquals(setOf("adausdt"), subscriptions())
 
-        fixture.repository.endSingleTickerTakeover()
+        fixture.repository.endTickerTakeover()
+        assertEquals(setOf("btcusdt", "ethusdt"), subscriptions())
+    }
+
+    @Test
+    fun `a takeover can hold several tickers at once`() {
+        // портфель забирает тикеры своих позиций, а не один
+        val fixture = createRepository()
+        val subscriptions = simulateSubscriptions(fixture.webSocketClient, initial = setOf("btcusdt", "ethusdt"))
+
+        fixture.repository.beginTickerTakeover(setOf("adausdt", "solusdt"))
+        assertEquals(setOf("adausdt", "solusdt"), subscriptions())
+
+        fixture.repository.endTickerTakeover()
         assertEquals(setOf("btcusdt", "ethusdt"), subscriptions())
     }
 
@@ -276,16 +289,16 @@ class TickerStreamRepositoryImplTest {
         val subscriptions = simulateSubscriptions(fixture.webSocketClient, initial = setOf("btcusdt"))
 
         // второй экран деталей накладывается на первый до того, как первый ушёл
-        fixture.repository.beginSingleTickerTakeover("ethusdt")
-        fixture.repository.beginSingleTickerTakeover("adausdt")
+        fixture.repository.beginTickerTakeover(setOf("ethusdt"))
+        fixture.repository.beginTickerTakeover(setOf("adausdt"))
         assertEquals(setOf("adausdt"), subscriptions())
 
         // ушёл один из двух — каталог возвращать рано, активный экран остаётся с тикером
-        fixture.repository.endSingleTickerTakeover()
+        fixture.repository.endTickerTakeover()
         assertEquals(setOf("adausdt"), subscriptions())
 
         // ушёл последний — только теперь возвращаем базу каталога
-        fixture.repository.endSingleTickerTakeover()
+        fixture.repository.endTickerTakeover()
         assertEquals(setOf("btcusdt"), subscriptions())
     }
 
@@ -294,7 +307,7 @@ class TickerStreamRepositoryImplTest {
         val fixture = createRepository()
         val subscriptions = simulateSubscriptions(fixture.webSocketClient, initial = setOf("btcusdt", "ethusdt"))
 
-        fixture.repository.endSingleTickerTakeover()
+        fixture.repository.endTickerTakeover()
 
         assertEquals(setOf("btcusdt", "ethusdt"), subscriptions())
         io.mockk.verify(exactly = 0) { fixture.webSocketClient.subscribe(any()) }
