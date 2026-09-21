@@ -20,8 +20,8 @@ android {
         applicationId = "com.boomhaa.cryptocompare"
         minSdk = 26
         targetSdk = 37
-        versionCode = 4
-        versionName = "2.0.0"
+        versionCode = 5
+        versionName = "2.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
