@@ -30,6 +30,16 @@ class ThemeRepositoryImplTest {
         }
 
     @Test
+    fun `an unreadable preferences file falls back to the default instead of crashing`() =
+        runTest {
+            // DataStore бросает IOException прямо в коллектор, а тему собирают
+            // в viewModelScope без своего catch: раньше это было падение на старте
+            val repository = ThemeRepositoryImpl(BrokenPreferencesDataStore())
+
+            assertEquals(ThemePreference.SYSTEM, repository.observeThemePreference().first())
+        }
+
+    @Test
     fun `saved preference is read back`() =
         runTest {
             repository.setThemePreference(ThemePreference.DARK)

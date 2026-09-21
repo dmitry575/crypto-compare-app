@@ -35,6 +35,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -56,6 +57,11 @@ class PortfolioViewModelTest {
     private val events = MutableSharedFlow<TickerStreamEvent>()
     private val reconnects = MutableSharedFlow<Unit>()
 
+    @Before
+    fun setUp() {
+        coEvery { refreshBestPrices.invoke(any()) } returns Result.success(1)
+    }
+
     @Test
     fun `until the database answers the screen is loading, not empty`() =
         runTest {
@@ -64,6 +70,7 @@ class PortfolioViewModelTest {
             every { cryptoCompareRepository.observeSellPrices(any()) } returns MutableStateFlow(emptyMap())
 
             val viewModel = createViewModel()
+            viewModel.onScreenShown()
             advanceUntilIdle()
 
             assertTrue(viewModel.uiState.value.loading)
@@ -86,6 +93,7 @@ class PortfolioViewModelTest {
                 MutableStateFlow(mapOf(SYMBOL_ID to 80_000.0))
 
             val viewModel = createViewModel()
+            viewModel.onScreenShown()
             advanceUntilIdle()
 
             positions.emit(listOf(POSITION))
@@ -108,6 +116,7 @@ class PortfolioViewModelTest {
             every { cryptoCompareRepository.observeSellPrices(setOf(SYMBOL_ID)) } returns prices
 
             val viewModel = createViewModel()
+            viewModel.onScreenShown()
             advanceUntilIdle()
 
             prices.value = mapOf(SYMBOL_ID to 60_000.0)
@@ -196,11 +205,58 @@ class PortfolioViewModelTest {
             coVerify(exactly = 0) { applyBestPriceChanges.invoke(any()) }
         }
 
+    @Test
+    fun `a hidden screen does not recount the portfolio`() =
+        runTest {
+            // ViewModel вкладки переживает уход с неё: без остановки портфель
+            // пересчитывался бы на каждый сброс цен каталога, никому не показываясь
+            val prices = MutableStateFlow(mapOf(SYMBOL_ID to 80_000.0))
+            every { portfolioRepository.observePositions() } returns MutableStateFlow(listOf(POSITION))
+            every { cryptoCompareRepository.observeSellPrices(setOf(SYMBOL_ID)) } returns prices
+
+            val viewModel = createViewModel()
+            viewModel.onScreenShown()
+            advanceUntilIdle()
+            viewModel.onScreenHidden()
+
+            prices.value = mapOf(SYMBOL_ID to 60_000.0)
+            advanceUntilIdle()
+
+            // на экране осталось то, что было при уходе, — и это не мигнёт загрузкой
+            assertEquals(
+                33_600.0,
+                viewModel.uiState.value.holdings
+                    .single()
+                    .currentValue!!,
+                DELTA,
+            )
+        }
+
+    @Test
+    fun `a catch-up that applied nothing is tried again`() =
+        runTest {
+            // офлайн: use case глотает ошибки по тикерам и отдаёт success(0).
+            // Пометить такие цены догнанными значило бы больше за ними не пойти
+            val positions = MutableStateFlow(listOf(POSITION))
+            every { portfolioRepository.observePositions() } returns positions
+            every { cryptoCompareRepository.observeSellPrices(any()) } returns
+                MutableStateFlow(mapOf(SYMBOL_ID to 80_000.0))
+            coEvery { refreshBestPrices.invoke(any()) } returns Result.success(0)
+
+            val viewModel = createViewModel()
+            viewModel.onScreenShown()
+            advanceUntilIdle()
+
+            positions.value = listOf(POSITION.copy(amount = 1.0))
+            advanceUntilIdle()
+
+            coVerify(exactly = 2) { refreshBestPrices.invoke(setOf("btcusdt")) }
+        }
+
     private fun givenPortfolio() {
         every { portfolioRepository.observePositions() } returns MutableStateFlow(listOf(POSITION))
         every { cryptoCompareRepository.observeSellPrices(setOf(SYMBOL_ID)) } returns
             MutableStateFlow(mapOf(SYMBOL_ID to 80_000.0))
-        coEvery { refreshBestPrices.invoke(any()) } returns Result.success(1)
     }
 
     private fun createViewModel() =

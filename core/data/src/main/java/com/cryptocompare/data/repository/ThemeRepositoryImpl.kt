@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.cryptocompare.data.local.preferencesOrEmpty
 import com.cryptocompare.data.util.DataConstants
 import com.cryptocompare.domain.repository.ThemeRepository
 import com.cryptocompare.model.settings.ThemePreference
@@ -19,7 +20,7 @@ class ThemeRepositoryImpl
         private val themeKey = stringPreferencesKey(DataConstants.Preferences.THEME_KEY)
 
         override fun observeThemePreference(): Flow<ThemePreference> =
-            dataStore.data.map { preferences ->
+            dataStore.preferencesOrEmpty().map { preferences ->
                 // хранится имя константы: если значение испорчено или enum
                 // переименовали, откатываемся к системной теме, а не падаем
                 preferences[themeKey]

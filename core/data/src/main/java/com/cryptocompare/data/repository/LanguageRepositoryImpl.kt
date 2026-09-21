@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.cryptocompare.data.local.preferencesOrEmpty
 import com.cryptocompare.data.util.DataConstants
 import com.cryptocompare.domain.repository.LanguageRepository
 import com.cryptocompare.model.settings.AppLanguage
@@ -19,7 +20,7 @@ class LanguageRepositoryImpl
         private val languageKey = stringPreferencesKey(DataConstants.Preferences.LANGUAGE_KEY)
 
         override fun observeLanguage(): Flow<AppLanguage> =
-            dataStore.data.map { preferences ->
+            dataStore.preferencesOrEmpty().map { preferences ->
                 // хранится имя константы; порча значения или переименование enum
                 // не должны ронять приложение — откатываемся к системному языку
                 preferences[languageKey]
