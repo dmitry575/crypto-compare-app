@@ -10,7 +10,7 @@ import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
-import com.cryptocompare.domain.usecase.pairs.SubscribeSingleTickerUseCase
+import com.cryptocompare.domain.usecase.pairs.TakeOverTickerSubscriptionsUseCase
 import com.cryptocompare.model.comparison.PairComparison
 import com.cryptocompare.model.provider.Provider
 import com.cryptocompare.model.provider.ProviderDetail
@@ -51,7 +51,7 @@ class ComparisonViewModelTest {
         mockk { every { this@mockk.invoke() } returns reconnects }
 
     private val connect: StreamConnectUseCase = mockk(relaxed = true)
-    private val subscribeSingle: SubscribeSingleTickerUseCase = mockk(relaxed = true)
+    private val takeOverSubscriptions: TakeOverTickerSubscriptionsUseCase = mockk(relaxed = true)
     private val restore: RestoreTickerSubscriptionsUseCase = mockk(relaxed = true)
     private val observeEvents: ObserveTickerEventUseCase = mockk { every { this@mockk.invoke() } returns events }
     private val compare: ComparePairAcrossExchangesUseCase =
@@ -72,7 +72,7 @@ class ComparisonViewModelTest {
             comparePairAcrossExchangesUseCase = compare,
             applyComparisonBestPricesUseCase = ApplyComparisonBestPricesUseCase(),
             streamConnectUseCase = connect,
-            subscribeSingleTickerUseCase = subscribeSingle,
+            takeOverTickerSubscriptionsUseCase = takeOverSubscriptions,
             restoreTickerSubscriptionsUseCase = restore,
             observeTickerEventUseCase = observeEvents,
             observeStreamReconnectsUseCase = observeReconnects,
@@ -85,7 +85,7 @@ class ComparisonViewModelTest {
             runCurrent()
 
             verify(exactly = 1) { connect.invoke() }
-            verify(exactly = 1) { subscribeSingle.invoke(TICKER) }
+            verify(exactly = 1) { takeOverSubscriptions.invoke(setOf(TICKER)) }
         }
 
     @Test
@@ -328,7 +328,7 @@ class ComparisonViewModelTest {
 
             // отпусти он чужой захват — счётчик уехал бы в минус, и каталог
             // вернулся бы в соединение поверх открытого экрана деталей
-            verify(exactly = 0) { subscribeSingle.invoke(any()) }
+            verify(exactly = 0) { takeOverSubscriptions.invoke(any()) }
             verify(exactly = 0) { restore.invoke() }
             assertFalse(vm.uiState.value.loading)
         }

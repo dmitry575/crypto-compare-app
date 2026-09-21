@@ -7,6 +7,11 @@ object PortfolioConstants {
         const val SUMMARY_KEY = "summary"
     }
 
+    object Prices {
+        /** Тики идут десятками в секунду; в базу уходит последний за интервал. */
+        const val FLUSH_INTERVAL_MS = 500L
+    }
+
     object Navigation {
         const val SYMBOL_ID_ARG = "symbolId"
         const val TICKER_ARG = "ticker"

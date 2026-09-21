@@ -10,7 +10,7 @@ import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
-import com.cryptocompare.domain.usecase.pairs.SubscribeSingleTickerUseCase
+import com.cryptocompare.domain.usecase.pairs.TakeOverTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.settings.GetMarketPreferencesUseCase
 import com.cryptocompare.domain.usecase.settings.SetChartIndicatorsUseCase
 import com.cryptocompare.helpers.toUserMessage
@@ -46,7 +46,7 @@ class DetailsViewModel
         private val getPairDetailsUseCase: GetTickerDetailUseCase,
         private val getTickerHistoryUseCase: GetTickerHistoryUseCase,
         private val streamConnectUseCase: StreamConnectUseCase,
-        private val subscribeSingleTickerUseCase: SubscribeSingleTickerUseCase,
+        private val takeOverTickerSubscriptionsUseCase: TakeOverTickerSubscriptionsUseCase,
         private val restoreTickerSubscriptionsUseCase: RestoreTickerSubscriptionsUseCase,
         private val observeTickerEventUseCase: ObserveTickerEventUseCase,
         private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
@@ -150,7 +150,7 @@ class DetailsViewModel
             if (ticker.isBlank()) return
 
             streamConnectUseCase()
-            subscribeSingleTickerUseCase(ticker)
+            takeOverTickerSubscriptionsUseCase(setOf(ticker))
             subscriptionTakenOver = true
 
             viewModelScope.launch {

@@ -9,7 +9,7 @@ import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
-import com.cryptocompare.domain.usecase.pairs.SubscribeSingleTickerUseCase
+import com.cryptocompare.domain.usecase.pairs.TakeOverTickerSubscriptionsUseCase
 import com.cryptocompare.helpers.toUserMessage
 import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerPrice
@@ -43,7 +43,7 @@ class ComparisonViewModel
         private val comparePairAcrossExchangesUseCase: ComparePairAcrossExchangesUseCase,
         private val applyComparisonBestPricesUseCase: ApplyComparisonBestPricesUseCase,
         private val streamConnectUseCase: StreamConnectUseCase,
-        private val subscribeSingleTickerUseCase: SubscribeSingleTickerUseCase,
+        private val takeOverTickerSubscriptionsUseCase: TakeOverTickerSubscriptionsUseCase,
         private val restoreTickerSubscriptionsUseCase: RestoreTickerSubscriptionsUseCase,
         private val observeTickerEventUseCase: ObserveTickerEventUseCase,
         private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
@@ -130,7 +130,7 @@ class ComparisonViewModel
 
             // connect идемпотентен: соединение могло быть закрыто после ухода с каталога
             streamConnectUseCase()
-            subscribeSingleTickerUseCase(ticker)
+            takeOverTickerSubscriptionsUseCase(setOf(ticker))
             subscriptionTakenOver = true
 
             viewModelScope.launch {
