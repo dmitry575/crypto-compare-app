@@ -27,6 +27,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cryptocompare.portfolio.R
 import com.cryptocompare.portfolio.ui.screens.portfolioscreen.components.PortfolioEmptyState
 import com.cryptocompare.portfolio.ui.screens.portfolioscreen.components.PortfolioPositionRow
+import com.cryptocompare.portfolio.ui.screens.portfolioscreen.components.PortfolioSummaryCard
+import com.cryptocompare.portfolio.util.PortfolioConstants
 import com.cryptocompare.portfolio.viewmodel.portfolioviewmodel.PortfolioViewModel
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.bgCard
@@ -67,7 +69,7 @@ fun PortfolioScreen(
             when {
                 uiState.loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
-                uiState.positions.isEmpty() -> PortfolioEmptyState(onOpenPairs = onOpenPairs)
+                uiState.holdings.isEmpty() -> PortfolioEmptyState(onOpenPairs = onOpenPairs)
 
                 else ->
                     LazyColumn(
@@ -78,10 +80,21 @@ fun PortfolioScreen(
                             ),
                         verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
                     ) {
-                        items(uiState.positions, key = { position -> position.symbolId }) { position ->
+                        // итог едет вместе со списком: у портфеля из десятка позиций
+                        // закреплённая карточка отъедала бы у него пол-экрана
+                        item(key = PortfolioConstants.Screen.SUMMARY_KEY) {
+                            PortfolioSummaryCard(
+                                summary = uiState.summary,
+                                modifier = Modifier.padding(bottom = Dimensions.Gap.sm),
+                            )
+                        }
+
+                        items(uiState.holdings, key = { holding -> holding.position.symbolId }) { holding ->
                             PortfolioPositionRow(
-                                position = position,
-                                onClick = { onPositionClick(position.symbolId, position.ticker) },
+                                holding = holding,
+                                onClick = {
+                                    onPositionClick(holding.position.symbolId, holding.position.ticker)
+                                },
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()

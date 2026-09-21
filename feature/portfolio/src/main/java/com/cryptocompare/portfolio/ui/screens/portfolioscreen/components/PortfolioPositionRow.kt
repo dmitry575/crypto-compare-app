@@ -14,49 +14,91 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import com.cryptocompare.helpers.priceChangeSign
+import com.cryptocompare.helpers.toCompactPriceString
 import com.cryptocompare.helpers.toPriceString
-import com.cryptocompare.model.portfolio.PortfolioPosition
+import com.cryptocompare.helpers.toSignedPercentString
+import com.cryptocompare.helpers.util.PriceFormatConstants
+import com.cryptocompare.model.portfolio.PortfolioHolding
 import com.cryptocompare.portfolio.R
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.NumericType
+import com.cryptocompare.ui.theme.priceChangeColor
+import com.cryptocompare.ui.theme.textPrimary
 import com.cryptocompare.ui.theme.textSecondary
 
-/** Позиция в списке: что, сколько и почём покупалось. Прибыль добавится следующим шагом. */
+/**
+ * Позиция в списке: слева — что и почём куплено, справа — сколько стоит сейчас
+ * и что на этом вышло.
+ *
+ * Цены может не быть: символ выпал из каталога или каталог ещё не подъехал.
+ * Тогда справа прочерк, а не ноль — «стоит ноль» это другое утверждение.
+ */
 @Composable
 internal fun PortfolioPositionRow(
-    position: PortfolioPosition,
+    holding: PortfolioHolding,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val profitSign = holding.profitPercent?.priceChangeSign() ?: 0
+
     Row(
         modifier =
             modifier
                 .fillMaxWidth()
-                .heightIn(min = Dimensions.Height.listItemSmall)
+                .heightIn(min = Dimensions.Height.listItemStats)
                 .clickable(onClick = onClick)
                 .padding(
                     horizontal = Dimensions.Padding.cardMedium,
                     vertical = Dimensions.Padding.listItemVertical,
                 ),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(Dimensions.Gap.md),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.xs)) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.xs),
+        ) {
             Text(
-                text = position.ticker.uppercase(),
+                text = holding.position.ticker.uppercase(),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = stringResource(R.string.portfolio_average_price, position.buyPrice.toPriceString()),
+                text =
+                    stringResource(
+                        R.string.portfolio_position_cost,
+                        holding.position.amount.toCompactPriceString(),
+                        holding.position.buyPrice.toCompactPriceString(),
+                    ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
 
-        Text(
-            text = position.amount.toPriceString(),
-            style = NumericType.Small,
-        )
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.xs),
+        ) {
+            Text(
+                text = holding.currentValue?.toPriceString() ?: PriceFormatConstants.NON_FINITE_PLACEHOLDER,
+                style = NumericType.Small,
+                color = MaterialTheme.colorScheme.textPrimary,
+                maxLines = 1,
+                softWrap = false,
+            )
+            Text(
+                text = holding.profitPercent?.toSignedPercentString() ?: PriceFormatConstants.NON_FINITE_PLACEHOLDER,
+                style = NumericType.Caption,
+                color = MaterialTheme.colorScheme.priceChangeColor(profitSign),
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
     }
 }

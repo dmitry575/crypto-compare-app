@@ -22,6 +22,9 @@ object PriceFormatConstants {
     const val PERCENT_PRECISION = 0.005
     const val MINUS = "-"
 
+    /** Знак прибыли: у минуса он свой, плюс дописывается. */
+    const val PLUS = "+"
+
     /** Ниже этого разброс тонет в комиссиях и подсветки не заслуживает. */
     const val NOTABLE_SPREAD_PERCENT = 0.1
 
