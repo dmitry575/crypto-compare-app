@@ -296,16 +296,21 @@ class CryptoCompareRepositoryImpl
                     cryptoCompareApi.getSymbols(
                         skip = skip,
                         rows = CryptoCompareRepositoryConstants.SYMBOLS_IN_ROW,
+                        sortBy = CryptoCompareRepositoryConstants.CATALOG_SORT_BY,
+                        sortDir = CryptoCompareRepositoryConstants.CATALOG_SORT_DIR,
                     )
                 if (response.errorCode != 0) {
                     val message = response.errorMsgs?.joinToString("\n") ?: "Unknown error"
                     throw IllegalStateException(message)
                 }
 
-                val symbols = response.symbols.normalizeSymbols()
-                if (symbols.isEmpty()) break
+                // конец — пустая страница бэкенда, а не пустой остаток после отсева
+                // строк без цены: страница, где отсеялось всё, обрывала бы выкачку,
+                // и syncSymbols удалил бы весь каталог дальше неё
+                val page = response.symbols.orEmpty()
+                if (page.isEmpty()) break
 
-                refreshedSymbols += symbols.toEntityFromDto(syncedAtMillis)
+                refreshedSymbols += page.normalizeSymbols().toEntityFromDto(syncedAtMillis)
                 skip += CryptoCompareRepositoryConstants.SYMBOLS_IN_ROW
             }
 
