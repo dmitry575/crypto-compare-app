@@ -1,6 +1,9 @@
 package com.cryptocompare.domain.usecase.portfolio
 
 import com.cryptocompare.domain.repository.PortfolioRepository
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AppException
+import com.cryptocompare.model.error.ValidationErrorReason
 import com.cryptocompare.model.portfolio.PortfolioPosition
 import com.cryptocompare.model.portfolio.PortfolioPositionDraft
 import javax.inject.Inject
@@ -19,7 +22,7 @@ class SavePortfolioPositionUseCase
          */
         suspend operator fun invoke(draft: PortfolioPositionDraft): Result<Unit> {
             if (draft.amount < 0 || draft.buyPrice < 0) {
-                return Result.failure(IllegalArgumentException(NEGATIVE_VALUES))
+                return Result.failure(AppException(AppError.Validation(ValidationErrorReason.NEGATIVE_VALUES)))
             }
 
             if (draft.amount == 0.0) return portfolioRepository.deletePosition(draft.symbolId)
@@ -34,9 +37,5 @@ class SavePortfolioPositionUseCase
                     providerId = draft.providerId,
                 ),
             )
-        }
-
-        private companion object {
-            const val NEGATIVE_VALUES = "Portfolio amount and price cannot be negative"
         }
     }

@@ -29,7 +29,7 @@ class CryptoCompareApp :
     override fun onCreate() {
         super.onCreate()
         ProcessLifecycleOwner.get().lifecycle.addObserver(tickerStreamLifecycleObserver)
-        WorkScheduler.scheduleDailyRefreshCatalog(this)
+        WorkScheduler.scheduleCatalogRefresh(this)
         WorkScheduler.scheduleFavouritesSync(this)
     }
 }

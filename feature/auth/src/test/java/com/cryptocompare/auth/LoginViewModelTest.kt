@@ -5,6 +5,10 @@ import com.cryptocompare.domain.repository.AuthRepository
 import com.cryptocompare.domain.usecase.auth.IsValidEmailUseCase
 import com.cryptocompare.domain.usecase.auth.SignInWithEmailUseCase
 import com.cryptocompare.domain.usecase.auth.SignInWithGoogleUseCase
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AppException
+import com.cryptocompare.model.error.AuthErrorReason
+import com.cryptocompare.model.error.ValidationErrorReason
 import com.cryptocompare.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -38,7 +42,7 @@ class LoginViewModelTest {
 
             viewModel.signInWithEmail()
 
-            assertEquals("Incorrect email was entered", viewModel.uiState.value.errorMessage)
+            assertEquals(AppError.Validation(ValidationErrorReason.INVALID_EMAIL), viewModel.uiState.value.error)
             coVerify(exactly = 0) { signInWithEmailUseCase(any(), any()) }
         }
 
@@ -52,7 +56,7 @@ class LoginViewModelTest {
 
             viewModel.signInWithEmail()
 
-            assertEquals("Password must have more than 6 symbols", viewModel.uiState.value.errorMessage)
+            assertEquals(AppError.Validation(ValidationErrorReason.PASSWORD_TOO_SHORT), viewModel.uiState.value.error)
             coVerify(exactly = 0) { signInWithEmailUseCase(any(), any()) }
         }
 
@@ -71,14 +75,14 @@ class LoginViewModelTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.isLoading)
-            assertNull(viewModel.uiState.value.errorMessage)
+            assertNull(viewModel.uiState.value.error)
         }
 
     @Test
     fun `signIn failure sets error`() =
         runTest {
             coEvery { signInWithEmailUseCase(any(), any()) } returns
-                Result.failure(IllegalStateException("fail"))
+                Result.failure(AppException(AppError.Auth(AuthErrorReason.INVALID_CREDENTIALS)))
             val viewModel = createViewModel()
 
             viewModel.onEmailChange("user@example.com")
@@ -87,7 +91,7 @@ class LoginViewModelTest {
             viewModel.signInWithEmail()
             advanceUntilIdle()
 
-            assertEquals("fail", viewModel.uiState.value.errorMessage)
+            assertEquals(AppError.Auth(AuthErrorReason.INVALID_CREDENTIALS), viewModel.uiState.value.error)
             assertFalse(viewModel.uiState.value.isLoading)
         }
 
@@ -98,7 +102,7 @@ class LoginViewModelTest {
 
             viewModel.signInWithGoogle("")
 
-            assertEquals("Google token not found", viewModel.uiState.value.errorMessage)
+            assertEquals(AppError.Auth(AuthErrorReason.GOOGLE_TOKEN_MISSING), viewModel.uiState.value.error)
             coVerify(exactly = 0) { signInWithGoogleUseCase(any()) }
         }
 
@@ -114,7 +118,7 @@ class LoginViewModelTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.isLoading)
-            assertNull(viewModel.uiState.value.errorMessage)
+            assertNull(viewModel.uiState.value.error)
         }
 
     private fun createViewModel(): LoginViewModel =

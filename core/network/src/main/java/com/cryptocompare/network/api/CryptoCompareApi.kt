@@ -40,12 +40,16 @@ interface CryptoCompareApi {
         @Query("rows") rows: Int? = null,
     ): GetSymbolsResponse
 
-    // Лента каталога: строка на тикер с лучшей парой цен, сведённой по биржам.
+    // Лента каталога: строка на символ с лучшей парой цен, сведённой по биржам.
     // Форма ответа отличается от разбивки по биржам — см. SymbolBestPriceDto.
+    // Без sortBy бэкенд сортирует по updatedAt desc, а по нему страницы листать
+    // нельзя: строки переезжают между запросами, пока идёт выкачка.
     @GET("symbols")
     suspend fun getSymbols(
         @Query("skip") skip: Int? = null,
         @Query("rows") rows: Int? = null,
+        @Query("sortBy") sortBy: String? = null,
+        @Query("sortDir") sortDir: String? = null,
     ): GetSymbolsBestPriceResponse
 
     @GET("symbols/{id}")

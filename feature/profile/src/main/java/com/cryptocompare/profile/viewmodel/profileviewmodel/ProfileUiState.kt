@@ -1,6 +1,7 @@
 package com.cryptocompare.profile.viewmodel.profileviewmodel
 
 import com.cryptocompare.model.auth.AuthUser
+import com.cryptocompare.model.error.AppError
 import com.cryptocompare.model.provider.Provider
 import com.cryptocompare.model.settings.AppLanguage
 import com.cryptocompare.model.settings.MarketPreferences
@@ -12,7 +13,7 @@ data class ProfileUiState(
     val isLoading: Boolean = false,
     val showSignOutConfirmation: Boolean = false,
     val showDeleteConfirmation: Boolean = false,
-    val errorMessage: String? = null,
+    val error: AppError? = null,
     val themePreference: ThemePreference = ThemePreference.DEFAULT,
     val marketPreferences: MarketPreferences = MarketPreferences(),
     /** Справочник бирж для выбора площадки по умолчанию. */

@@ -10,7 +10,8 @@ import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
 import com.cryptocompare.domain.usecase.pairs.TakeOverTickerSubscriptionsUseCase
-import com.cryptocompare.helpers.toUserMessage
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.asAppError
 import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
@@ -102,7 +103,7 @@ class ComparisonViewModel
                         _uiState.update { it.copy(loading = false, comparison = comparison) }
                     },
                     onFailure = { error ->
-                        _uiState.update { it.copy(loading = false, error = error.toUserMessage()) }
+                        _uiState.update { it.copy(loading = false, error = error.asAppError()) }
                     },
                 )
             }
@@ -155,7 +156,7 @@ class ComparisonViewModel
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    _uiState.update { it.copy(error = e.toUserMessage()) }
+                    _uiState.update { it.copy(error = AppError.Stream) }
                 }
             }
         }

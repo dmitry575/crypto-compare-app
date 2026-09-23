@@ -12,18 +12,30 @@ import com.cryptocompare.helpers.util.WorkerConstants
 import java.util.concurrent.TimeUnit
 
 object WorkScheduler {
-    fun scheduleDailyRefreshCatalog(context: Context) {
+    /**
+     * Фоновая перекачка каталога. Раньше называлась `scheduleDailyRefreshCatalog`,
+     * хотя интервал давно 20 минут — см. [WorkerConstants.CATALOG_REFRESH_INTERVAL_MINUTES].
+     *
+     * `UPDATE`, а не `KEEP`: при `KEEP` новый интервал к уже стоящей работе не
+     * применялся, и у тех, кто поставил приложение до смены интервала, каталог
+     * так и перекачивался раз в сутки — даже после обновления. `UPDATE` правит
+     * стоящую работу на месте: расписание не сбрасывается, идущий запуск не
+     * прерывается, а следующая смена интервала дойдёт до всех сама.
+     */
+    fun scheduleCatalogRefresh(context: Context) {
         val constraints =
             Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
         val refreshRequest =
-            PeriodicWorkRequestBuilder<RefreshCatalogWorker>(20, TimeUnit.MINUTES)
-                .setConstraints(constraints)
+            PeriodicWorkRequestBuilder<RefreshCatalogWorker>(
+                WorkerConstants.CATALOG_REFRESH_INTERVAL_MINUTES,
+                TimeUnit.MINUTES,
+            ).setConstraints(constraints)
                 .build()
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             WorkerConstants.UNIQUE_WORK_NAME,
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             refreshRequest,
         )
     }
@@ -33,8 +45,10 @@ object WorkScheduler {
             Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
         val syncRequest =
-            PeriodicWorkRequestBuilder<SyncFavouritesWorker>(15, TimeUnit.MINUTES)
-                .setConstraints(constraints)
+            PeriodicWorkRequestBuilder<SyncFavouritesWorker>(
+                WorkerConstants.FAVOURITES_SYNC_INTERVAL_MINUTES,
+                TimeUnit.MINUTES,
+            ).setConstraints(constraints)
                 .build()
 
         // UPDATE, а не KEEP: имя класса воркера лежит в базе WorkManager, и у тех,

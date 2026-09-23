@@ -1,10 +1,12 @@
 package com.cryptocompare.auth
 
-import com.cryptocompare.auth.util.AuthConstants
 import com.cryptocompare.auth.viewmodel.forgotpasswordviewmodel.ForgotPasswordViewModel
 import com.cryptocompare.domain.repository.AuthRepository
 import com.cryptocompare.domain.usecase.auth.IsValidEmailUseCase
 import com.cryptocompare.domain.usecase.auth.SendPasswordResetEmailUseCase
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AppException
+import com.cryptocompare.model.error.ValidationErrorReason
 import com.cryptocompare.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -37,7 +39,7 @@ class ForgotPasswordViewModelTest {
             viewModel.sendResetEmail()
             advanceUntilIdle()
 
-            assertEquals(AuthConstants.Errors.INVALID_EMAIL, viewModel.uiState.value.errorMessage)
+            assertEquals(AppError.Validation(ValidationErrorReason.INVALID_EMAIL), viewModel.uiState.value.error)
             assertFalse(viewModel.uiState.value.isEmailSent)
             coVerify(exactly = 0) { authRepository.sendPasswordResetEmail(any()) }
         }
@@ -50,7 +52,7 @@ class ForgotPasswordViewModelTest {
             viewModel.sendResetEmail()
             advanceUntilIdle()
 
-            assertEquals(AuthConstants.Errors.INVALID_EMAIL, viewModel.uiState.value.errorMessage)
+            assertEquals(AppError.Validation(ValidationErrorReason.INVALID_EMAIL), viewModel.uiState.value.error)
             coVerify(exactly = 0) { authRepository.sendPasswordResetEmail(any()) }
         }
 
@@ -68,7 +70,7 @@ class ForgotPasswordViewModelTest {
             val uiState = viewModel.uiState.value
             assertTrue(uiState.isEmailSent)
             assertFalse(uiState.isLoading)
-            assertNull(uiState.errorMessage)
+            assertNull(uiState.error)
         }
 
     @Test
@@ -88,7 +90,7 @@ class ForgotPasswordViewModelTest {
     fun `failure keeps the form and shows the firebase message`() =
         runTest {
             coEvery { authRepository.sendPasswordResetEmail(any()) } returns
-                Result.failure(IllegalStateException(NETWORK_ERROR))
+                Result.failure(AppException(AppError.Network))
             val viewModel = createViewModel()
 
             viewModel.onEmailChange(EMAIL)
@@ -96,7 +98,7 @@ class ForgotPasswordViewModelTest {
             advanceUntilIdle()
 
             val uiState = viewModel.uiState.value
-            assertEquals(NETWORK_ERROR, uiState.errorMessage)
+            assertEquals(AppError.Network, uiState.error)
             assertFalse(uiState.isEmailSent)
             assertFalse(uiState.isLoading)
         }
@@ -105,18 +107,18 @@ class ForgotPasswordViewModelTest {
     fun `retry after a failure clears the previous error`() =
         runTest {
             coEvery { authRepository.sendPasswordResetEmail(EMAIL) } returns
-                Result.failure(IllegalStateException(NETWORK_ERROR)) andThen Result.success(Unit)
+                Result.failure(AppException(AppError.Network)) andThen Result.success(Unit)
             val viewModel = createViewModel()
 
             viewModel.onEmailChange(EMAIL)
             viewModel.sendResetEmail()
             advanceUntilIdle()
-            assertEquals(NETWORK_ERROR, viewModel.uiState.value.errorMessage)
+            assertEquals(AppError.Network, viewModel.uiState.value.error)
 
             viewModel.sendResetEmail()
             advanceUntilIdle()
 
-            assertNull(viewModel.uiState.value.errorMessage)
+            assertNull(viewModel.uiState.value.error)
             assertTrue(viewModel.uiState.value.isEmailSent)
         }
 
@@ -125,6 +127,5 @@ class ForgotPasswordViewModelTest {
 
     private companion object {
         const val EMAIL = "user@example.com"
-        const val NETWORK_ERROR = "A network error has occurred"
     }
 }

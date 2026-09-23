@@ -30,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cryptocompare.helpers.toPairName
 import com.cryptocompare.portfolio.R
 import com.cryptocompare.portfolio.ui.screens.positioneditscreen.components.ExchangeField
 import com.cryptocompare.portfolio.viewmodel.positioneditviewmodel.PositionEditViewModel
@@ -85,7 +86,7 @@ fun PositionEditScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = uiState.ticker.uppercase(),
+                        text = uiState.ticker.toPairName(),
                         style = MaterialTheme.typography.titleLarge,
                     )
                 },

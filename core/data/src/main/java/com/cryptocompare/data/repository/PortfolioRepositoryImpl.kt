@@ -4,11 +4,11 @@ import com.cryptocompare.data.local.dao.PortfolioPositionDao
 import com.cryptocompare.data.mapper.toDomain
 import com.cryptocompare.data.mapper.toEntity
 import com.cryptocompare.data.mapper.toSellQuotes
+import com.cryptocompare.data.util.appRunCatching
 import com.cryptocompare.domain.repository.PortfolioRepository
 import com.cryptocompare.model.portfolio.PortfolioPosition
 import com.cryptocompare.model.portfolio.PortfolioQuote
 import com.cryptocompare.model.symbol.SymbolSellQuote
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -33,14 +33,12 @@ class PortfolioRepositoryImpl
 
         override suspend fun savePosition(position: PortfolioPosition): Result<Unit> =
             withContext(ioDispatcher) {
-                runCatching { portfolioPositionDao.upsert(position.toEntity()) }
-                    .onFailure { exception -> if (exception is CancellationException) throw exception }
+                appRunCatching { portfolioPositionDao.upsert(position.toEntity()) }
             }
 
         override suspend fun deletePosition(symbolId: Long): Result<Unit> =
             withContext(ioDispatcher) {
-                runCatching { portfolioPositionDao.delete(symbolId) }
-                    .onFailure { exception -> if (exception is CancellationException) throw exception }
+                appRunCatching { portfolioPositionDao.delete(symbolId) }
             }
 
         override fun observePinnedQuotes(): Flow<Map<Long, SymbolSellQuote>> =
@@ -51,8 +49,8 @@ class PortfolioRepositoryImpl
 
         override suspend fun savePinnedQuotes(quotes: List<PortfolioQuote>): Result<Unit> =
             withContext(ioDispatcher) {
-                runCatching {
+                appRunCatching {
                     if (quotes.isNotEmpty()) portfolioPositionDao.upsertQuotes(quotes.map { it.toEntity() })
-                }.onFailure { exception -> if (exception is CancellationException) throw exception }
+                }
             }
     }

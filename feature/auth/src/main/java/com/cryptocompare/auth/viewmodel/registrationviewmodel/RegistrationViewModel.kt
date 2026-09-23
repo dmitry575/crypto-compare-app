@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.cryptocompare.domain.usecase.auth.IsValidEmailUseCase
 import com.cryptocompare.domain.usecase.auth.SignInWithGoogleUseCase
 import com.cryptocompare.domain.usecase.auth.SignUpWithEmailUseCase
-import com.cryptocompare.helpers.toUserMessage
 import com.cryptocompare.helpers.util.PasswordConstants
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AuthErrorReason
+import com.cryptocompare.model.error.ValidationErrorReason
+import com.cryptocompare.model.error.asAppError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,7 +53,9 @@ class RegistrationViewModel
             val confirmPassword = _uiState.value.confirmPassword
 
             if (!isValidEmailUseCase(email)) {
-                _uiState.update { uiState -> uiState.copy(errorMessage = "Incorrect email was entered") }
+                _uiState.update { uiState ->
+                    uiState.copy(error = AppError.Validation(ValidationErrorReason.INVALID_EMAIL))
+                }
                 return
             }
 
@@ -58,15 +63,15 @@ class RegistrationViewModel
                 !_uiState.value.passwordLetterMet ||
                 !_uiState.value.passwordNumberMet
             ) {
-                _uiState.update { it.copy(errorMessage = "Password must be stronger") }
+                _uiState.update { it.copy(error = AppError.Validation(ValidationErrorReason.PASSWORD_TOO_WEAK)) }
                 return
             }
             if (password != confirmPassword) {
-                _uiState.update { it.copy(errorMessage = "Passwords don't match") }
+                _uiState.update { it.copy(error = AppError.Validation(ValidationErrorReason.PASSWORDS_DO_NOT_MATCH)) }
                 return
             }
 
-            _uiState.update { uiState -> uiState.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { uiState -> uiState.copy(isLoading = true, error = null) }
 
             viewModelScope.launch {
                 signUpWithEmailUseCase(email, password)
@@ -78,7 +83,7 @@ class RegistrationViewModel
                         _uiState.update { uiState ->
                             uiState.copy(
                                 isLoading = false,
-                                errorMessage = error.toUserMessage(),
+                                error = error.asAppError(),
                             )
                         }
                     }
@@ -87,11 +92,11 @@ class RegistrationViewModel
 
         fun signUpWithGoogle(idToken: String) {
             if (idToken.isBlank()) {
-                _uiState.update { uiState -> uiState.copy(errorMessage = "Google token not found") }
+                _uiState.update { uiState -> uiState.copy(error = AppError.Auth(AuthErrorReason.GOOGLE_TOKEN_MISSING)) }
                 return
             }
 
-            _uiState.update { uiState -> uiState.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { uiState -> uiState.copy(isLoading = true, error = null) }
 
             viewModelScope.launch {
                 signInWithGoogleUseCase(idToken)
@@ -103,14 +108,14 @@ class RegistrationViewModel
                         _uiState.update { uiState ->
                             uiState.copy(
                                 isLoading = false,
-                                errorMessage = error.toUserMessage(),
+                                error = error.asAppError(),
                             )
                         }
                     }
             }
         }
 
-        fun onGoogleError(message: String) {
-            _uiState.update { it.copy(errorMessage = message) }
+        fun onGoogleError(error: AppError) {
+            _uiState.update { it.copy(error = error) }
         }
     }

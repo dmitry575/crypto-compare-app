@@ -35,6 +35,7 @@ import com.cryptocompare.profile.viewmodel.changepasswordviewmodel.ChangePasswor
 import com.cryptocompare.ui.components.AppPrimaryButton
 import com.cryptocompare.ui.components.AppTextField
 import com.cryptocompare.ui.components.PasswordRequirements
+import com.cryptocompare.ui.error.message
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.bgPrimary
 
@@ -49,7 +50,7 @@ fun ChangePasswordScreen(
     val scrollState = rememberScrollState()
 
     val validationMessage = uiState.validationError?.let { error -> stringResource(error.messageRes()) }
-    val errorMessage = validationMessage ?: uiState.errorMessage
+    val errorMessage = validationMessage ?: uiState.error?.message()
     val successMessage = stringResource(R.string.change_password_success)
 
     LaunchedEffect(errorMessage) {

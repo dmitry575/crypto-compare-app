@@ -1,5 +1,6 @@
 package com.cryptocompare.profile.viewmodel.changepasswordviewmodel
 
+import com.cryptocompare.model.error.AppError
 import com.cryptocompare.profile.util.ChangePasswordError
 
 data class ChangePasswordUiState(
@@ -12,7 +13,7 @@ data class ChangePasswordUiState(
     /** Наша проверка формы: текст подставляет экран из ресурсов. */
     val validationError: ChangePasswordError? = null,
     /** Текст ошибки от Firebase — переводить нечего, показываем как есть. */
-    val errorMessage: String? = null,
+    val error: AppError? = null,
     val passwordLengthMet: Boolean = false,
     val passwordLetterMet: Boolean = false,
     val passwordNumberMet: Boolean = false,

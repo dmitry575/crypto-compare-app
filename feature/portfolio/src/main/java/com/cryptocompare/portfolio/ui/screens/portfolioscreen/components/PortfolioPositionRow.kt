@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.cryptocompare.helpers.priceChangeSign
 import com.cryptocompare.helpers.toCompactPriceString
+import com.cryptocompare.helpers.toPairName
 import com.cryptocompare.helpers.toPriceString
 import com.cryptocompare.helpers.toSignedPercentString
 import com.cryptocompare.helpers.util.PriceFormatConstants
@@ -65,7 +66,7 @@ internal fun PortfolioPositionRow(
             verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.xs),
         ) {
             Text(
-                text = holding.position.ticker.uppercase(),
+                text = holding.position.ticker.toPairName(),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,

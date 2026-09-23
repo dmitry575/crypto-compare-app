@@ -16,6 +16,8 @@ import com.cryptocompare.domain.usecase.settings.SetChartIndicatorsUseCase
 import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.chart.ChartIndicator
 import com.cryptocompare.model.chart.ChartTimeframe
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AppException
 import com.cryptocompare.model.provider.Provider
 import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.model.provider.ProviderStatus
@@ -405,6 +407,30 @@ class DetailsViewModelTest {
             assertEquals(143L, pair.symbolId)
             assertEquals(0.12, pair.spreadPercent!!, 0.0)
             assertEquals(2, vm.uiState.value.bestPrices.size)
+        }
+
+    @Test
+    fun `a failed load keeps its reason, and retry loads again`() =
+        runTest {
+            // без сети экран раньше писал «Нет данных по биржам» и повторить не давал
+            val details: GetTickerDetailUseCase = mockk()
+            coEvery { details.invoke(any()) } returnsMany
+                listOf(
+                    Result.failure(AppException(AppError.Network)),
+                    Result.success(TickerDetail(ticker = "btcusdt", exchanges = defaultExchanges())),
+                )
+
+            val vm = makeVm(details = details)
+            runCurrent()
+
+            assertEquals(AppError.Network, vm.uiState.value.error)
+            assertEquals(0, vm.uiState.value.exchanges.size)
+
+            vm.retry()
+            runCurrent()
+
+            assertEquals(null, vm.uiState.value.error)
+            assertEquals(2, vm.uiState.value.exchanges.size)
         }
 
     @Test

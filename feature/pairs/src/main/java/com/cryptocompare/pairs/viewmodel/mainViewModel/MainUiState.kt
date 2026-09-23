@@ -1,5 +1,6 @@
 package com.cryptocompare.pairs.viewmodel.mainViewModel
 
+import com.cryptocompare.model.error.AppError
 import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.pairs.util.StreamStatus
@@ -20,7 +21,7 @@ data class MainUiState(
      * экран показывает снекбар и гасит флаг.
      */
     val refreshFailed: Boolean = false,
-    val error: String? = null,
+    val error: AppError? = null,
     val subscribedTickers: Set<String> = emptySet(),
     /** Избранное — по символам: у тикера их столько, сколько наборов сетей. */
     val favouriteSymbolIds: Set<Long> = emptySet(),

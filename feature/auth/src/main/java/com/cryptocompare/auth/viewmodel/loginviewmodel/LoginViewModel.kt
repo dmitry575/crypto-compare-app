@@ -5,7 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.cryptocompare.domain.usecase.auth.IsValidEmailUseCase
 import com.cryptocompare.domain.usecase.auth.SignInWithEmailUseCase
 import com.cryptocompare.domain.usecase.auth.SignInWithGoogleUseCase
-import com.cryptocompare.helpers.toUserMessage
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AuthErrorReason
+import com.cryptocompare.model.error.ValidationErrorReason
+import com.cryptocompare.model.error.asAppError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,16 +40,18 @@ class LoginViewModel
             val password = _uiState.value.password
 
             if (!isValidEmailUseCase(email)) {
-                _uiState.update { uiState -> uiState.copy(errorMessage = "Incorrect email was entered") }
+                _uiState.update { uiState ->
+                    uiState.copy(error = AppError.Validation(ValidationErrorReason.INVALID_EMAIL))
+                }
                 return
             }
 
             if (password.length < 6) {
-                _uiState.update { it.copy(errorMessage = "Password must have more than 6 symbols") }
+                _uiState.update { it.copy(error = AppError.Validation(ValidationErrorReason.PASSWORD_TOO_SHORT)) }
                 return
             }
 
-            _uiState.update { uiState -> uiState.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { uiState -> uiState.copy(isLoading = true, error = null) }
 
             viewModelScope.launch {
                 signInWithEmailUseCase(email, password)
@@ -58,7 +63,7 @@ class LoginViewModel
                         _uiState.update { uiState ->
                             uiState.copy(
                                 isLoading = false,
-                                errorMessage = error.toUserMessage(),
+                                error = error.asAppError(),
                             )
                         }
                     }
@@ -67,11 +72,11 @@ class LoginViewModel
 
         fun signInWithGoogle(idToken: String) {
             if (idToken.isBlank()) {
-                _uiState.update { uiState -> uiState.copy(errorMessage = "Google token not found") }
+                _uiState.update { uiState -> uiState.copy(error = AppError.Auth(AuthErrorReason.GOOGLE_TOKEN_MISSING)) }
                 return
             }
 
-            _uiState.update { uiState -> uiState.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { uiState -> uiState.copy(isLoading = true, error = null) }
 
             viewModelScope.launch {
                 signInWithGoogleUseCase(idToken)
@@ -83,14 +88,14 @@ class LoginViewModel
                         _uiState.update { uiState ->
                             uiState.copy(
                                 isLoading = false,
-                                errorMessage = error.toUserMessage(),
+                                error = error.asAppError(),
                             )
                         }
                     }
             }
         }
 
-        fun onGoogleError(message: String) {
-            _uiState.update { it.copy(errorMessage = message) }
+        fun onGoogleError(error: AppError) {
+            _uiState.update { it.copy(error = error) }
         }
     }

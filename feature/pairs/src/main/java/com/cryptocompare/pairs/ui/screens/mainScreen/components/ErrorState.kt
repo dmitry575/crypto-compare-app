@@ -28,7 +28,8 @@ import com.cryptocompare.ui.theme.textTertiary
 @Composable
 fun ErrorState(
     message: String,
-    onRetry: () -> Unit,
+    /** `null` — повторять бессмысленно, и кнопки нет. */
+    onRetry: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -53,8 +54,10 @@ fun ErrorState(
             textAlign = TextAlign.Center,
         )
 
-        Button(onClick = onRetry) {
-            Text(text = stringResource(R.string.pairs_error_retry))
+        if (onRetry != null) {
+            Button(onClick = onRetry) {
+                Text(text = stringResource(R.string.pairs_error_retry))
+            }
         }
     }
 }

@@ -13,10 +13,10 @@ import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
 import com.cryptocompare.domain.usecase.pairs.TakeOverTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.settings.GetMarketPreferencesUseCase
 import com.cryptocompare.domain.usecase.settings.SetChartIndicatorsUseCase
-import com.cryptocompare.helpers.toUserMessage
 import com.cryptocompare.helpers.withUpdates
 import com.cryptocompare.model.chart.ChartIndicator
 import com.cryptocompare.model.chart.ChartTimeframe
+import com.cryptocompare.model.error.asAppError
 import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.model.settings.MarketPreferences
 import com.cryptocompare.model.ticker.TickerBestPrice
@@ -24,6 +24,7 @@ import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
 import com.cryptocompare.pairs.util.ChartHistory
 import com.cryptocompare.pairs.util.PairsConstants
+import com.cryptocompare.pairs.util.putRecent
 import com.cryptocompare.pairs.util.updateLastCandle
 import com.cryptocompare.pairs.util.withLiveCandles
 import com.cryptocompare.pairs.util.withLivePrices
@@ -67,6 +68,13 @@ class DetailsViewModel
          * Уже загруженные графики по паре (биржа + масштаб). График привязан к
          * выбранной бирже, поэтому ключ — пара providerId+timeframe; повторный
          * заход на тот же ключ не идёт в сеть. Кеша на диске нет — истории много.
+         *
+         * Держим только последние [PairsConstants.Chart.MAX_CACHED_CHARTS]: бирж у
+         * пары бывает два десятка, масштабов пять, и каждая история растёт до
+         * [PairsConstants.Chart.MAX_CANDLES]. Без предела перебор бирж на одном
+         * экране копил бы сотни тысяч свечей, к которым пользователь не вернётся.
+         * Пишем через `putRecent`: открытый график трогается на каждом тике и не
+         * вытесняется никогда.
          */
         private val chartsByKey = mutableMapOf<ChartKey, ChartHistory>()
 
@@ -95,6 +103,13 @@ class DetailsViewModel
             loadBestPrices(ticker)
             observeLivePrice(ticker)
             observeReconnects(ticker)
+        }
+
+        /** «Повторить» после неудачной загрузки: биржи и лучшая пара берутся заново. */
+        fun retry() {
+            val ticker = _uiState.value.ticker
+            loadPairDetails(ticker)
+            loadBestPrices(ticker)
         }
 
         /**
@@ -239,7 +254,7 @@ class DetailsViewModel
                             nowMillis = System.currentTimeMillis(),
                         ),
                     )
-                chartsByKey[key] = updated
+                chartsByKey.putRecent(key, updated, PairsConstants.Chart.MAX_CACHED_CHARTS)
                 _uiState.update {
                     it.copy(candles = updated.candles, liveCount = updated.liveCount, exchanges = exchanges)
                 }
@@ -275,13 +290,13 @@ class DetailsViewModel
                             }
                         },
                         onFailure = { error ->
-                            _uiState.update { it.copy(loading = false, error = error.toUserMessage()) }
+                            _uiState.update { it.copy(loading = false, error = error.asAppError()) }
                         },
                     )
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    _uiState.update { it.copy(loading = false, error = e.toUserMessage()) }
+                    _uiState.update { it.copy(loading = false, error = e.asAppError()) }
                 }
             }
         }
@@ -338,6 +353,8 @@ class DetailsViewModel
         ) {
             val key = ChartKey(providerId, timeframe)
             chartsByKey[key]?.let { cached ->
+                // вернулись к графику — он снова свежий, вытеснять надо другие
+                chartsByKey.putRecent(key, cached, PairsConstants.Chart.MAX_CACHED_CHARTS)
                 emitChart(cached)
                 return
             }
@@ -360,7 +377,7 @@ class DetailsViewModel
                     offset = 0,
                 ).onSuccess { page ->
                     val history = ChartHistory.initial(page)
-                    chartsByKey[key] = history
+                    chartsByKey.putRecent(key, history, PairsConstants.Chart.MAX_CACHED_CHARTS)
                     if (isCurrentChart(providerId, timeframe)) emitChart(history)
                 }.onFailure { error ->
                     // сбой графика не ломает экран: цены и биржи остаются доступны
@@ -393,7 +410,7 @@ class DetailsViewModel
                     // пока страница ехала, живой тик мог дорисовать бар — берём свежее
                     val current = chartsByKey[key] ?: return@onSuccess
                     val updated = current.withOlderPage(page)
-                    chartsByKey[key] = updated
+                    chartsByKey.putRecent(key, updated, PairsConstants.Chart.MAX_CACHED_CHARTS)
                     if (isCurrentChart(key.providerId, key.timeframe)) emitChart(updated)
                 }.onFailure { error ->
                     if (error is CancellationException) throw error

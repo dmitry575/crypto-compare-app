@@ -9,12 +9,15 @@ import com.cryptocompare.data.transactionrunner.DatabaseTransactionRunner
 import com.cryptocompare.data.util.DataConstants
 import com.cryptocompare.data.util.DataConstants.Favourites.BATCH_CHUNK_SIZE
 import com.cryptocompare.data.util.DataConstants.Favourites.MAX_SYNC_PASSES
+import com.cryptocompare.data.util.appRunCatching
 import com.cryptocompare.domain.repository.FavouriteSymbolRepository
 import com.cryptocompare.helpers.util.FirestoreConstants
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AppException
+import com.cryptocompare.model.error.AuthErrorReason
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
@@ -62,9 +65,10 @@ class FavouriteSymbolRepositoryImpl
             ticker: String,
         ): Result<Boolean> =
             withContext(ioDispatcher) {
-                runCatching {
+                appRunCatching {
                     val normalizedTicker = ticker.trim().uppercase()
-                    val userId = auth.currentUser?.uid ?: error(DataConstants.Auth.NO_CURRENT_USER)
+                    val userId =
+                        auth.currentUser?.uid ?: throw AppException(AppError.Auth(AuthErrorReason.NOT_SIGNED_IN))
                     val updatedAt = System.currentTimeMillis()
 
                     transactionRunner.run {
@@ -94,14 +98,14 @@ class FavouriteSymbolRepositoryImpl
                             true
                         }
                     }
-                }.onFailure { exception -> if (exception is CancellationException) throw exception }
+                }
             }
 
         override suspend fun syncFavouriteSymbols(): Result<Unit> =
             syncMutex.withLock {
                 withContext(ioDispatcher) {
-                    runCatching {
-                        val userId = auth.currentUser?.uid ?: return@runCatching
+                    appRunCatching {
+                        val userId = auth.currentUser?.uid ?: return@appRunCatching
 
                         syncPendingFavouriteOperations(userId)
 
@@ -124,14 +128,14 @@ class FavouriteSymbolRepositoryImpl
                         // документы старого формата удаляются последними: если сюда не
                         // дошли, следующая синхронизация развернёт их заново
                         deleteDocuments(remote.legacyDocs)
-                    }.onFailure { exception -> if (exception is CancellationException) throw exception }
+                    }
                 }
             }
 
         override suspend fun deleteAllFavourites(): Result<Unit> =
             withContext(ioDispatcher) {
-                runCatching {
-                    val userId = auth.currentUser?.uid ?: return@runCatching
+                appRunCatching {
+                    val userId = auth.currentUser?.uid ?: return@appRunCatching
 
                     val remoteDocs =
                         favouritesCollection(userId)
@@ -146,7 +150,7 @@ class FavouriteSymbolRepositoryImpl
                         favouriteSymbolDao.deleteByUser(userId)
                         pendingFavouriteOperationDao.deleteByUser(userId)
                     }
-                }.onFailure { exception -> if (exception is CancellationException) throw exception }
+                }
             }
 
         private suspend fun syncPendingFavouriteOperations(userId: String) {

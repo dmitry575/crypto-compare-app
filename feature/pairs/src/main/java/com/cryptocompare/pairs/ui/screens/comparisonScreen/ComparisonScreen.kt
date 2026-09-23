@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cryptocompare.helpers.toPairName
 import com.cryptocompare.model.comparison.PairComparison
 import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.pairs.R
@@ -44,6 +45,7 @@ import com.cryptocompare.pairs.ui.screens.comparisonScreen.components.Comparison
 import com.cryptocompare.pairs.ui.screens.comparisonScreen.components.ExchangeQuoteRow
 import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.viewmodel.comparisonViewModel.ComparisonViewModel
+import com.cryptocompare.ui.error.message
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.OverlineType
 import com.cryptocompare.ui.theme.bgCard
@@ -74,7 +76,7 @@ fun ComparisonScreen(
             TopAppBar(
                 title = {
                     TitleWithNetworks(
-                        title = stringResource(R.string.pair_comparison_title, state.ticker.uppercase()),
+                        title = stringResource(R.string.pair_comparison_title, state.ticker.toPairName()),
                         networks = state.comparison?.networks.orEmpty(),
                         titleStyle = MaterialTheme.typography.titleLarge,
                     )
@@ -113,9 +115,11 @@ fun ComparisonScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    ComparisonMessage(text = state.error)
-                    TextButton(onClick = viewModel::retry) {
-                        Text(text = stringResource(R.string.pair_comparison_retry))
+                    ComparisonMessage(text = state.error.message())
+                    if (state.error.isRetryable) {
+                        TextButton(onClick = viewModel::retry) {
+                            Text(text = stringResource(R.string.pair_comparison_retry))
+                        }
                     }
                 }
             }

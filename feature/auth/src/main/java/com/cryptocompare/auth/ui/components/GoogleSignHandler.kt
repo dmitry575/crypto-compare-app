@@ -11,6 +11,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.cryptocompare.auth.R
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AuthErrorReason
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -18,12 +20,10 @@ import com.google.android.gms.common.api.ApiException
 @Composable
 fun rememberGoogleSignInHandler(
     onToken: (String) -> Unit,
-    onError: (String) -> Unit,
+    onError: (AppError) -> Unit,
 ): () -> Unit {
     val context = LocalContext.current
     val webClientId = stringResource(R.string.default_web_client_id)
-    val errorTokenMissing = stringResource(R.string.google_sign_in_token_missing)
-    val errorSignInFailed = stringResource(R.string.google_sign_in_failed)
 
     val googleSignInOptions =
         remember(webClientId) {
@@ -42,13 +42,13 @@ fun rememberGoogleSignInHandler(
                 val account = task.getResult(ApiException::class.java)
                 val idToken = account.idToken
                 if (idToken.isNullOrBlank()) {
-                    onError(errorTokenMissing)
+                    onError(AppError.Auth(AuthErrorReason.GOOGLE_TOKEN_MISSING))
                 } else {
                     onToken(idToken)
                 }
             } catch (e: ApiException) {
                 Log.e("GoogleSignIn", "ApiException statusCode=${e.statusCode}", e)
-                onError(errorSignInFailed)
+                onError(AppError.Auth(AuthErrorReason.GOOGLE_SIGN_IN_FAILED))
             }
         }
 

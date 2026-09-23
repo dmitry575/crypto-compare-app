@@ -36,6 +36,7 @@ import com.cryptocompare.helpers.toCompactPriceString
 import com.cryptocompare.helpers.toCompactVolumeString
 import com.cryptocompare.helpers.toNetworkLabel
 import com.cryptocompare.helpers.toPercentString
+import com.cryptocompare.helpers.util.AppConstants
 import com.cryptocompare.helpers.util.PriceFormatConstants
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.pairs.R
@@ -196,7 +197,7 @@ private fun tickerLabel(
             buildAnnotatedString {
                 append(parts.first)
                 withStyle(SpanStyle(color = quoteColor)) {
-                    append("/")
+                    append(AppConstants.PAIR_SEPARATOR)
                     append(parts.second)
                 }
             }
