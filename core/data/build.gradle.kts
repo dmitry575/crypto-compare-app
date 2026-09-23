@@ -149,6 +149,9 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:helpers"))
 
+    // HttpException: не-2xx от бэкенда разбирается в AppError.Api вместе с его кодом
+    implementation(libs.retrofit)
+
     // coroutines
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.play.services)

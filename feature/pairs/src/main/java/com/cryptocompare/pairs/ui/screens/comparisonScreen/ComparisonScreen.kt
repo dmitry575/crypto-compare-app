@@ -45,6 +45,7 @@ import com.cryptocompare.pairs.ui.screens.comparisonScreen.components.Comparison
 import com.cryptocompare.pairs.ui.screens.comparisonScreen.components.ExchangeQuoteRow
 import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.viewmodel.comparisonViewModel.ComparisonViewModel
+import com.cryptocompare.ui.error.message
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.OverlineType
 import com.cryptocompare.ui.theme.bgCard
@@ -114,9 +115,11 @@ fun ComparisonScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    ComparisonMessage(text = state.error)
-                    TextButton(onClick = viewModel::retry) {
-                        Text(text = stringResource(R.string.pair_comparison_retry))
+                    ComparisonMessage(text = state.error.message())
+                    if (state.error.isRetryable) {
+                        TextButton(onClick = viewModel::retry) {
+                            Text(text = stringResource(R.string.pair_comparison_retry))
+                        }
                     }
                 }
             }

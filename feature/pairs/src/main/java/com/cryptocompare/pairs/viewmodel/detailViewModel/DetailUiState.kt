@@ -4,6 +4,7 @@ import com.cryptocompare.helpers.widest
 import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.chart.ChartIndicator
 import com.cryptocompare.model.chart.ChartTimeframe
+import com.cryptocompare.model.error.AppError
 import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.model.ticker.TickerBestPrice
 
@@ -14,7 +15,7 @@ data class DetailUiState(
     /** Сети символа в едином виде. */
     val networks: List<String> = emptyList(),
     val loading: Boolean = true,
-    val error: String? = null,
+    val error: AppError? = null,
     val exchanges: List<ProviderDetail> = emptyList(),
     val selectedExchangeIndex: Int = 0,
     /** Загруженная история графика, от старых свечей к новым. */

@@ -47,9 +47,14 @@ object DataConstants {
         const val INTERVAL_H4 = "4h"
         const val INTERVAL_D1 = "1d"
         const val INTERVAL_W1 = "1w"
+    }
 
-        /** Ошибок API нет, если errorCode == 0. */
+    /** Ответ бэкенда: `200` приходит и с ошибкой, её видно по `errorCode`. */
+    object Api {
+        /** Ошибок нет, если errorCode == 0. */
         const val ERROR_CODE_OK = 0
-        const val UNKNOWN_ERROR = "Unknown error"
+
+        /** Как склеить `errorMsgs` в текст причины для отчётов о сбоях. */
+        const val MESSAGES_SEPARATOR = "\n"
     }
 }

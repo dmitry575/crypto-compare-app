@@ -43,7 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
-import com.cryptocompare.helpers.toUserMessage
+import com.cryptocompare.model.error.asAppError
 import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.pairs.R
 import com.cryptocompare.pairs.ui.components.StaleDataNotice
@@ -58,6 +58,7 @@ import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairsSearchField
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairsSortSheet
 import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.viewmodel.mainViewModel.MainViewModel
+import com.cryptocompare.ui.error.message
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.bgCard
 import com.cryptocompare.ui.theme.bgPrimary
@@ -170,17 +171,20 @@ fun MainScreen(
         viewModel.onRefreshFailureShown()
     }
 
-    LaunchedEffect(uiState.value.error) {
-        uiState.value.error?.let { message ->
+    // текст подбирается здесь, на языке интерфейса: слои ниже знают только тип ошибки
+    val errorMessage = uiState.value.error?.message()
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let { message ->
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()
         }
     }
 
     // при пустом списке ошибка занимает весь экран, и снекбар только дублировал бы её
+    val pagingErrorMessage = pagingError?.error?.asAppError()?.message()
     LaunchedEffect(pagingError) {
-        if (pagingError != null && pairItems.itemCount > 0) {
-            snackbarHostState.showSnackbar(pagingError.error.toUserMessage())
+        if (pagingErrorMessage != null && pairItems.itemCount > 0) {
+            snackbarHostState.showSnackbar(pagingErrorMessage)
         }
     }
 
@@ -275,9 +279,11 @@ fun MainScreen(
 
             when {
                 firstLoadFailed -> {
+                    val error = pagingError.error.asAppError()
                     ErrorState(
-                        message = pagingError.error.toUserMessage(),
-                        onRetry = pairItems::retry,
+                        message = error.message(),
+                        // испорченной базе повтор не поможет — кнопка только обещала бы
+                        onRetry = if (error.isRetryable) pairItems::retry else null,
                     )
                 }
 

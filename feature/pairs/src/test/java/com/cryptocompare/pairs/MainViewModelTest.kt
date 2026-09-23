@@ -16,6 +16,8 @@ import com.cryptocompare.domain.usecase.pairs.SyncFavouriteSymbolsUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.ToggleFavouriteSymbolUseCase
 import com.cryptocompare.model.auth.AuthUser
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AppException
 import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSort
 import com.cryptocompare.model.symbol.CatalogSorting
@@ -313,7 +315,7 @@ class MainViewModelTest {
                     observeTickerEventUseCase = observeTickerEventUseCaseMock(events),
                     applyBestPriceChangesUseCase =
                         applyBestPriceChangesUseCaseMock(
-                            Result.failure(IllegalStateException("db write failed")),
+                            Result.failure(AppException(AppError.Database)),
                         ),
                 )
 
@@ -322,7 +324,7 @@ class MainViewModelTest {
             advanceTimeBy(600)
             runCurrent()
 
-            assertEquals("db write failed", vm.uiState.value.error)
+            assertEquals(AppError.Database, vm.uiState.value.error)
         }
 
     @Test
@@ -336,7 +338,8 @@ class MainViewModelTest {
 
             yield()
 
-            assertEquals("socket disconnected", vm.uiState.value.error)
+            // что бы ни сломалось внутри потока, для пользователя это «поток цен прервался»
+            assertEquals(AppError.Stream, vm.uiState.value.error)
         }
 
     @Test
@@ -602,6 +605,23 @@ class MainViewModelTest {
             val vm =
                 makeVm(
                     toggleFavouriteSymbolUseCase =
+                        toggleFavouriteSymbolUseCaseMock(Result.failure(AppException(AppError.Network))),
+                )
+
+            yield()
+            vm.onFavouriteClick(SYMBOL_ID, "BTCUSDT")
+            yield()
+
+            assertEquals(AppError.Network, vm.uiState.value.error)
+        }
+
+    @Test
+    fun `an unclassified failure is shown as unknown, never as exception text`() =
+        runTest {
+            // раньше сюда уходил exception.message — по-английски и словами разработчика
+            val vm =
+                makeVm(
+                    toggleFavouriteSymbolUseCase =
                         toggleFavouriteSymbolUseCaseMock(Result.failure(IllegalStateException("toggle failed"))),
                 )
 
@@ -609,23 +629,7 @@ class MainViewModelTest {
             vm.onFavouriteClick(SYMBOL_ID, "BTCUSDT")
             yield()
 
-            assertEquals("toggle failed", vm.uiState.value.error)
-        }
-
-    @Test
-    fun `onFavouriteClick failure with null message falls back to default error`() =
-        runTest {
-            val vm =
-                makeVm(
-                    toggleFavouriteSymbolUseCase =
-                        toggleFavouriteSymbolUseCaseMock(Result.failure(IllegalStateException(null as String?))),
-                )
-
-            yield()
-            vm.onFavouriteClick(SYMBOL_ID, "BTCUSDT")
-            yield()
-
-            assertEquals("Favourite toggle error", vm.uiState.value.error)
+            assertEquals(AppError.Unknown, vm.uiState.value.error)
         }
 
     @Test
@@ -762,7 +766,7 @@ class MainViewModelTest {
             yield()
             vm.onFavouriteClick(SYMBOL_ID, "BTCUSDT")
             yield()
-            assertEquals("toggle failed", vm.uiState.value.error)
+            assertEquals(AppError.Unknown, vm.uiState.value.error)
 
             vm.onErrorShown()
 
@@ -775,12 +779,12 @@ class MainViewModelTest {
             val vm =
                 makeVm(
                     syncFavouriteSymbolsUseCase =
-                        syncFavouriteSymbolsUseCaseMock(Result.failure(IllegalStateException("sync failed"))),
+                        syncFavouriteSymbolsUseCaseMock(Result.failure(AppException(AppError.Network))),
                 )
 
             yield()
 
-            assertEquals("sync failed", vm.uiState.value.error)
+            assertEquals(AppError.Network, vm.uiState.value.error)
         }
 
     private companion object {

@@ -335,7 +335,7 @@ class FavouriteSymbolRepositoryImplTest {
             val result = repository.syncFavouriteSymbols()
 
             assertFalse(result.isSuccess)
-            assertEquals(DataConstants.Favourites.SYNC_INCOMPLETE, result.exceptionOrNull()?.message)
+            assertEquals(DataConstants.Favourites.SYNC_INCOMPLETE, result.exceptionOrNull()?.cause?.message)
             coVerify(exactly = 0) { dao.replaceAll(any(), any()) }
             verify(exactly = 0) { firestore.batch() }
         }

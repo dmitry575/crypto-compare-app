@@ -46,8 +46,10 @@ import com.cryptocompare.pairs.ui.screens.detailScreen.components.ExchangeSelect
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.IndicatorSelector
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.SpreadBar
 import com.cryptocompare.pairs.ui.screens.detailScreen.components.TimeframeSelector
+import com.cryptocompare.pairs.ui.screens.mainScreen.components.ErrorState
 import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.viewmodel.detailViewModel.DetailsViewModel
+import com.cryptocompare.ui.error.message
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.OverlineType
 import com.cryptocompare.ui.theme.bgPrimary
@@ -71,8 +73,12 @@ fun DetailsScreen(
     // строку берём заранее: stringResource нельзя звать из обработчика нажатия
     val openFailedMessage = stringResource(R.string.pair_detail_open_failed)
 
-    LaunchedEffect(state.error) {
-        state.error?.let { snackbarHostState.showSnackbar(it) }
+    val errorMessage = state.error?.message()
+    LaunchedEffect(errorMessage) {
+        // пока бирж нет, ошибка занимает весь экран, и снекбар только дублировал бы её
+        if (errorMessage != null && state.exchanges.isNotEmpty()) {
+            snackbarHostState.showSnackbar(errorMessage)
+        }
     }
 
     Scaffold(
@@ -132,6 +138,20 @@ fun DetailsScreen(
                 ) {
                     CircularProgressIndicator()
                 }
+            }
+
+            // Неудачная загрузка — не «бирж нет». Раньше экран без сети писал «Нет данных
+            // по биржам», снекбар с настоящей причиной исчезал через пару секунд, и
+            // пара выглядела пустой навсегда — без способа попробовать ещё раз.
+            state.error != null && state.exchanges.isEmpty() -> {
+                ErrorState(
+                    message = state.error.message(),
+                    onRetry = if (state.error.isRetryable) viewModel::retry else null,
+                    modifier =
+                        Modifier
+                            .background(MaterialTheme.colorScheme.bgPrimary)
+                            .padding(paddingValues),
+                )
             }
 
             state.exchanges.isEmpty() -> {
