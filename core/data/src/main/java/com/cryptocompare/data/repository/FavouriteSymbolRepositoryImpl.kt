@@ -10,6 +10,7 @@ import com.cryptocompare.data.util.DataConstants
 import com.cryptocompare.data.util.DataConstants.Favourites.BATCH_CHUNK_SIZE
 import com.cryptocompare.data.util.DataConstants.Favourites.MAX_SYNC_PASSES
 import com.cryptocompare.data.util.appRunCatching
+import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.domain.repository.FavouriteSymbolRepository
 import com.cryptocompare.helpers.util.FirestoreConstants
 import com.cryptocompare.model.error.AppError
@@ -44,6 +45,7 @@ class FavouriteSymbolRepositoryImpl
         private val symbolDao: SymbolDao,
         private val transactionRunner: DatabaseTransactionRunner,
         private val auth: FirebaseAuth,
+        private val crashReporter: CrashReporter,
         @Named("ioDispatcher") private val ioDispatcher: CoroutineDispatcher,
     ) : FavouriteSymbolRepository {
         private val syncMutex = Mutex()
@@ -65,7 +67,7 @@ class FavouriteSymbolRepositoryImpl
             ticker: String,
         ): Result<Boolean> =
             withContext(ioDispatcher) {
-                appRunCatching {
+                appRunCatching(crashReporter) {
                     val normalizedTicker = ticker.trim().uppercase()
                     val userId =
                         auth.currentUser?.uid ?: throw AppException(AppError.Auth(AuthErrorReason.NOT_SIGNED_IN))
@@ -104,7 +106,7 @@ class FavouriteSymbolRepositoryImpl
         override suspend fun syncFavouriteSymbols(): Result<Unit> =
             syncMutex.withLock {
                 withContext(ioDispatcher) {
-                    appRunCatching {
+                    appRunCatching(crashReporter) {
                         val userId = auth.currentUser?.uid ?: return@appRunCatching
 
                         syncPendingFavouriteOperations(userId)
@@ -134,7 +136,7 @@ class FavouriteSymbolRepositoryImpl
 
         override suspend fun deleteAllFavourites(): Result<Unit> =
             withContext(ioDispatcher) {
-                appRunCatching {
+                appRunCatching(crashReporter) {
                     val userId = auth.currentUser?.uid ?: return@appRunCatching
 
                     val remoteDocs =

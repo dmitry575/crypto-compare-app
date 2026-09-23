@@ -1,6 +1,7 @@
 package com.cryptocompare.data.mapper
 
 import android.database.SQLException
+import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.model.error.AppError
 import com.cryptocompare.model.error.AppException
 import com.cryptocompare.model.error.AuthErrorReason
@@ -49,6 +50,28 @@ internal fun Throwable.toAppError(): AppError =
 
 /** Уже разобранное исключение остаётся как есть, чужое заворачивается с причиной. */
 internal fun Throwable.toAppException(): AppException = this as? AppException ?: AppException(toAppError(), this)
+
+/**
+ * То же, что [toAppException], но непредвиденное ещё и уходит в отчёты о сбоях.
+ * В отчёт идёт само пойманное исключение, а не обёртка: у него настоящий тип и
+ * стек, и Crashlytics группирует сбои по ним, а не по месту заворачивания.
+ */
+internal fun Throwable.toReportedAppException(crashReporter: CrashReporter): AppException {
+    val failure = toAppException()
+    if (failure.error.isUnexpected()) crashReporter.recordException(this)
+    return failure
+}
+
+/**
+ * Что стоит отчёта: бэкенд ответил ошибкой, база не прочиталась, исключение не
+ * опознано. Сеть, вход и ввод пользователя — нет: это не наши сбои, и их поток
+ * заглушил бы настоящие.
+ */
+private fun AppError.isUnexpected(): Boolean =
+    when (this) {
+        is AppError.Api, AppError.Database, AppError.Unknown -> true
+        AppError.Network, AppError.Stream, is AppError.Auth, is AppError.Validation -> false
+    }
 
 private fun FirebaseFirestoreException.firestoreError(): AppError =
     when (code) {
