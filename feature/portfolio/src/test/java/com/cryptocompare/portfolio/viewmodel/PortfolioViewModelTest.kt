@@ -15,6 +15,7 @@ import com.cryptocompare.domain.usecase.portfolio.CalculatePortfolioUseCase
 import com.cryptocompare.domain.usecase.portfolio.ObservePortfolioPricesUseCase
 import com.cryptocompare.domain.usecase.portfolio.ObservePortfolioUseCase
 import com.cryptocompare.model.portfolio.PortfolioPosition
+import com.cryptocompare.model.symbol.SymbolSellQuote
 import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
 import com.cryptocompare.portfolio.util.PortfolioConstants
@@ -67,7 +68,7 @@ class PortfolioViewModelTest {
         runTest {
             val positions = MutableSharedFlow<List<PortfolioPosition>>()
             every { portfolioRepository.observePositions() } returns positions
-            every { cryptoCompareRepository.observeSellPrices(any()) } returns MutableStateFlow(emptyMap())
+            every { cryptoCompareRepository.observeSellQuotes(any()) } returns MutableStateFlow(emptyMap())
 
             val viewModel = createViewModel()
             viewModel.onScreenShown()
@@ -89,8 +90,8 @@ class PortfolioViewModelTest {
         runTest {
             val positions = MutableSharedFlow<List<PortfolioPosition>>()
             every { portfolioRepository.observePositions() } returns positions
-            every { cryptoCompareRepository.observeSellPrices(setOf(SYMBOL_ID)) } returns
-                MutableStateFlow(mapOf(SYMBOL_ID to 80_000.0))
+            every { cryptoCompareRepository.observeSellQuotes(setOf(SYMBOL_ID)) } returns
+                MutableStateFlow(mapOf(SYMBOL_ID to quote(80_000.0)))
 
             val viewModel = createViewModel()
             viewModel.onScreenShown()
@@ -111,15 +112,15 @@ class PortfolioViewModelTest {
         runTest {
             // цены приходят из каталога, который двигает сокет: позиции при этом
             // в базе не меняются, и без пересчёта итог застыл бы на входном
-            val prices = MutableStateFlow(mapOf(SYMBOL_ID to 80_000.0))
+            val prices = MutableStateFlow(mapOf(SYMBOL_ID to quote(80_000.0)))
             every { portfolioRepository.observePositions() } returns MutableStateFlow(listOf(POSITION))
-            every { cryptoCompareRepository.observeSellPrices(setOf(SYMBOL_ID)) } returns prices
+            every { cryptoCompareRepository.observeSellQuotes(setOf(SYMBOL_ID)) } returns prices
 
             val viewModel = createViewModel()
             viewModel.onScreenShown()
             advanceUntilIdle()
 
-            prices.value = mapOf(SYMBOL_ID to 60_000.0)
+            prices.value = mapOf(SYMBOL_ID to quote(60_000.0))
             advanceUntilIdle()
 
             val state = viewModel.uiState.value
@@ -210,16 +211,16 @@ class PortfolioViewModelTest {
         runTest {
             // ViewModel вкладки переживает уход с неё: без остановки портфель
             // пересчитывался бы на каждый сброс цен каталога, никому не показываясь
-            val prices = MutableStateFlow(mapOf(SYMBOL_ID to 80_000.0))
+            val prices = MutableStateFlow(mapOf(SYMBOL_ID to quote(80_000.0)))
             every { portfolioRepository.observePositions() } returns MutableStateFlow(listOf(POSITION))
-            every { cryptoCompareRepository.observeSellPrices(setOf(SYMBOL_ID)) } returns prices
+            every { cryptoCompareRepository.observeSellQuotes(setOf(SYMBOL_ID)) } returns prices
 
             val viewModel = createViewModel()
             viewModel.onScreenShown()
             advanceUntilIdle()
             viewModel.onScreenHidden()
 
-            prices.value = mapOf(SYMBOL_ID to 60_000.0)
+            prices.value = mapOf(SYMBOL_ID to quote(60_000.0))
             advanceUntilIdle()
 
             // на экране осталось то, что было при уходе, — и это не мигнёт загрузкой
@@ -239,8 +240,8 @@ class PortfolioViewModelTest {
             // Пометить такие цены догнанными значило бы больше за ними не пойти
             val positions = MutableStateFlow(listOf(POSITION))
             every { portfolioRepository.observePositions() } returns positions
-            every { cryptoCompareRepository.observeSellPrices(any()) } returns
-                MutableStateFlow(mapOf(SYMBOL_ID to 80_000.0))
+            every { cryptoCompareRepository.observeSellQuotes(any()) } returns
+                MutableStateFlow(mapOf(SYMBOL_ID to quote(80_000.0)))
             coEvery { refreshBestPrices.invoke(any()) } returns Result.success(0)
 
             val viewModel = createViewModel()
@@ -255,8 +256,8 @@ class PortfolioViewModelTest {
 
     private fun givenPortfolio() {
         every { portfolioRepository.observePositions() } returns MutableStateFlow(listOf(POSITION))
-        every { cryptoCompareRepository.observeSellPrices(setOf(SYMBOL_ID)) } returns
-            MutableStateFlow(mapOf(SYMBOL_ID to 80_000.0))
+        every { cryptoCompareRepository.observeSellQuotes(setOf(SYMBOL_ID)) } returns
+            MutableStateFlow(mapOf(SYMBOL_ID to quote(80_000.0)))
     }
 
     private fun createViewModel() =
@@ -285,6 +286,8 @@ class PortfolioViewModelTest {
         every { useCase.invoke() } returns reconnects
         return useCase
     }
+
+    private fun quote(price: Double) = SymbolSellQuote(price = price, providerId = 2, exchangeName = "bitget")
 
     private fun bestPrice(price: Double) =
         TickerBestPrice(

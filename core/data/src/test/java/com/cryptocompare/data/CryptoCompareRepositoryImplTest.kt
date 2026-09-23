@@ -308,21 +308,21 @@ class CryptoCompareRepositoryImplTest {
                     providers = listOf(providerDto(1), providerDto(2)),
                 )
 
-            coEvery { api.getSymbols(skip = 0, rows = 500) } returns
+            coEvery { api.getSymbols(skip = 0, rows = 500, sortBy = SORT_BY, sortDir = SORT_DIR) } returns
                 GetSymbolsBestPriceResponse(
                     errorCode = 0,
                     errorMsgs = null,
                     symbols = listOf(bestPriceDto(11L, "btcusdt")),
                 )
 
-            coEvery { api.getSymbols(skip = 500, rows = 500) } returns
+            coEvery { api.getSymbols(skip = 500, rows = 500, sortBy = SORT_BY, sortDir = SORT_DIR) } returns
                 GetSymbolsBestPriceResponse(
                     errorCode = 0,
                     errorMsgs = null,
                     symbols = listOf(bestPriceDto(21L, "ethusdt")),
                 )
 
-            coEvery { api.getSymbols(skip = 1000, rows = 500) } returns
+            coEvery { api.getSymbols(skip = 1000, rows = 500, sortBy = SORT_BY, sortDir = SORT_DIR) } returns
                 GetSymbolsBestPriceResponse(
                     errorCode = 0,
                     errorMsgs = null,
@@ -334,6 +334,70 @@ class CryptoCompareRepositoryImplTest {
             assertTrue(result.isSuccess)
             coVerify(exactly = 1) { symbolDao.syncSymbols(withArg { assertEquals(2, it.size) }) }
         }
+
+    @Test
+    fun `refreshCatalog pages the catalog in a stable order`() =
+        runTest(dispatcher) {
+            // без sortBy бэкенд отдаёт updatedAt desc: строки переезжают между
+            // страницами прямо во время выкачки, и syncSymbols удаляет пропущенные
+            val api = mockk<CryptoCompareApi>()
+            val symbolDao = mockk<SymbolDao>(relaxed = true)
+            val providerDao = mockk<ProviderDao>()
+            val repo = createRepo(api, symbolDao, providerDao)
+            givenNoProviders(api, providerDao)
+
+            coEvery { api.getSymbols(any(), any(), any(), any()) } returns
+                GetSymbolsBestPriceResponse(errorCode = 0, errorMsgs = null, symbols = emptyList())
+
+            repo.refreshCatalog()
+
+            coVerify { api.getSymbols(skip = 0, rows = 500, sortBy = "ticker", sortDir = "asc") }
+        }
+
+    @Test
+    fun `a page where every row lacks a price does not end the sync`() =
+        runTest(dispatcher) {
+            // раньше конец выкачки определялся по остатку после отсева, и такая
+            // страница обрывала её — а syncSymbols удалял весь каталог дальше
+            val api = mockk<CryptoCompareApi>()
+            val symbolDao = mockk<SymbolDao>(relaxed = true)
+            val providerDao = mockk<ProviderDao>()
+            val repo = createRepo(api, symbolDao, providerDao)
+            givenNoProviders(api, providerDao)
+
+            coEvery { api.getSymbols(skip = 0, rows = 500, sortBy = SORT_BY, sortDir = SORT_DIR) } returns
+                GetSymbolsBestPriceResponse(
+                    errorCode = 0,
+                    errorMsgs = null,
+                    symbols = listOf(bestPriceDto(12L, "deadusdt", bestAskPrice = 0.0)),
+                )
+            coEvery { api.getSymbols(skip = 500, rows = 500, sortBy = SORT_BY, sortDir = SORT_DIR) } returns
+                GetSymbolsBestPriceResponse(
+                    errorCode = 0,
+                    errorMsgs = null,
+                    symbols = listOf(bestPriceDto(21L, "ethusdt")),
+                )
+            coEvery { api.getSymbols(skip = 1000, rows = 500, sortBy = SORT_BY, sortDir = SORT_DIR) } returns
+                GetSymbolsBestPriceResponse(errorCode = 0, errorMsgs = null, symbols = emptyList())
+
+            val result = repo.refreshCatalog()
+
+            assertTrue(result.isSuccess)
+            coVerify(exactly = 1) {
+                symbolDao.syncSymbols(withArg { symbols -> assertEquals(listOf(21L), symbols.map { it.id }) })
+            }
+        }
+
+    private fun givenNoProviders(
+        api: CryptoCompareApi,
+        providerDao: ProviderDao,
+    ) {
+        coEvery { providerDao.getAll() } returns emptyList()
+        coEvery { providerDao.getLastUpdate() } returns 0L
+        coEvery { providerDao.syncProviders(any()) } returns Unit
+        coEvery { api.getProviders(skip = 0, rows = 500) } returns
+            GetProvidersResponse(errorCode = 0, errorMsgs = null, providers = emptyList())
+    }
 
     @Test
     fun `refreshCatalog drops rows without a price`() =
@@ -356,7 +420,7 @@ class CryptoCompareRepositoryImplTest {
 
             // подстановки providerId здесь больше нет: она подписывала каждую
             // строку каталога первой биржей подряд ради внешнего ключа
-            coEvery { api.getSymbols(skip = 0, rows = 500) } returns
+            coEvery { api.getSymbols(skip = 0, rows = 500, sortBy = SORT_BY, sortDir = SORT_DIR) } returns
                 GetSymbolsBestPriceResponse(
                     errorCode = 0,
                     errorMsgs = null,
@@ -368,7 +432,7 @@ class CryptoCompareRepositoryImplTest {
                         ),
                 )
 
-            coEvery { api.getSymbols(skip = 500, rows = 500) } returns
+            coEvery { api.getSymbols(skip = 500, rows = 500, sortBy = SORT_BY, sortDir = SORT_DIR) } returns
                 GetSymbolsBestPriceResponse(
                     errorCode = 0,
                     errorMsgs = null,
@@ -587,4 +651,10 @@ class CryptoCompareRepositoryImplTest {
             assertEquals(AppError.Unknown, ex.error)
             assertEquals("db is closed", ex.cause?.message)
         }
+
+    private companion object {
+        // порядок выкачки каталога: тикер от котировок не зависит, updatedAt — зависит
+        const val SORT_BY = "ticker"
+        const val SORT_DIR = "asc"
+    }
 }

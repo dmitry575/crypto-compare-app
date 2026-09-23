@@ -7,6 +7,9 @@ object AppConstants {
 
     const val SPLASH_DURATION_MS = 2000L
 
+    /** Между базой и котировкой в названии пары: «BTC/USDT». */
+    const val PAIR_SEPARATOR = "/"
+
     /** Котируемые валюты для разбора тикера на базу и котировку. */
     val QUOTE_CURRENCIES =
         listOf(
