@@ -6,6 +6,7 @@ import com.cryptocompare.model.portfolio.Portfolio
 import com.cryptocompare.model.portfolio.PortfolioHolding
 import com.cryptocompare.model.portfolio.PortfolioPosition
 import com.cryptocompare.model.portfolio.PortfolioSummary
+import com.cryptocompare.model.symbol.SymbolSellQuote
 import java.math.BigDecimal
 import javax.inject.Inject
 
@@ -27,20 +28,21 @@ import javax.inject.Inject
 class CalculatePortfolioUseCase
     @Inject
     constructor() {
-        /** [prices] — цены продажи по `symbolId`; символа может и не быть. */
+        /** [quotes] — цены продажи по `symbolId` с биржей, которая их даёт; символа может и не быть. */
         operator fun invoke(
             positions: List<PortfolioPosition>,
-            prices: Map<Long, Double>,
+            quotes: Map<Long, SymbolSellQuote>,
         ): Portfolio {
-            val holdings = positions.map { position -> holding(position, prices[position.symbolId].validPriceOrNull()) }
+            val holdings = positions.map { position -> holding(position, quotes[position.symbolId]) }
 
             return Portfolio(holdings = holdings, summary = summarize(holdings))
         }
 
         private fun holding(
             position: PortfolioPosition,
-            currentPrice: Double?,
+            quote: SymbolSellQuote?,
         ): PortfolioHolding {
+            val currentPrice = quote?.price.validPriceOrNull()
             val amount = position.amount.toDecimal()
             val invested = amount.multiply(position.buyPrice.toDecimal())
             val currentValue = currentPrice?.let { price -> amount.multiply(price.toDecimal()) }
@@ -49,6 +51,9 @@ class CalculatePortfolioUseCase
             return PortfolioHolding(
                 position = position,
                 currentPrice = currentPrice,
+                // биржа имеет смысл, только если её цена годится: иначе на экране
+                // стоял бы прочерк «по цене bitget»
+                priceExchange = quote?.exchangeName?.takeIf { currentPrice != null },
                 invested = invested.toDouble(),
                 currentValue = currentValue?.toDouble(),
                 profit = profit?.toDouble(),

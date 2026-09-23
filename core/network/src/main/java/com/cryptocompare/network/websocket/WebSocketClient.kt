@@ -2,6 +2,7 @@ package com.cryptocompare.network.websocket
 
 import android.util.Log
 import com.cryptocompare.helpers.util.WebSocketConstants
+import com.cryptocompare.network.BuildConfig
 import com.cryptocompare.network.dto.webSocketDTO.SocketDtoMessage
 import com.cryptocompare.network.dto.webSocketDTO.SocketInboundRawMessage
 import com.cryptocompare.network.dto.webSocketDTO.SocketOutboundMessage
@@ -443,12 +444,16 @@ class WebSocketClient
                     }
                 }
 
-            // тиков много (десятки в секунду на тикер), поэтому они на verbose,
-            // а редкие служебные сообщения — на debug
-            if (type == MessageType.PRICE_CHANGE) {
-                Log.v(TAG, "<- PRICE_CHANGE ${parsedMessage.data}")
-            } else {
-                Log.d(TAG, "<- ${type.name} ${parsedMessage.data}")
+            // Сообщения пишем только в отладочной сборке. Тиков десятки в секунду
+            // на тикер, и в релизе каждый стоил бы сборки строки из JSON на потоке
+            // сокета — ради лога, который пользователь никогда не прочтёт. Смена
+            // состояния соединения пишется всегда: она редкая и нужна для разбора.
+            if (BuildConfig.DEBUG) {
+                if (type == MessageType.PRICE_CHANGE) {
+                    Log.v(TAG, "<- PRICE_CHANGE ${parsedMessage.data}")
+                } else {
+                    Log.d(TAG, "<- ${type.name} ${parsedMessage.data}")
+                }
             }
 
             _messages.tryEmit(message)

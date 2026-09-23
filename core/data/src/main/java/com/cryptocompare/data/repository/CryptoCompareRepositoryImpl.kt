@@ -33,6 +33,7 @@ import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.symbol.Symbol
+import com.cryptocompare.model.symbol.SymbolSellQuote
 import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.network.api.CryptoCompareApi
 import kotlinx.coroutines.CoroutineDispatcher
@@ -214,13 +215,21 @@ class CryptoCompareRepositoryImpl
          * у биржи означает «стороны стакана нет», и как стоимость позиции он
          * читался бы обнулением вложенного.
          */
-        override fun observeSellPrices(symbolIds: Set<Long>): Flow<Map<Long, Double>> =
+        override fun observeSellQuotes(symbolIds: Set<Long>): Flow<Map<Long, SymbolSellQuote>> =
             symbolDao
-                .observeSellPrices(symbolIds.toList())
+                .observeSellQuotes(symbolIds.toList())
                 .map { rows ->
                     rows
-                        .mapNotNull { row -> row.sellPrice.validPriceOrNull()?.let { price -> row.symbolId to price } }
-                        .toMap()
+                        .mapNotNull { row ->
+                            row.sellPrice.validPriceOrNull()?.let { price ->
+                                row.symbolId to
+                                    SymbolSellQuote(
+                                        price = price,
+                                        providerId = row.providerId,
+                                        exchangeName = row.providerName,
+                                    )
+                            }
+                        }.toMap()
                 }.distinctUntilChanged()
 
         override suspend fun applyBestPriceUpdates(updates: List<TickerBestPrice>): Result<Unit> =
@@ -262,13 +271,18 @@ class CryptoCompareRepositoryImpl
                     cryptoCompareApi.getSymbols(
                         skip = skip,
                         rows = CryptoCompareRepositoryConstants.SYMBOLS_IN_ROW,
+                        sortBy = CryptoCompareRepositoryConstants.CATALOG_SORT_BY,
+                        sortDir = CryptoCompareRepositoryConstants.CATALOG_SORT_DIR,
                     )
                 checkApiResponse(response.errorCode, response.errorMsgs)
 
-                val symbols = response.symbols.normalizeSymbols()
-                if (symbols.isEmpty()) break
+                // конец — пустая страница бэкенда, а не пустой остаток после отсева
+                // строк без цены: страница, где отсеялось всё, обрывала бы выкачку,
+                // и syncSymbols удалил бы весь каталог дальше неё
+                val page = response.symbols.orEmpty()
+                if (page.isEmpty()) break
 
-                refreshedSymbols += symbols.toEntityFromDto(syncedAtMillis)
+                refreshedSymbols += page.normalizeSymbols().toEntityFromDto(syncedAtMillis)
                 skip += CryptoCompareRepositoryConstants.SYMBOLS_IN_ROW
             }
 

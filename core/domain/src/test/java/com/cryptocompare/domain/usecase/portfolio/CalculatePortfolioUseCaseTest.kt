@@ -1,6 +1,7 @@
 package com.cryptocompare.domain.usecase.portfolio
 
 import com.cryptocompare.model.portfolio.PortfolioPosition
+import com.cryptocompare.model.symbol.SymbolSellQuote
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -10,7 +11,13 @@ class CalculatePortfolioUseCaseTest {
 
     @Test
     fun `a position that grew shows profit in money and in percent`() {
-        val portfolio = calculatePortfolio(listOf(position(amount = 0.5, buyPrice = 60_000.0)), mapOf(BTC to 72_000.0))
+        val portfolio =
+            calculatePortfolio(
+                listOf(position(amount = 0.5, buyPrice = 60_000.0)),
+                mapOf(
+                    BTC to quote(72_000.0),
+                ),
+            )
 
         val holding = portfolio.holdings.single()
         assertEquals(30_000.0, holding.invested, DELTA)
@@ -21,7 +28,13 @@ class CalculatePortfolioUseCaseTest {
 
     @Test
     fun `a position that fell shows a negative profit`() {
-        val portfolio = calculatePortfolio(listOf(position(amount = 0.5, buyPrice = 60_000.0)), mapOf(BTC to 45_000.0))
+        val portfolio =
+            calculatePortfolio(
+                listOf(position(amount = 0.5, buyPrice = 60_000.0)),
+                mapOf(
+                    BTC to quote(45_000.0),
+                ),
+            )
 
         val holding = portfolio.holdings.single()
         assertEquals(-7_500.0, holding.profit!!, DELTA)
@@ -32,7 +45,7 @@ class CalculatePortfolioUseCaseTest {
     fun `decimal money arithmetic leaves no float tails`() {
         // Double на этих же числах даёт 0.030000000000000002 и прибыль
         // 0.010000000000000002 — в деньгах это мусор, который вылезает в UI
-        val portfolio = calculatePortfolio(listOf(position(amount = 0.1, buyPrice = 0.2)), mapOf(BTC to 0.3))
+        val portfolio = calculatePortfolio(listOf(position(amount = 0.1, buyPrice = 0.2)), mapOf(BTC to quote(0.3)))
 
         val holding = portfolio.holdings.single()
         assertEquals(0.02, holding.invested, EXACT)
@@ -43,7 +56,7 @@ class CalculatePortfolioUseCaseTest {
 
     @Test
     fun `a position at its buy price is exactly flat`() {
-        val portfolio = calculatePortfolio(listOf(position(amount = 0.07, buyPrice = 8.1)), mapOf(BTC to 8.1))
+        val portfolio = calculatePortfolio(listOf(position(amount = 0.07, buyPrice = 8.1)), mapOf(BTC to quote(8.1)))
 
         val holding = portfolio.holdings.single()
         assertEquals(0.0, holding.profit!!, EXACT)
@@ -52,7 +65,13 @@ class CalculatePortfolioUseCaseTest {
 
     @Test
     fun `zero amount costs nothing and is worth nothing`() {
-        val portfolio = calculatePortfolio(listOf(position(amount = 0.0, buyPrice = 60_000.0)), mapOf(BTC to 72_000.0))
+        val portfolio =
+            calculatePortfolio(
+                listOf(position(amount = 0.0, buyPrice = 60_000.0)),
+                mapOf(
+                    BTC to quote(72_000.0),
+                ),
+            )
 
         val holding = portfolio.holdings.single()
         assertEquals(0.0, holding.invested, EXACT)
@@ -65,7 +84,7 @@ class CalculatePortfolioUseCaseTest {
     @Test
     fun `zero investment gives profit in money but not in percent`() {
         // монета досталась даром — эйрдроп, форк; прибыль есть, а доли от нуля нет
-        val portfolio = calculatePortfolio(listOf(position(amount = 10.0, buyPrice = 0.0)), mapOf(BTC to 3.0))
+        val portfolio = calculatePortfolio(listOf(position(amount = 10.0, buyPrice = 0.0)), mapOf(BTC to quote(3.0)))
 
         val holding = portfolio.holdings.single()
         assertEquals(0.0, holding.invested, EXACT)
@@ -91,7 +110,7 @@ class CalculatePortfolioUseCaseTest {
     @Test
     fun `a zero or broken price counts as no price at all`() {
         // ноль у биржи означает «стороны стакана нет», а не «актив обесценился»
-        val prices = mapOf(BTC to 0.0, ETH to Double.NaN)
+        val prices = mapOf(BTC to quote(0.0), ETH to quote(Double.NaN))
         val positions =
             listOf(
                 position(amount = 1.0, buyPrice = 10.0),
@@ -113,7 +132,7 @@ class CalculatePortfolioUseCaseTest {
                 position(symbolId = ETH, ticker = "ETHUSDT", amount = 4.0, buyPrice = 2_000.0),
             )
 
-        val portfolio = calculatePortfolio(positions, mapOf(BTC to 72_000.0, ETH to 1_500.0))
+        val portfolio = calculatePortfolio(positions, mapOf(BTC to quote(72_000.0), ETH to quote(1_500.0)))
 
         val summary = portfolio.summary!!
         assertEquals(38_000.0, summary.invested, DELTA)
@@ -133,7 +152,7 @@ class CalculatePortfolioUseCaseTest {
                 position(symbolId = ETH, ticker = "ETHUSDT", amount = 4.0, buyPrice = 2_000.0),
             )
 
-        val portfolio = calculatePortfolio(positions, mapOf(BTC to 72_000.0))
+        val portfolio = calculatePortfolio(positions, mapOf(BTC to quote(72_000.0)))
 
         val summary = portfolio.summary!!
         assertEquals(30_000.0, summary.invested, DELTA)
@@ -148,7 +167,7 @@ class CalculatePortfolioUseCaseTest {
         val portfolio =
             calculatePortfolio(
                 listOf(position(amount = 1_000_000.0, buyPrice = 1_000_000.0)),
-                mapOf(BTC to 2_000_000.0),
+                mapOf(BTC to quote(2_000_000.0)),
             )
 
         val holding = portfolio.holdings.single()
@@ -164,7 +183,7 @@ class CalculatePortfolioUseCaseTest {
         val portfolio =
             calculatePortfolio(
                 listOf(position(amount = 0.001, buyPrice = 0.000000001)),
-                mapOf(BTC to 0.000000002),
+                mapOf(BTC to quote(0.000000002)),
             )
 
         val holding = portfolio.holdings.single()
@@ -180,6 +199,34 @@ class CalculatePortfolioUseCaseTest {
         assertEquals(emptyList<Any>(), portfolio.holdings)
         assertNull(portfolio.summary)
     }
+
+    @Test
+    fun `a priced holding names the exchange its price came from`() {
+        val portfolio =
+            calculatePortfolio(
+                listOf(position(amount = 0.5, buyPrice = 60_000.0)),
+                mapOf(BTC to quote(72_000.0, exchange = "bitget")),
+            )
+
+        assertEquals("bitget", portfolio.holdings.single().priceExchange)
+    }
+
+    @Test
+    fun `a holding without a usable price names no exchange`() {
+        // «по цене bitget» рядом с прочерком читалось бы как «bitget отдаёт ноль»
+        val portfolio =
+            calculatePortfolio(
+                listOf(position(amount = 0.5, buyPrice = 60_000.0)),
+                mapOf(BTC to quote(0.0, exchange = "bitget")),
+            )
+
+        assertNull(portfolio.holdings.single().priceExchange)
+    }
+
+    private fun quote(
+        price: Double,
+        exchange: String? = "binance",
+    ) = SymbolSellQuote(price = price, providerId = 1, exchangeName = exchange)
 
     private fun position(
         symbolId: Long = BTC,

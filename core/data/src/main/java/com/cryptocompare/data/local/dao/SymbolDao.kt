@@ -82,9 +82,24 @@ interface SymbolDao {
      * покупки обещала бы пользователю деньги, которых он за актив не получит.
      * Символа может не быть в каталоге совсем — тогда строки просто нет, и
      * позиция остаётся без цены.
+     *
+     * Биржа приходит вместе с ценой: лучший bid переезжает с площадки на
+     * площадку, и без её имени стоимость позиции прыгала бы без объяснения.
+     * `LEFT JOIN`, а не `JOIN`: биржи может ещё не быть в справочнике, и это не
+     * повод терять цену.
      */
-    @Query("SELECT id AS symbolId, bestBidPrice AS sellPrice FROM symbols WHERE id IN (:symbolIds)")
-    fun observeSellPrices(symbolIds: List<Long>): Flow<List<SymbolSellPrice>>
+    @Query(
+        """
+        SELECT s.id AS symbolId,
+               s.bestBidPrice AS sellPrice,
+               s.bestBidProviderId AS providerId,
+               p.name AS providerName
+        FROM symbols s
+        LEFT JOIN providers p ON p.id = s.bestBidProviderId
+        WHERE s.id IN (:symbolIds)
+        """,
+    )
+    fun observeSellQuotes(symbolIds: List<Long>): Flow<List<SymbolSellPrice>>
 
     @Query("DELETE FROM symbols")
     suspend fun deleteAll()

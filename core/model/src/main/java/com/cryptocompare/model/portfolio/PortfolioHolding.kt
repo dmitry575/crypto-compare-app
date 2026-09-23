@@ -14,6 +14,12 @@ data class PortfolioHolding(
     val position: PortfolioPosition,
     /** Цена продажи из каталога; `null` — цены нет. */
     val currentPrice: Double?,
+    /**
+     * Биржа, чья это цена. Лучший bid переезжает с площадки на площадку, и
+     * без её имени непонятно, почему позиция вдруг подешевела. `null` — цены
+     * нет или биржи ещё нет в справочнике.
+     */
+    val priceExchange: String? = null,
     /** Вложено: количество × средняя цена покупки. Считается без цены рынка. */
     val invested: Double,
     /** Стоимость сейчас: количество × [currentPrice]. */
