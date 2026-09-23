@@ -2,7 +2,6 @@ package com.cryptocompare.portfolio.viewmodel.portfolioviewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
 import com.cryptocompare.domain.usecase.pairs.GetCatalogLastUpdateUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveConnectionStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
@@ -19,11 +18,9 @@ import com.cryptocompare.domain.usecase.portfolio.ObservePortfolioUseCase
 import com.cryptocompare.domain.usecase.portfolio.RefreshPinnedQuotesUseCase
 import com.cryptocompare.helpers.util.WebSocketConstants
 import com.cryptocompare.model.portfolio.PortfolioPosition
-import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerConnectionState
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
-import com.cryptocompare.portfolio.util.PortfolioConstants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -65,7 +62,6 @@ class PortfolioViewModel
         private val syncVisibleTickersUseCase: SyncVisibleTickersUseCase,
         private val observeTickerEventUseCase: ObserveTickerEventUseCase,
         private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
-        private val applyBestPriceChangesUseCase: ApplyBestPriceChangesUseCase,
         private val refreshBestPricesUseCase: RefreshBestPricesUseCase,
         private val refreshPinnedQuotesUseCase: RefreshPinnedQuotesUseCase,
         private val applyPinnedPriceTicksUseCase: ApplyPinnedPriceTicksUseCase,
@@ -93,19 +89,14 @@ class PortfolioViewModel
         private var subscriptionsTakenOver = false
 
         /**
-         * Лучшие пары из сокета за интервал. Ключ — `symbolId`: у тикера их
-         * бывает несколько, по одному на сеть, и одна переменная на всех хранила
-         * бы только того, кто тикнул последним.
-         *
-         * Без блокировки: и сбор, и сброс идут в `viewModelScope`, то есть на
-         * одном потоке.
-         */
-        private val pendingBestPrices = mutableMapOf<Long, TickerBestPrice>()
-
-        /**
          * Котировки бирж, за которыми закреплены позиции, по `symbolId`. Событие
          * типа 4 несёт котировку одной биржи, и из всех бирж тикера нужна ровно
          * одна на позицию — остальные отбрасываются ещё до пачки.
+         *
+         * Лучшие пары (тип 5) портфель не пишет: их пишет в каталог
+         * `SyncLiveBestPricesUseCase`, один на приложение, а портфель читает
+         * каталог. Без блокировки: и сбор, и сброс идут в `viewModelScope`, то
+         * есть на одном потоке.
          */
         private val pendingPinnedTicks = mutableMapOf<Long, TickerPrice>()
         private var isFlushScheduled = false
@@ -170,7 +161,6 @@ class PortfolioViewModel
             portfolioJob = null
             liveJob?.cancel()
             liveJob = null
-            pendingBestPrices.clear()
             pendingPinnedTicks.clear()
             subscribedTickers.clear()
             refreshedSources.clear()
@@ -291,16 +281,9 @@ class PortfolioViewModel
                 viewModelScope.launch {
                     launch {
                         observeTickerEventUseCase().collect { event ->
-                            when {
-                                event is TickerStreamEvent.TickerBestPriceChange -> {
-                                    pendingBestPrices[event.data.symbolId] = event.data
-                                    scheduleFlush()
-                                }
-
-                                event is TickerStreamEvent.TickerPriceChange && event.data.isPinnedQuote() -> {
-                                    pendingPinnedTicks[event.data.symbolId.toLong()] = event.data
-                                    scheduleFlush()
-                                }
+                            if (event is TickerStreamEvent.TickerPriceChange && event.data.isPinnedQuote()) {
+                                pendingPinnedTicks[event.data.symbolId.toLong()] = event.data
+                                scheduleFlush()
                             }
                         }
                     }
@@ -370,9 +353,8 @@ class PortfolioViewModel
             positions.any { it.symbolId == symbolId.toLong() && it.providerId == providerId }
 
         /**
-         * Тики уходят в базу пачками: строку каталога и последние цены бирж
-         * позиций пишет Room, а он сам разошлёт их и списку, и портфелю. Джоб
-         * живёт, пока тики идут: один пустой интервал — и он выходит.
+         * Цены бирж покупки уходят в базу пачками, а Room сам разошлёт их
+         * портфелю. Джоб живёт, пока тики идут: один пустой интервал — и он выходит.
          */
         private fun scheduleFlush() {
             if (isFlushScheduled) return
@@ -380,19 +362,16 @@ class PortfolioViewModel
 
             viewModelScope.launch {
                 while (true) {
-                    delay(PortfolioConstants.Prices.FLUSH_INTERVAL_MS.milliseconds)
+                    delay(WebSocketConstants.PRICE_FLUSH_INTERVAL_MS.milliseconds)
 
-                    if (pendingBestPrices.isEmpty() && pendingPinnedTicks.isEmpty()) {
+                    if (pendingPinnedTicks.isEmpty()) {
                         isFlushScheduled = false
                         return@launch
                     }
 
-                    val bestPrices = pendingBestPrices.values.toList()
                     val pinnedTicks = pendingPinnedTicks.values.toList()
-                    pendingBestPrices.clear()
                     pendingPinnedTicks.clear()
-                    if (bestPrices.isNotEmpty()) applyBestPriceChangesUseCase(bestPrices)
-                    if (pinnedTicks.isNotEmpty()) applyPinnedPriceTicksUseCase(pinnedTicks)
+                    applyPinnedPriceTicksUseCase(pinnedTicks)
                 }
             }
         }

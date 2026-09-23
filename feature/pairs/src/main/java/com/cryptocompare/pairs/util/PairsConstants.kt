@@ -31,7 +31,6 @@ object PairsConstants {
         /** Кружок ожидания вместо точки, пока связь восстанавливается. */
         val STREAM_PROGRESS_SIZE: Dp = 10.dp
         val STREAM_PROGRESS_STROKE: Dp = 1.5.dp
-        const val PRICE_FLUSH_INTERVAL_MS = 500L
 
         /** Сколько символов базовой валюты влезает в значок пары. */
         const val BADGE_MAX_CHARS = 4

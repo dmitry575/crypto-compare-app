@@ -3,7 +3,6 @@ package com.cryptocompare.portfolio.viewmodel
 import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.domain.repository.PortfolioRepository
 import com.cryptocompare.domain.repository.TickerStreamRepository
-import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
 import com.cryptocompare.domain.usecase.pairs.GetCatalogLastUpdateUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveConnectionStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
@@ -25,7 +24,6 @@ import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerConnectionState
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
-import com.cryptocompare.portfolio.util.PortfolioConstants
 import com.cryptocompare.portfolio.viewmodel.portfolioviewmodel.PortfolioViewModel
 import com.cryptocompare.testing.MainDispatcherRule
 import io.mockk.coEvery
@@ -61,7 +59,6 @@ class PortfolioViewModelTest {
     private val takeOverSubscriptions: TakeOverTickerSubscriptionsUseCase = mockk(relaxed = true)
     private val restoreSubscriptions: RestoreTickerSubscriptionsUseCase = mockk(relaxed = true)
     private val refreshBestPrices: RefreshBestPricesUseCase = mockk(relaxed = true)
-    private val applyBestPriceChanges: ApplyBestPriceChangesUseCase = mockk(relaxed = true)
     private val refreshPinnedQuotes: RefreshPinnedQuotesUseCase = mockk(relaxed = true)
     private val applyPinnedPriceTicks: ApplyPinnedPriceTicksUseCase = mockk(relaxed = true)
 
@@ -190,34 +187,34 @@ class PortfolioViewModelTest {
         }
 
     @Test
-    fun `best price ticks reach the catalog in batches`() =
+    fun `best price ticks are left to the app-wide writer`() =
         runTest {
+            // лучшие пары пишет в каталог SyncLiveBestPricesUseCase, один на приложение:
+            // портфель поверх живого каталога раньше писал те же тики второй раз
             givenPortfolio()
             val viewModel = createViewModel()
             viewModel.onScreenShown()
             advanceUntilIdle()
 
             events.emit(TickerStreamEvent.TickerBestPriceChange(id = "1", data = bestPrice(81_000.0)))
-            events.emit(TickerStreamEvent.TickerBestPriceChange(id = "2", data = bestPrice(82_000.0)))
-            advanceTimeBy(PortfolioConstants.Prices.FLUSH_INTERVAL_MS + 1)
+            advanceTimeBy(WebSocketConstants.PRICE_FLUSH_INTERVAL_MS + 1)
 
-            // за интервал накопился один символ — в базу уходит его последняя цена
-            coVerify(exactly = 1) { applyBestPriceChanges.invoke(listOf(bestPrice(82_000.0))) }
+            coVerify(exactly = 0) { applyPinnedPriceTicks.invoke(any()) }
         }
 
     @Test
-    fun `ticks stop reaching the catalog once the screen is gone`() =
+    fun `exchange ticks stop being stored once the screen is gone`() =
         runTest {
-            givenPortfolio()
+            givenPinnedPortfolio()
             val viewModel = createViewModel()
             viewModel.onScreenShown()
             advanceUntilIdle()
 
             viewModel.onScreenHidden()
-            events.emit(TickerStreamEvent.TickerBestPriceChange(id = "1", data = bestPrice(81_000.0)))
-            advanceTimeBy(PortfolioConstants.Prices.FLUSH_INTERVAL_MS + 1)
+            events.emit(TickerStreamEvent.TickerPriceChange(id = "1", data = exchangeTick(BYBIT, 81_000.0)))
+            advanceTimeBy(WebSocketConstants.PRICE_FLUSH_INTERVAL_MS + 1)
 
-            coVerify(exactly = 0) { applyBestPriceChanges.invoke(any()) }
+            coVerify(exactly = 0) { applyPinnedPriceTicks.invoke(any()) }
         }
 
     @Test
@@ -335,11 +332,10 @@ class PortfolioViewModelTest {
             events.emit(TickerStreamEvent.TickerPriceChange(id = "1", data = exchangeTick(OKX, 81_300.0)))
             events.emit(TickerStreamEvent.TickerPriceChange(id = "2", data = exchangeTick(BYBIT, 81_000.0)))
             events.emit(TickerStreamEvent.TickerPriceChange(id = "3", data = exchangeTick(BYBIT, 81_050.0)))
-            advanceTimeBy(PortfolioConstants.Prices.FLUSH_INTERVAL_MS + 1)
+            advanceTimeBy(WebSocketConstants.PRICE_FLUSH_INTERVAL_MS + 1)
 
             // чужая биржа отброшена, из своих в базу уходит последний тик за интервал
             coVerify(exactly = 1) { applyPinnedPriceTicks.invoke(listOf(exchangeTick(BYBIT, 81_050.0))) }
-            coVerify(exactly = 0) { applyBestPriceChanges.invoke(any()) }
         }
 
     @Test
@@ -351,7 +347,7 @@ class PortfolioViewModelTest {
             advanceUntilIdle()
 
             events.emit(TickerStreamEvent.TickerPriceChange(id = "1", data = exchangeTick(BYBIT, 81_000.0)))
-            advanceTimeBy(PortfolioConstants.Prices.FLUSH_INTERVAL_MS + 1)
+            advanceTimeBy(WebSocketConstants.PRICE_FLUSH_INTERVAL_MS + 1)
 
             coVerify(exactly = 0) { applyPinnedPriceTicks.invoke(any()) }
         }
@@ -456,7 +452,6 @@ class PortfolioViewModelTest {
             syncVisibleTickersUseCase = SyncVisibleTickersUseCase(tickerStreamRepository),
             observeTickerEventUseCase = observeTickerEventUseCase(),
             observeStreamReconnectsUseCase = observeStreamReconnectsUseCase(),
-            applyBestPriceChangesUseCase = applyBestPriceChanges,
             refreshBestPricesUseCase = refreshBestPrices,
             refreshPinnedQuotesUseCase = refreshPinnedQuotes,
             applyPinnedPriceTicksUseCase = applyPinnedPriceTicks,

@@ -37,6 +37,13 @@ object WebSocketConstants {
      */
     const val STALE_NOTICE_DELAY_MS = 4_000L
 
+    /**
+     * Как часто тики уходят в базу. Тики идут десятками в секунду, и запись
+     * каждого непрерывно дёргала бы Room и перерисовывала список (решение 2 в
+     * `CLAUDE.md`); в пачке от символа остаётся последний тик за интервал.
+     */
+    const val PRICE_FLUSH_INTERVAL_MS = 500L
+
     const val NORMAL_CLOSURE_STATUS = 1000
     const val BASE_RECONNECT_DELAY_MS = 1_000L
     const val MAX_RECONNECT_DELAY_MS = 30_000L
