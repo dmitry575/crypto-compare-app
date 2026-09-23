@@ -52,6 +52,7 @@ import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileSign
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileValueRow
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ThemeSelector
 import com.cryptocompare.profile.viewmodel.profileviewmodel.ProfileViewModel
+import com.cryptocompare.ui.error.message
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.bgPrimary
 import com.cryptocompare.ui.theme.cryptoError
@@ -70,8 +71,9 @@ fun ProfileScreen(
     val scrollState = rememberScrollState()
     val context = LocalContext.current
 
-    LaunchedEffect(uiState.errorMessage) {
-        uiState.errorMessage?.let { message ->
+    val errorMessage = uiState.error?.message()
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let { message ->
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()
         }

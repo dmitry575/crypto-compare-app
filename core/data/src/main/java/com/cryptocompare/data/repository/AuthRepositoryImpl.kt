@@ -2,13 +2,16 @@ package com.cryptocompare.data.repository
 
 import com.cryptocompare.data.mapper.toAuthUser
 import com.cryptocompare.data.util.DataConstants
+import com.cryptocompare.data.util.appRunCatching
 import com.cryptocompare.domain.repository.AuthRepository
 import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.model.auth.AuthUser
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AppException
+import com.cryptocompare.model.error.AuthErrorReason
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -40,38 +43,35 @@ class AuthRepositoryImpl
             email: String,
             password: String,
         ): Result<AuthUser> =
-            runCatching {
+            appRunCatching {
                 val result = auth.createUserWithEmailAndPassword(email, password).await()
                 val user = result.user ?: error(DataConstants.Auth.NULL_USER)
                 user.toAuthUser()
             }.onSuccess { user -> crashReporter.setUser(user.uid) }
-                .onFailure { exception -> if (exception is CancellationException) throw exception }
 
         override suspend fun signInWithEmail(
             email: String,
             password: String,
         ): Result<AuthUser> =
-            runCatching {
+            appRunCatching {
                 val result = auth.signInWithEmailAndPassword(email, password).await()
                 val user = result.user ?: error(DataConstants.Auth.NULL_USER)
                 user.toAuthUser()
             }.onSuccess { user -> crashReporter.setUser(user.uid) }
-                .onFailure { exception -> if (exception is CancellationException) throw exception }
 
         override suspend fun signInWithGoogle(idToken: String): Result<AuthUser> =
-            runCatching {
+            appRunCatching {
                 val credential = GoogleAuthProvider.getCredential(idToken, null)
                 val result = auth.signInWithCredential(credential).await()
                 val user = result.user ?: error(DataConstants.Auth.NULL_USER)
                 user.toAuthUser()
             }.onSuccess { user -> crashReporter.setUser(user.uid) }
-                .onFailure { exception -> if (exception is CancellationException) throw exception }
 
         override suspend fun sendPasswordResetEmail(email: String): Result<Unit> =
-            runCatching {
+            appRunCatching {
                 auth.sendPasswordResetEmail(email).await()
                 Unit
-            }.onFailure { exception -> if (exception is CancellationException) throw exception }
+            }
 
         override suspend fun signOut() {
             auth.signOut()
@@ -80,21 +80,21 @@ class AuthRepositoryImpl
         }
 
         override suspend fun deleteAccount(): Result<Unit> =
-            runCatching {
-                val user = auth.currentUser ?: error(DataConstants.Auth.NO_CURRENT_USER)
-                // FirebaseAuthRecentLoginRequiredException доходит до UI как есть —
-                // toUserMessage() превращает его в понятную просьбу перелогиниться
+            appRunCatching {
+                val user = auth.currentUser ?: throw AppException(AppError.Auth(AuthErrorReason.NOT_SIGNED_IN))
+                // FirebaseAuthRecentLoginRequiredException превращается в Auth(RECENT_LOGIN_REQUIRED),
+                // и экран просит войти заново, а не показывает фразу Firebase
                 user.delete().await()
                 crashReporter.clearUser()
-            }.onFailure { exception -> if (exception is CancellationException) throw exception }
+            }
 
         override suspend fun changePassword(
             currentPassword: String,
             newPassword: String,
         ): Result<Unit> =
-            runCatching {
-                val user = auth.currentUser ?: error(DataConstants.Auth.NO_CURRENT_USER)
-                val email = user.email ?: error(DataConstants.Auth.NO_PASSWORD_PROVIDER)
+            appRunCatching {
+                val user = auth.currentUser ?: throw AppException(AppError.Auth(AuthErrorReason.NOT_SIGNED_IN))
+                val email = user.email ?: throw AppException(AppError.Auth(AuthErrorReason.NO_PASSWORD_PROVIDER))
                 // Firebase не меняет пароль по старой сессии, поэтому сначала
                 // переавторизуемся текущим паролем — заодно это его и проверяет.
                 // Неверный пароль прилетит как FirebaseAuthInvalidCredentialsException.
@@ -102,5 +102,5 @@ class AuthRepositoryImpl
                 user.reauthenticate(credential).await()
                 user.updatePassword(newPassword).await()
                 Unit
-            }.onFailure { exception -> if (exception is CancellationException) throw exception }
+            }
     }

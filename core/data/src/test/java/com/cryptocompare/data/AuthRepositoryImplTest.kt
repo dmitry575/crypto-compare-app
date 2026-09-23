@@ -4,6 +4,9 @@ import app.cash.turbine.test
 import com.cryptocompare.data.repository.AuthRepositoryImpl
 import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.model.auth.AuthUser
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AppException
+import com.cryptocompare.model.error.AuthErrorReason
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.EmailAuthProvider
@@ -138,7 +141,10 @@ class AuthRepositoryImplTest {
 
             assertTrue(result.isFailure)
             // тип не должен схлопываться в IllegalStateException: по нему UI выбирает текст
-            assertTrue(result.exceptionOrNull() is FirebaseAuthUserCollisionException)
+            // наружу — причина, а исключение Firebase остаётся в cause для отчётов
+            val failure = result.exceptionOrNull() as AppException
+            assertEquals(AppError.Auth(AuthErrorReason.EMAIL_ALREADY_IN_USE), failure.error)
+            assertTrue(failure.cause is FirebaseAuthUserCollisionException)
         }
 
     @Test
@@ -206,7 +212,10 @@ class AuthRepositoryImplTest {
             val result = repository.signInWithEmail("login@example.com", "secret")
 
             assertTrue(result.isFailure)
-            assertTrue(result.exceptionOrNull() is FirebaseAuthInvalidCredentialsException)
+            // наружу — причина, а исключение Firebase остаётся в cause для отчётов
+            val failure = result.exceptionOrNull() as AppException
+            assertEquals(AppError.Auth(AuthErrorReason.INVALID_CREDENTIALS), failure.error)
+            assertTrue(failure.cause is FirebaseAuthInvalidCredentialsException)
         }
 
     @Test
@@ -218,7 +227,10 @@ class AuthRepositoryImplTest {
             val result = repository.signInWithGoogle("token")
 
             assertTrue(result.isFailure)
-            assertTrue(result.exceptionOrNull() is FirebaseAuthInvalidUserException)
+            // наружу — причина, а исключение Firebase остаётся в cause для отчётов
+            val failure = result.exceptionOrNull() as AppException
+            assertEquals(AppError.Auth(AuthErrorReason.USER_NOT_FOUND), failure.error)
+            assertTrue(failure.cause is FirebaseAuthInvalidUserException)
         }
 
     @Test
@@ -246,7 +258,10 @@ class AuthRepositoryImplTest {
             val result = repository.deleteAccount()
 
             assertTrue(result.isFailure)
-            assertTrue(result.exceptionOrNull() is FirebaseAuthRecentLoginRequiredException)
+            // наружу — причина, а исключение Firebase остаётся в cause для отчётов
+            val failure = result.exceptionOrNull() as AppException
+            assertEquals(AppError.Auth(AuthErrorReason.RECENT_LOGIN_REQUIRED), failure.error)
+            assertTrue(failure.cause is FirebaseAuthRecentLoginRequiredException)
         }
 
     @Test

@@ -20,15 +20,12 @@ object DataConstants {
     }
 
     /**
-     * Ошибки, которые формулируем мы сами. Всё, что приходит от Firebase,
-     * пробрасывается своим типом — текст подбирает `toUserMessage()`.
+     * Причина для отчёта о сбое, а не для экрана: пользователь увидит
+     * `AppError.Unknown`. Всё, что пользователю нужно понять («нет сессии»,
+     * «нет пароля»), бросается как `AppError.Auth` с причиной.
      */
     object Auth {
-        const val NO_CURRENT_USER = "User not authorized"
         const val NULL_USER = "Firebase returned null user"
-
-        /** Пароля нет у аккаунтов, заведённых только через Google. */
-        const val NO_PASSWORD_PROVIDER = "Account has no email and password sign-in"
     }
 
     object Favourites {

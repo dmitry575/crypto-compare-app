@@ -53,10 +53,6 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
-    // toUserMessage() различает исключения Firebase Auth; зависимость implementation,
-    // поэтому Firebase не протекает на compile-classpath потребителей core:helpers
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     androidTestImplementation(libs.androidx.junit)

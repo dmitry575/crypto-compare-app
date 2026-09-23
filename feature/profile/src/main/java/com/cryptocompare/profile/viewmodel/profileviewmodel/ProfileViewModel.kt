@@ -13,8 +13,8 @@ import com.cryptocompare.domain.usecase.settings.SetDefaultProviderUseCase
 import com.cryptocompare.domain.usecase.settings.SetDefaultTimeframeUseCase
 import com.cryptocompare.domain.usecase.settings.SetLanguageUseCase
 import com.cryptocompare.domain.usecase.settings.SetThemePreferenceUseCase
-import com.cryptocompare.helpers.toUserMessage
 import com.cryptocompare.model.chart.ChartTimeframe
+import com.cryptocompare.model.error.asAppError
 import com.cryptocompare.model.settings.AppLanguage
 import com.cryptocompare.model.settings.ThemePreference
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -91,7 +91,7 @@ class ProfileViewModel
         fun onSignOutConfirmed() {
             viewModelScope.launch {
                 _uiState.update { uiState ->
-                    uiState.copy(showSignOutConfirmation = false, isLoading = true, errorMessage = null)
+                    uiState.copy(showSignOutConfirmation = false, isLoading = true, error = null)
                 }
                 runCatching { signOutUseCase() }
                     .onSuccess { sessionEnded() }
@@ -110,7 +110,7 @@ class ProfileViewModel
         fun onDeleteAccountConfirmed() {
             viewModelScope.launch {
                 _uiState.update { uiState ->
-                    uiState.copy(showDeleteConfirmation = false, isLoading = true, errorMessage = null)
+                    uiState.copy(showDeleteConfirmation = false, isLoading = true, error = null)
                 }
                 deleteAccountUseCase()
                     .onSuccess { sessionEnded() }
@@ -119,7 +119,7 @@ class ProfileViewModel
         }
 
         fun onErrorShown() {
-            _uiState.update { uiState -> uiState.copy(errorMessage = null) }
+            _uiState.update { uiState -> uiState.copy(error = null) }
         }
 
         private fun observeTheme(observeThemePreferenceUseCase: ObserveThemePreferenceUseCase) {
@@ -173,7 +173,7 @@ class ProfileViewModel
 
         private fun showError(error: Throwable) {
             _uiState.update { uiState ->
-                uiState.copy(isLoading = false, errorMessage = error.toUserMessage())
+                uiState.copy(isLoading = false, error = error.asAppError())
             }
         }
     }
