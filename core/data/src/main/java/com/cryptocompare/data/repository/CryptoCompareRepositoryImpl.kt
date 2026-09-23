@@ -32,6 +32,7 @@ import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.symbol.Symbol
+import com.cryptocompare.model.symbol.SymbolSellQuote
 import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.network.api.CryptoCompareApi
 import kotlinx.coroutines.CancellationException
@@ -240,13 +241,21 @@ class CryptoCompareRepositoryImpl
          * у биржи означает «стороны стакана нет», и как стоимость позиции он
          * читался бы обнулением вложенного.
          */
-        override fun observeSellPrices(symbolIds: Set<Long>): Flow<Map<Long, Double>> =
+        override fun observeSellQuotes(symbolIds: Set<Long>): Flow<Map<Long, SymbolSellQuote>> =
             symbolDao
-                .observeSellPrices(symbolIds.toList())
+                .observeSellQuotes(symbolIds.toList())
                 .map { rows ->
                     rows
-                        .mapNotNull { row -> row.sellPrice.validPriceOrNull()?.let { price -> row.symbolId to price } }
-                        .toMap()
+                        .mapNotNull { row ->
+                            row.sellPrice.validPriceOrNull()?.let { price ->
+                                row.symbolId to
+                                    SymbolSellQuote(
+                                        price = price,
+                                        providerId = row.providerId,
+                                        exchangeName = row.providerName,
+                                    )
+                            }
+                        }.toMap()
                 }.distinctUntilChanged()
 
         override suspend fun applyBestPriceUpdates(updates: List<TickerBestPrice>): Result<Unit> =

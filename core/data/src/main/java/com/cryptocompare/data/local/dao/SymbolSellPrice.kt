@@ -9,4 +9,8 @@ package com.cryptocompare.data.local.dao
 data class SymbolSellPrice(
     val symbolId: Long,
     val sellPrice: Double,
+    /** Биржа с лучшим bid — та, чья цена взята. */
+    val providerId: Int?,
+    /** Её имя из справочника; `null`, пока биржи там нет. */
+    val providerName: String?,
 )

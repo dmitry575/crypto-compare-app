@@ -8,6 +8,7 @@ import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.symbol.Symbol
+import com.cryptocompare.model.symbol.SymbolSellQuote
 import com.cryptocompare.model.ticker.TickerBestPrice
 import kotlinx.coroutines.flow.Flow
 
@@ -46,10 +47,11 @@ interface CryptoCompareRepository {
     suspend fun applyBestPriceUpdates(updates: List<TickerBestPrice>): Result<Unit>
 
     /**
-     * Цены продажи символов из каталога, ключ — `symbolId`. Символа без цены в
-     * выдаче нет: у портфеля «цены не знаем» и «стоит ноль» — разные ответы.
+     * Цены продажи символов из каталога вместе с биржей, которая их даёт; ключ —
+     * `symbolId`. Символа без цены в выдаче нет: у портфеля «цены не знаем» и
+     * «стоит ноль» — разные ответы.
      */
-    fun observeSellPrices(symbolIds: Set<Long>): Flow<Map<Long, Double>>
+    fun observeSellQuotes(symbolIds: Set<Long>): Flow<Map<Long, SymbolSellQuote>>
 
     suspend fun refreshCatalog(): Result<Unit>
 
