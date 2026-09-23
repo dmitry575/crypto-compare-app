@@ -12,13 +12,24 @@ import com.cryptocompare.helpers.util.WorkerConstants
 import java.util.concurrent.TimeUnit
 
 object WorkScheduler {
-    fun scheduleDailyRefreshCatalog(context: Context) {
+    /**
+     * Фоновая перекачка каталога. Раньше называлась `scheduleDailyRefreshCatalog`,
+     * хотя интервал давно 20 минут — см. [WorkerConstants.CATALOG_REFRESH_INTERVAL_MINUTES].
+     *
+     * `KEEP`: если работа уже стоит, новый интервал к ней не применяется. У тех,
+     * кто поставил приложение до смены интервала, до сих пор крутится расписание
+     * раз в сутки; перейти на `UPDATE` — решение про трафик и батарею, а не про
+     * код, поэтому оно вынесено в `core/data/CACHE_POLICY.md`.
+     */
+    fun scheduleCatalogRefresh(context: Context) {
         val constraints =
             Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
         val refreshRequest =
-            PeriodicWorkRequestBuilder<RefreshCatalogWorker>(20, TimeUnit.MINUTES)
-                .setConstraints(constraints)
+            PeriodicWorkRequestBuilder<RefreshCatalogWorker>(
+                WorkerConstants.CATALOG_REFRESH_INTERVAL_MINUTES,
+                TimeUnit.MINUTES,
+            ).setConstraints(constraints)
                 .build()
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
@@ -33,8 +44,10 @@ object WorkScheduler {
             Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
         val syncRequest =
-            PeriodicWorkRequestBuilder<SyncFavouritesWorker>(15, TimeUnit.MINUTES)
-                .setConstraints(constraints)
+            PeriodicWorkRequestBuilder<SyncFavouritesWorker>(
+                WorkerConstants.FAVOURITES_SYNC_INTERVAL_MINUTES,
+                TimeUnit.MINUTES,
+            ).setConstraints(constraints)
                 .build()
 
         // UPDATE, а не KEEP: имя класса воркера лежит в базе WorkManager, и у тех,
