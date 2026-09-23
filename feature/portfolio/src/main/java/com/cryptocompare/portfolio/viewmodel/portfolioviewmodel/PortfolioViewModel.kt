@@ -146,7 +146,7 @@ class PortfolioViewModel
                     observePortfolioUseCase()
                         .flatMapLatest { positions ->
                             observePortfolioPricesUseCase(positions.map(PortfolioPosition::symbolId).toSet())
-                                .map { prices -> positions to calculatePortfolioUseCase(positions, prices) }
+                                .map { quotes -> positions to calculatePortfolioUseCase(positions, quotes) }
                         }.collect { (positions, portfolio) ->
                             positionTickers = positions.map { it.ticker }
 
