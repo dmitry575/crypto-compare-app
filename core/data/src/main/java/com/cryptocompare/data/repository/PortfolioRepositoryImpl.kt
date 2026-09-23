@@ -3,9 +3,9 @@ package com.cryptocompare.data.repository
 import com.cryptocompare.data.local.dao.PortfolioPositionDao
 import com.cryptocompare.data.mapper.toDomain
 import com.cryptocompare.data.mapper.toEntity
+import com.cryptocompare.data.util.appRunCatching
 import com.cryptocompare.domain.repository.PortfolioRepository
 import com.cryptocompare.model.portfolio.PortfolioPosition
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -29,13 +29,11 @@ class PortfolioRepositoryImpl
 
         override suspend fun savePosition(position: PortfolioPosition): Result<Unit> =
             withContext(ioDispatcher) {
-                runCatching { portfolioPositionDao.upsert(position.toEntity()) }
-                    .onFailure { exception -> if (exception is CancellationException) throw exception }
+                appRunCatching { portfolioPositionDao.upsert(position.toEntity()) }
             }
 
         override suspend fun deletePosition(symbolId: Long): Result<Unit> =
             withContext(ioDispatcher) {
-                runCatching { portfolioPositionDao.delete(symbolId) }
-                    .onFailure { exception -> if (exception is CancellationException) throw exception }
+                appRunCatching { portfolioPositionDao.delete(symbolId) }
             }
     }

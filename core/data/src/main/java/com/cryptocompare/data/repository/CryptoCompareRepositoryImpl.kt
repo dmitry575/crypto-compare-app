@@ -21,7 +21,8 @@ import com.cryptocompare.data.mapper.toKlineInterval
 import com.cryptocompare.data.mapper.toPairUiItem
 import com.cryptocompare.data.mapper.toTickerBestPrice
 import com.cryptocompare.data.paging.SymbolsRemoteMediator
-import com.cryptocompare.data.util.DataConstants
+import com.cryptocompare.data.util.appRunCatching
+import com.cryptocompare.data.util.checkApiResponse
 import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.helpers.util.CryptoCompareRepositoryConstants
 import com.cryptocompare.helpers.validPriceOrNull
@@ -34,7 +35,6 @@ import com.cryptocompare.model.symbol.PairUiItem
 import com.cryptocompare.model.symbol.Symbol
 import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.network.api.CryptoCompareApi
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -60,18 +60,17 @@ class CryptoCompareRepositoryImpl
         // get providers
         override suspend fun getProviders(): Result<List<Provider>> =
             withContext(ioDispatcher) {
-                runCatching {
+                appRunCatching {
                     val providers = providerDao.getAll().toDomainFromEntity()
 
                     if (providers.isNotEmpty() && !isCacheStale(providerDao.getLastUpdate())) {
-                        return@runCatching providers
+                        return@appRunCatching providers
                     }
                     refreshProviders()
-                }.onFailure { error -> if (error is CancellationException) throw error }
-                    .recoverCatching { error ->
-                        val cached = providerDao.getAll().toDomainFromEntity()
-                        cached.ifEmpty { throw error }
-                    }
+                }.recoverCatching { error ->
+                    val cached = providerDao.getAll().toDomainFromEntity()
+                    cached.ifEmpty { throw error }
+                }
             }
 
         /**
@@ -93,10 +92,7 @@ class CryptoCompareRepositoryImpl
                         rows = CryptoCompareRepositoryConstants.PROVIDERS_IN_ROW,
                     )
 
-                if (response.errorCode != 0) {
-                    val message = response.errorMsgs?.joinToString("\n") ?: "Unknown error"
-                    throw IllegalStateException(message)
-                }
+                checkApiResponse(response.errorCode, response.errorMsgs)
 
                 val page = response.providers.orEmpty()
                 if (page.isEmpty()) break
@@ -164,19 +160,12 @@ class CryptoCompareRepositoryImpl
          */
         override suspend fun getSymbolsByTicker(ticker: String): Result<List<Symbol>> =
             withContext(ioDispatcher) {
-                runCatching {
+                appRunCatching {
                     val response = cryptoCompareApi.getSymbolsByTicker(ticker)
 
-                    if (response.errorCode != 0) {
-                        val message = response.errorMsgs?.joinToString("\n") ?: "Unknown error"
-                        throw IllegalStateException(message)
-                    }
+                    checkApiResponse(response.errorCode, response.errorMsgs)
 
                     response.symbols.orEmpty().symbolToDomainFromDto()
-                }.onFailure { error ->
-                    if (error is CancellationException) {
-                        throw error
-                    }
                 }
             }
 
@@ -190,7 +179,7 @@ class CryptoCompareRepositoryImpl
             offset: Int,
         ): Result<List<Candle>> =
             withContext(ioDispatcher) {
-                runCatching {
+                appRunCatching {
                     val response =
                         cryptoCompareApi.getKlines(
                             providerId = providerId,
@@ -200,35 +189,20 @@ class CryptoCompareRepositoryImpl
                             offset = offset,
                         )
 
-                    if (response.errorCode != DataConstants.Klines.ERROR_CODE_OK) {
-                        val message =
-                            response.errorMsgs?.joinToString("\n") ?: DataConstants.Klines.UNKNOWN_ERROR
-                        throw IllegalStateException(message)
-                    }
+                    checkApiResponse(response.errorCode, response.errorMsgs)
 
                     response.toCandles()
-                }.onFailure { error ->
-                    if (error is CancellationException) {
-                        throw error
-                    }
                 }
             }
 
         override suspend fun getBestPricesByTicker(ticker: String): Result<List<TickerBestPrice>> =
             withContext(ioDispatcher) {
-                runCatching {
+                appRunCatching {
                     val response = cryptoCompareApi.getBestPricesByTicker(ticker)
 
-                    if (response.errorCode != 0) {
-                        val message = response.errorMsgs?.joinToString("\n") ?: "Unknown error"
-                        throw IllegalStateException(message)
-                    }
+                    checkApiResponse(response.errorCode, response.errorMsgs)
 
                     response.symbols.orEmpty().toTickerBestPrice()
-                }.onFailure { error ->
-                    if (error is CancellationException) {
-                        throw error
-                    }
                 }
             }
 
@@ -251,7 +225,7 @@ class CryptoCompareRepositoryImpl
 
         override suspend fun applyBestPriceUpdates(updates: List<TickerBestPrice>): Result<Unit> =
             withContext(ioDispatcher) {
-                runCatching {
+                appRunCatching {
                     symbolDao.updateBestPrices(
                         updates.map { update ->
                             SymbolBestPriceUpdate(
@@ -264,21 +238,13 @@ class CryptoCompareRepositoryImpl
                             )
                         },
                     )
-                }.onFailure { error ->
-                    if (error is CancellationException) {
-                        throw error
-                    }
                 }
             }
 
         override suspend fun refreshCatalog(): Result<Unit> =
             withContext(ioDispatcher) {
-                runCatching {
+                appRunCatching {
                     refreshSymbols()
-                }.onFailure { error ->
-                    if (error is CancellationException) {
-                        throw error
-                    }
                 }
             }
 
@@ -297,10 +263,7 @@ class CryptoCompareRepositoryImpl
                         skip = skip,
                         rows = CryptoCompareRepositoryConstants.SYMBOLS_IN_ROW,
                     )
-                if (response.errorCode != 0) {
-                    val message = response.errorMsgs?.joinToString("\n") ?: "Unknown error"
-                    throw IllegalStateException(message)
-                }
+                checkApiResponse(response.errorCode, response.errorMsgs)
 
                 val symbols = response.symbols.normalizeSymbols()
                 if (symbols.isEmpty()) break

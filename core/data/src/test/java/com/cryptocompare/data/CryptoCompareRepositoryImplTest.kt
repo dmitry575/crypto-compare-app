@@ -7,6 +7,9 @@ import com.cryptocompare.data.local.dao.SymbolDao
 import com.cryptocompare.data.local.entity.ProviderEntity
 import com.cryptocompare.data.repository.CryptoCompareRepositoryImpl
 import com.cryptocompare.model.chart.ChartTimeframe
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AppException
+import com.cryptocompare.model.error.asAppError
 import com.cryptocompare.model.provider.Provider
 import com.cryptocompare.model.provider.ProviderStatus
 import com.cryptocompare.model.ticker.TickerBestPrice
@@ -26,7 +29,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -213,9 +215,10 @@ class CryptoCompareRepositoryImplTest {
             val result = repo.getProviders()
 
             assertTrue(result.isFailure)
-            val ex = result.exceptionOrNull()
-            assertNotNull(ex)
-            assertEquals("E1\nE2", ex!!.message)
+            // наружу — разобранная ошибка с кодом бэкенда, его текст — в причине, для отчётов
+            val ex = result.exceptionOrNull() as AppException
+            assertEquals(AppError.Api(10), ex.error)
+            assertEquals("E1\nE2", ex.cause?.message)
         }
 
     @Test
@@ -239,7 +242,7 @@ class CryptoCompareRepositoryImplTest {
             val result = repo.getProviders()
 
             assertTrue(result.isFailure)
-            assertEquals("Unknown error", result.exceptionOrNull()!!.message)
+            assertEquals(AppError.Api(1), result.exceptionOrNull()!!.asAppError())
         }
 
     @Test
@@ -524,7 +527,10 @@ class CryptoCompareRepositoryImplTest {
             val result = repo.getCandles(1, "btcusdt", ChartTimeframe.D1, 300, 0)
 
             assertTrue(result.isFailure)
-            assertEquals("Invalid request", result.exceptionOrNull()!!.message)
+            // «Invalid request» больше не доходит до экрана — только до отчёта о сбое
+            val ex = result.exceptionOrNull() as AppException
+            assertEquals(AppError.Api(-2), ex.error)
+            assertEquals("Invalid request", ex.cause?.message)
         }
 
     @Test
@@ -577,6 +583,8 @@ class CryptoCompareRepositoryImplTest {
             val result = repo.applyBestPriceUpdates(listOf(bestPrice(11L, "btcusdt")))
 
             assertTrue(result.isFailure)
-            assertEquals("db is closed", result.exceptionOrNull()!!.message)
+            val ex = result.exceptionOrNull() as AppException
+            assertEquals(AppError.Unknown, ex.error)
+            assertEquals("db is closed", ex.cause?.message)
         }
 }
