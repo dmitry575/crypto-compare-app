@@ -3,11 +3,15 @@ package com.cryptocompare.data.repository
 import com.cryptocompare.data.local.dao.PortfolioPositionDao
 import com.cryptocompare.data.mapper.toDomain
 import com.cryptocompare.data.mapper.toEntity
+import com.cryptocompare.data.mapper.toSellQuotes
 import com.cryptocompare.data.util.appRunCatching
 import com.cryptocompare.domain.repository.PortfolioRepository
 import com.cryptocompare.model.portfolio.PortfolioPosition
+import com.cryptocompare.model.portfolio.PortfolioQuote
+import com.cryptocompare.model.symbol.SymbolSellQuote
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -35,5 +39,18 @@ class PortfolioRepositoryImpl
         override suspend fun deletePosition(symbolId: Long): Result<Unit> =
             withContext(ioDispatcher) {
                 appRunCatching { portfolioPositionDao.delete(symbolId) }
+            }
+
+        override fun observePinnedQuotes(): Flow<Map<Long, SymbolSellQuote>> =
+            portfolioPositionDao
+                .observePinnedQuotes()
+                .map { rows -> rows.toSellQuotes() }
+                .distinctUntilChanged()
+
+        override suspend fun savePinnedQuotes(quotes: List<PortfolioQuote>): Result<Unit> =
+            withContext(ioDispatcher) {
+                appRunCatching {
+                    if (quotes.isNotEmpty()) portfolioPositionDao.upsertQuotes(quotes.map { it.toEntity() })
+                }
             }
     }

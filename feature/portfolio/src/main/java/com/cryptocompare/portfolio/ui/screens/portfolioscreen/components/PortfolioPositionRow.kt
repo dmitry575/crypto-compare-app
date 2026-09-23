@@ -84,11 +84,17 @@ internal fun PortfolioPositionRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            // лучший bid переезжает между биржами, и без этой строки было
+            // «на bybit» — биржа покупки, цена только её; «по цене htx» — лучший
+            // bid, он переезжает между биржами, и без этой строки было
             // непонятно, почему позиция вдруг подешевела
             holding.priceExchange?.let { exchange ->
                 Text(
-                    text = stringResource(R.string.portfolio_price_source, exchange),
+                    text =
+                        if (holding.position.providerId != null) {
+                            stringResource(R.string.portfolio_price_pinned, exchange)
+                        } else {
+                            stringResource(R.string.portfolio_price_source, exchange)
+                        },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.textTertiary,
                     maxLines = 1,

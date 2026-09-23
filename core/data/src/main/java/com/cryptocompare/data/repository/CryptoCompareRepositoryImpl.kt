@@ -19,13 +19,13 @@ import com.cryptocompare.data.mapper.toDomainFromEntity
 import com.cryptocompare.data.mapper.toEntityFromDto
 import com.cryptocompare.data.mapper.toKlineInterval
 import com.cryptocompare.data.mapper.toPairUiItem
+import com.cryptocompare.data.mapper.toSellQuotes
 import com.cryptocompare.data.mapper.toTickerBestPrice
 import com.cryptocompare.data.paging.SymbolsRemoteMediator
 import com.cryptocompare.data.util.appRunCatching
 import com.cryptocompare.data.util.checkApiResponse
 import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.helpers.util.CryptoCompareRepositoryConstants
-import com.cryptocompare.helpers.validPriceOrNull
 import com.cryptocompare.model.chart.Candle
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.model.provider.Provider
@@ -218,19 +218,8 @@ class CryptoCompareRepositoryImpl
         override fun observeSellQuotes(symbolIds: Set<Long>): Flow<Map<Long, SymbolSellQuote>> =
             symbolDao
                 .observeSellQuotes(symbolIds.toList())
-                .map { rows ->
-                    rows
-                        .mapNotNull { row ->
-                            row.sellPrice.validPriceOrNull()?.let { price ->
-                                row.symbolId to
-                                    SymbolSellQuote(
-                                        price = price,
-                                        providerId = row.providerId,
-                                        exchangeName = row.providerName,
-                                    )
-                            }
-                        }.toMap()
-                }.distinctUntilChanged()
+                .map { rows -> rows.toSellQuotes() }
+                .distinctUntilChanged()
 
         override suspend fun applyBestPriceUpdates(updates: List<TickerBestPrice>): Result<Unit> =
             withContext(ioDispatcher) {

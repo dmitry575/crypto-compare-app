@@ -51,14 +51,28 @@ class CalculatePortfolioUseCase
             return PortfolioHolding(
                 position = position,
                 currentPrice = currentPrice,
-                // биржа имеет смысл, только если её цена годится: иначе на экране
-                // стоял бы прочерк «по цене bitget»
-                priceExchange = quote?.exchangeName?.takeIf { currentPrice != null },
+                priceExchange = priceExchange(position, quote, currentPrice),
                 invested = invested.toDouble(),
                 currentValue = currentValue?.toDouble(),
                 profit = profit?.toDouble(),
                 profitPercent = profit?.percentOf(invested),
             )
+        }
+
+        /**
+         * У позиции с биржей это всегда её биржа, даже без цены: «на Bybit, цены
+         * пока нет» — честный ответ, и пользователь видит, что оценка не уехала на
+         * чужую площадку. У позиции без биржи — биржа лучшего bid, и только когда
+         * её цена годится: иначе на экране стоял бы прочерк «по цене bitget».
+         */
+        private fun priceExchange(
+            position: PortfolioPosition,
+            quote: SymbolSellQuote?,
+            currentPrice: Double?,
+        ): String? {
+            if (position.providerId != null) return position.exchangeName ?: quote?.exchangeName
+
+            return quote?.exchangeName?.takeIf { currentPrice != null }
         }
 
         /** Итог — только по тому, что удалось оценить; остальное экран покажет отдельно. */

@@ -62,7 +62,7 @@ import kotlinx.coroutines.launch
 fun DetailsScreen(
     onBack: () -> Unit,
     onCompareClick: (ticker: String, symbolId: Long?) -> Unit,
-    onAddToPortfolio: (symbolId: Long, ticker: String, price: Double?) -> Unit = { _, _, _ -> },
+    onAddToPortfolio: (symbolId: Long, ticker: String, price: Double?, providerId: Int?) -> Unit = { _, _, _, _ -> },
     viewModel: DetailsViewModel = hiltViewModel(),
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle()
@@ -110,9 +110,14 @@ fun DetailsScreen(
                     if (symbolId != null && !state.loading) {
                         IconButton(
                             onClick = {
-                                // цена покупки по умолчанию — ask выбранной биржи: по нему
-                                // и покупают, когда смотрят на эту пару
-                                onAddToPortfolio(symbolId, state.ticker, state.selectedExchange?.priceSell)
+                                // по умолчанию позиция куплена на выбранной бирже и по её
+                                // ask: так и покупают, когда смотрят на эту пару
+                                onAddToPortfolio(
+                                    symbolId,
+                                    state.ticker,
+                                    state.selectedExchange?.priceSell,
+                                    state.selectedExchange?.provider?.id,
+                                )
                             },
                         ) {
                             Icon(

@@ -4,6 +4,8 @@ import app.cash.turbine.test
 import com.cryptocompare.domain.repository.PortfolioRepository
 import com.cryptocompare.model.portfolio.PortfolioPosition
 import com.cryptocompare.model.portfolio.PortfolioPositionDraft
+import com.cryptocompare.model.portfolio.PortfolioQuote
+import com.cryptocompare.model.ticker.TickerPrice
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -43,6 +45,42 @@ class PortfolioUseCasesTest {
                     match { it.symbolId == DRAFT.symbolId && it.amount == DRAFT.amount && it.updatedAtMillis > 0 },
                 )
             }
+        }
+
+    @Test
+    fun `SavePortfolioPositionUseCase keeps the exchange the coin was bought on`() =
+        runTest {
+            coEvery { repository.savePosition(any()) } returns Result.success(Unit)
+
+            SavePortfolioPositionUseCase(repository)(DRAFT.copy(providerId = 5))
+
+            coVerify(exactly = 1) { repository.savePosition(match { it.providerId == 5 }) }
+        }
+
+    @Test
+    fun `ApplyPinnedPriceTicksUseCase stores the exchange bid as the sell price`() =
+        runTest {
+            coEvery { repository.savePinnedQuotes(any()) } returns Result.success(Unit)
+
+            ApplyPinnedPriceTicksUseCase(repository)(listOf(tick(ask = 81_060.0, bid = 81_050.0)))
+
+            // у события типа 4 имена от лица биржи: её bid — это priceBuy
+            coVerify(exactly = 1) {
+                repository.savePinnedQuotes(
+                    match<List<PortfolioQuote>> { quotes ->
+                        quotes.single().let { it.symbolId == 1L && it.providerId == 5 && it.price == 81_050.0 }
+                    },
+                )
+            }
+        }
+
+    @Test
+    fun `ApplyPinnedPriceTicksUseCase drops a tick without a usable bid`() =
+        runTest {
+            val result = ApplyPinnedPriceTicksUseCase(repository)(listOf(tick(ask = 81_060.0, bid = 0.0)))
+
+            assertTrue(result.isSuccess)
+            coVerify(exactly = 0) { repository.savePinnedQuotes(any()) }
         }
 
     @Test
@@ -86,6 +124,11 @@ class PortfolioUseCasesTest {
 
             assertEquals(POSITION, GetPortfolioPositionUseCase(repository)(1L))
         }
+
+    private fun tick(
+        ask: Double,
+        bid: Double,
+    ) = TickerPrice(ticker = "BTCUSDT", symbolId = 1, providerId = 5, priceSell = ask, priceBuy = bid)
 
     private companion object {
         val DRAFT =

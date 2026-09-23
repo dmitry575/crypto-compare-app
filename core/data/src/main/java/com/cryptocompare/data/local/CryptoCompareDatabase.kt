@@ -12,6 +12,7 @@ import com.cryptocompare.data.local.entity.CatalogRemoteKeyEntity
 import com.cryptocompare.data.local.entity.FavouriteSymbolEntity
 import com.cryptocompare.data.local.entity.PendingFavouriteOperationEntity
 import com.cryptocompare.data.local.entity.PortfolioPositionEntity
+import com.cryptocompare.data.local.entity.PortfolioQuoteEntity
 import com.cryptocompare.data.local.entity.ProviderEntity
 import com.cryptocompare.data.local.entity.SymbolEntity
 
@@ -23,8 +24,9 @@ import com.cryptocompare.data.local.entity.SymbolEntity
         CatalogRemoteKeyEntity::class,
         PendingFavouriteOperationEntity::class,
         PortfolioPositionEntity::class,
+        PortfolioQuoteEntity::class,
     ],
-    version = 11,
+    version = 12,
     // схемы уезжают в core/data/schemas и коммитятся: без них Room не с чем
     // сверять миграцию, а MigrationTestHelper не может собрать старую базу
     exportSchema = true,

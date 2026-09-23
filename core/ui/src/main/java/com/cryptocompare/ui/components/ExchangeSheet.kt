@@ -1,4 +1,4 @@
-package com.cryptocompare.profile.ui.screens.profilescreen.components
+package com.cryptocompare.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,9 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import com.cryptocompare.model.provider.Provider
-import com.cryptocompare.profile.R
 import com.cryptocompare.ui.locale.ProvideWindowLanguage
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.OverlineType
@@ -33,15 +31,21 @@ import com.cryptocompare.ui.theme.textPrimary
 import com.cryptocompare.ui.theme.textTertiary
 
 /**
- * Выбор биржи, с которой открывается пара.
+ * Выбор биржи из списка: биржа по умолчанию в профиле, биржа покупки в
+ * позиции портфеля.
  *
  * Шторка со списком, а не ряд чипов: бирж больше двадцати. Первым пунктом —
- * «Первая доступная»: у половины пар выбранной площадки просто нет, и это же
- * поведение было до настройки.
+ * [anyExchangeLabel], выбор без биржи (`null`): в профиле это «первая
+ * доступная», в портфеле — «лучшая цена среди бирж».
+ *
+ * Подписи приходят снаружи: у каждого места они свои, и строки фич в
+ * `core:ui` не живут.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun DefaultExchangeSheet(
+fun ExchangeSheet(
+    title: String,
+    anyExchangeLabel: String,
     providers: List<Provider>,
     selectedProviderId: Int?,
     onSelect: (Int?) -> Unit,
@@ -60,7 +64,7 @@ internal fun DefaultExchangeSheet(
         ProvideWindowLanguage(outerContext) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = stringResource(R.string.profile_default_exchange),
+                    text = title,
                     style = OverlineType,
                     color = MaterialTheme.colorScheme.textTertiary,
                     modifier =
@@ -73,7 +77,7 @@ internal fun DefaultExchangeSheet(
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
                     item {
                         ExchangeRow(
-                            name = stringResource(R.string.profile_default_exchange_any),
+                            name = anyExchangeLabel,
                             selected = selectedProviderId == null,
                             onClick = { onSelect(null) },
                         )

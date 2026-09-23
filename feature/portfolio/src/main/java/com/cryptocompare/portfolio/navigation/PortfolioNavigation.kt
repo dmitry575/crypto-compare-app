@@ -45,6 +45,12 @@ fun NavGraphBuilder.portfolioNavigation(
                         nullable = true
                         defaultValue = null
                     },
+                    // строкой: у IntType не бывает null, а «биржа не выбрана» — законный ответ
+                    navArgument(PortfolioConstants.Navigation.PROVIDER_ID_ARG) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
                 ),
         ) {
             PositionEditScreen(onDone = { navController.popBackStack() })

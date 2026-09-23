@@ -10,11 +10,14 @@ import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.TakeOverTickerSubscriptionsUseCase
+import com.cryptocompare.domain.usecase.portfolio.ApplyPinnedPriceTicksUseCase
 import com.cryptocompare.domain.usecase.portfolio.CalculatePortfolioUseCase
 import com.cryptocompare.domain.usecase.portfolio.ObservePortfolioPricesUseCase
 import com.cryptocompare.domain.usecase.portfolio.ObservePortfolioUseCase
+import com.cryptocompare.domain.usecase.portfolio.RefreshPinnedQuotesUseCase
 import com.cryptocompare.model.portfolio.PortfolioPosition
 import com.cryptocompare.model.ticker.TickerBestPrice
+import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
 import com.cryptocompare.portfolio.util.PortfolioConstants
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,7 +34,8 @@ import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
- * Портфель: позиции из базы, цены — из каталога.
+ * Портфель: позиции из базы, цены — из каталога, а у позиций с указанной
+ * биржей — последние котировки этой биржи.
  *
  * Пока экран открыт, он забирает подписки соединения себе, как это делают
  * детали и сравнение: слотов мало, а каталога под портфелем не видно. Отдаёт
@@ -54,19 +58,21 @@ class PortfolioViewModel
         private val observeStreamReconnectsUseCase: ObserveStreamReconnectsUseCase,
         private val applyBestPriceChangesUseCase: ApplyBestPriceChangesUseCase,
         private val refreshBestPricesUseCase: RefreshBestPricesUseCase,
+        private val refreshPinnedQuotesUseCase: RefreshPinnedQuotesUseCase,
+        private val applyPinnedPriceTicksUseCase: ApplyPinnedPriceTicksUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(PortfolioUiState())
         val uiState = _uiState.asStateFlow()
 
-        /** Тикеры позиций в порядке списка: подписки достаются верхним. */
-        private var positionTickers: List<String> = emptyList()
+        /** Позиции в порядке списка: подписки достаются верхним. */
+        private var positions: List<PortfolioPosition> = emptyList()
         private val subscribedTickers = mutableSetOf<String>()
 
-        /** Кого уже дотянули по REST в этот заход — чтобы не ходить за той же ценой дважды. */
-        private val refreshedTickers = mutableSetOf<String>()
+        /** Чьи цены уже дотянули по REST в этот заход — чтобы не ходить за той же ценой дважды. */
+        private val refreshedSources = mutableSetOf<PriceSource>()
 
         /** Кто в пути прямо сейчас: без этого повторная правка позиций слала бы те же запросы заново. */
-        private val refreshingTickers = mutableSetOf<String>()
+        private val refreshingSources = mutableSetOf<PriceSource>()
 
         private var portfolioJob: Job? = null
         private var liveJob: Job? = null
@@ -81,6 +87,13 @@ class PortfolioViewModel
          * одном потоке.
          */
         private val pendingBestPrices = mutableMapOf<Long, TickerBestPrice>()
+
+        /**
+         * Котировки бирж, за которыми закреплены позиции, по `symbolId`. Событие
+         * типа 4 несёт котировку одной биржи, и из всех бирж тикера нужна ровно
+         * одна на позицию — остальные отбрасываются ещё до пачки.
+         */
+        private val pendingPinnedTicks = mutableMapOf<Long, TickerPrice>()
         private var isFlushScheduled = false
 
         /**
@@ -125,15 +138,17 @@ class PortfolioViewModel
             liveJob?.cancel()
             liveJob = null
             pendingBestPrices.clear()
+            pendingPinnedTicks.clear()
             subscribedTickers.clear()
-            refreshedTickers.clear()
-            refreshingTickers.clear()
+            refreshedSources.clear()
+            refreshingSources.clear()
             subscriptionsTakenOver = false
             restoreTickerSubscriptionsUseCase()
         }
 
         /**
-         * Позиции лежат в базе, цены — в каталоге, и портфель это их произведение.
+         * Позиции лежат в базе, цены — в каталоге и в последних котировках бирж
+         * позиций, и портфель это их произведение.
          *
          * Набор символов меняется вместе с позициями, поэтому подписка на цены
          * пересоздаётся: `flatMapLatest` снимает прошлую, и удалённая позиция не
@@ -145,10 +160,10 @@ class PortfolioViewModel
                 viewModelScope.launch {
                     observePortfolioUseCase()
                         .flatMapLatest { positions ->
-                            observePortfolioPricesUseCase(positions.map(PortfolioPosition::symbolId).toSet())
+                            observePortfolioPricesUseCase(positions)
                                 .map { quotes -> positions to calculatePortfolioUseCase(positions, quotes) }
                         }.collect { (positions, portfolio) ->
-                            positionTickers = positions.map { it.ticker }
+                            this@PortfolioViewModel.positions = positions
 
                             _uiState.update {
                                 it.copy(
@@ -169,7 +184,7 @@ class PortfolioViewModel
         }
 
         private fun syncSubscriptions() {
-            val updated = syncVisibleTickersUseCase(positionTickers, subscribedTickers)
+            val updated = syncVisibleTickersUseCase(positions.map { it.ticker }, subscribedTickers)
 
             subscribedTickers.clear()
             subscribedTickers.addAll(updated)
@@ -178,27 +193,46 @@ class PortfolioViewModel
         /**
          * Цены позиций через REST. [force] — взять всё заново: так при открытии
          * экрана и после реконнекта, когда пропущенное сервер не досылает.
-         * Иначе догоняются только те, за кем ещё не ходили.
+         * Иначе догоняются только те, за кем ещё не ходили — в том числе позиция,
+         * у которой только что сменили биржу: источник цены у неё теперь другой.
          */
         private fun refreshPrices(force: Boolean) {
             if (force) {
-                refreshedTickers.clear()
-                refreshingTickers.clear()
+                refreshedSources.clear()
+                refreshingSources.clear()
             }
 
-            val tickers = positionTickers.map { it.lowercase() }.toSet() - refreshedTickers - refreshingTickers
-            if (tickers.isEmpty()) return
+            val pending =
+                positions.filter { position ->
+                    val source = position.priceSource()
+                    source !in refreshedSources && source !in refreshingSources
+                }
+            if (pending.isEmpty()) return
 
-            refreshingTickers += tickers
+            val (pinned, best) = pending.partition { it.providerId != null }
+            val bestSources = best.map { it.priceSource() }.toSet()
+            val pinnedSources = pinned.map { it.priceSource() }.toSet()
+
+            refreshingSources += bestSources + pinnedSources
             viewModelScope.launch {
                 // Ноль обновлённых котировок — это «не прошёл ни один запрос», а не
-                // «цены свежие»: use case глотает ошибки по отдельным тикерам. Пометить
-                // такие тикеры догнанными значило бы не вернуться к ним никогда — в
-                // офлайне так и было бы: экран открыт, цены старые, повторов нет.
-                val updated = refreshBestPricesUseCase(tickers).getOrDefault(0)
+                // «цены свежие»: use case'ы глотают ошибки по отдельным тикерам.
+                // Пометить такие источники догнанными значило бы не вернуться к ним
+                // никогда — в офлайне так и было бы: экран открыт, цены старые, повторов нет.
+                if (bestSources.isNotEmpty()) {
+                    val tickers = bestSources.filterIsInstance<PriceSource.Best>().map { it.ticker }.toSet()
+                    val updated = refreshBestPricesUseCase(tickers).getOrDefault(0)
 
-                refreshingTickers -= tickers
-                if (updated > 0) refreshedTickers += tickers
+                    refreshingSources -= bestSources
+                    if (updated > 0) refreshedSources += bestSources
+                }
+
+                if (pinnedSources.isNotEmpty()) {
+                    val updated = refreshPinnedQuotesUseCase(pinned).getOrDefault(0)
+
+                    refreshingSources -= pinnedSources
+                    if (updated > 0) refreshedSources += pinnedSources
+                }
             }
         }
 
@@ -207,9 +241,16 @@ class PortfolioViewModel
                 viewModelScope.launch {
                     launch {
                         observeTickerEventUseCase().collect { event ->
-                            if (event is TickerStreamEvent.TickerBestPriceChange) {
-                                pendingBestPrices[event.data.symbolId] = event.data
-                                scheduleFlush()
+                            when {
+                                event is TickerStreamEvent.TickerBestPriceChange -> {
+                                    pendingBestPrices[event.data.symbolId] = event.data
+                                    scheduleFlush()
+                                }
+
+                                event is TickerStreamEvent.TickerPriceChange && event.data.isPinnedQuote() -> {
+                                    pendingPinnedTicks[event.data.symbolId.toLong()] = event.data
+                                    scheduleFlush()
+                                }
                             }
                         }
                     }
@@ -220,10 +261,14 @@ class PortfolioViewModel
                 }
         }
 
+        /** Котировка биржи, за которой закреплена позиция этого символа. */
+        private fun TickerPrice.isPinnedQuote(): Boolean =
+            positions.any { it.symbolId == symbolId.toLong() && it.providerId == providerId }
+
         /**
-         * Тики уходят в базу пачками: строку каталога пишет Room, а он сам
-         * разошлёт её и списку, и портфелю. Джоб живёт, пока тики идут: один
-         * пустой интервал — и он выходит.
+         * Тики уходят в базу пачками: строку каталога и последние цены бирж
+         * позиций пишет Room, а он сам разошлёт их и списку, и портфелю. Джоб
+         * живёт, пока тики идут: один пустой интервал — и он выходит.
          */
         private fun scheduleFlush() {
             if (isFlushScheduled) return
@@ -233,14 +278,17 @@ class PortfolioViewModel
                 while (true) {
                     delay(PortfolioConstants.Prices.FLUSH_INTERVAL_MS.milliseconds)
 
-                    if (pendingBestPrices.isEmpty()) {
+                    if (pendingBestPrices.isEmpty() && pendingPinnedTicks.isEmpty()) {
                         isFlushScheduled = false
                         return@launch
                     }
 
-                    val batch = pendingBestPrices.values.toList()
+                    val bestPrices = pendingBestPrices.values.toList()
+                    val pinnedTicks = pendingPinnedTicks.values.toList()
                     pendingBestPrices.clear()
-                    applyBestPriceChangesUseCase(batch)
+                    pendingPinnedTicks.clear()
+                    if (bestPrices.isNotEmpty()) applyBestPriceChangesUseCase(bestPrices)
+                    if (pinnedTicks.isNotEmpty()) applyPinnedPriceTicksUseCase(pinnedTicks)
                 }
             }
         }

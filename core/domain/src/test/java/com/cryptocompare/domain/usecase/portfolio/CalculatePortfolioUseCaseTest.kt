@@ -223,6 +223,21 @@ class CalculatePortfolioUseCaseTest {
         assertNull(portfolio.holdings.single().priceExchange)
     }
 
+    @Test
+    fun `a holding bought on an exchange names it even before its first price`() {
+        // «на bybit, цены пока нет» честнее, чем молча пустая строка: видно, что
+        // оценка не уехала на чужую площадку
+        val portfolio =
+            calculatePortfolio(
+                listOf(position(amount = 0.5, buyPrice = 60_000.0).copy(providerId = 5, exchangeName = "bybit")),
+                emptyMap(),
+            )
+
+        val holding = portfolio.holdings.single()
+        assertNull(holding.currentPrice)
+        assertEquals("bybit", holding.priceExchange)
+    }
+
     private fun quote(
         price: Double,
         exchange: String? = "binance",

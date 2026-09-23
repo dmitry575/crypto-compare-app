@@ -18,6 +18,9 @@ object PortfolioConstants {
 
         /** Цена, с которой форма откроется для новой позиции: текущий ask выбранной биржи. */
         const val PRICE_ARG = "price"
+
+        /** Биржа, с которой форма откроется для новой позиции: выбранная на экране пары. */
+        const val PROVIDER_ID_ARG = "providerId"
     }
 
     object Input {

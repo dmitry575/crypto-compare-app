@@ -15,4 +15,6 @@ data class PortfolioPositionEntity(
     val amount: Double,
     val buyPrice: Double,
     val updatedAtMillis: Long,
+    /** Биржа, где куплена монета; `null` — оценка по лучшему bid (так жили позиции до версии 12). */
+    val providerId: Int? = null,
 )

@@ -40,7 +40,6 @@ import com.cryptocompare.helpers.openExternalUrl
 import com.cryptocompare.helpers.util.AppConstants
 import com.cryptocompare.profile.R
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ChartTimeframeSelector
-import com.cryptocompare.profile.ui.screens.profilescreen.components.DefaultExchangeSheet
 import com.cryptocompare.profile.ui.screens.profilescreen.components.LanguageSelector
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileActionRow
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileComingSoonRow
@@ -52,6 +51,7 @@ import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileSign
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ProfileValueRow
 import com.cryptocompare.profile.ui.screens.profilescreen.components.ThemeSelector
 import com.cryptocompare.profile.viewmodel.profileviewmodel.ProfileViewModel
+import com.cryptocompare.ui.components.ExchangeSheet
 import com.cryptocompare.ui.error.message
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.bgPrimary
@@ -101,7 +101,9 @@ fun ProfileScreen(
     }
 
     if (uiState.showExchangePicker) {
-        DefaultExchangeSheet(
+        ExchangeSheet(
+            title = stringResource(R.string.profile_default_exchange),
+            anyExchangeLabel = stringResource(R.string.profile_default_exchange_any),
             providers = uiState.providers,
             selectedProviderId = uiState.marketPreferences.defaultProviderId,
             onSelect = viewModel::onDefaultExchangeSelected,

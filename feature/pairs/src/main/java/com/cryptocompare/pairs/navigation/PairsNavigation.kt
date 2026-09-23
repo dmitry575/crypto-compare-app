@@ -19,7 +19,7 @@ fun NavGraphBuilder.pairsNavigation(
     navController: NavHostController,
     onProfileClick: () -> Unit,
     onSignInClick: () -> Unit,
-    onAddToPortfolio: (symbolId: Long, ticker: String, price: Double?) -> Unit,
+    onAddToPortfolio: (symbolId: Long, ticker: String, price: Double?, providerId: Int?) -> Unit,
 ) {
     navigation(
         route = PairsDestination.ROUTE,

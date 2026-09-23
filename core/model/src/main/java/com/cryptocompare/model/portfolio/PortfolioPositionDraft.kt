@@ -9,4 +9,6 @@ data class PortfolioPositionDraft(
     val ticker: String,
     val amount: Double,
     val buyPrice: Double,
+    /** Биржа, где куплена монета; `null` — не указана, оценка по лучшему bid. */
+    val providerId: Int? = null,
 )
