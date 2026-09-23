@@ -18,7 +18,8 @@ import com.cryptocompare.domain.usecase.pairs.StreamDisconnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncFavouriteSymbolsUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.ToggleFavouriteSymbolUseCase
-import com.cryptocompare.helpers.toUserMessage
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.asAppError
 import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSort
 import com.cryptocompare.model.symbol.CatalogSorting
@@ -142,7 +143,7 @@ class MainViewModel
 
             viewModelScope.launch {
                 toggleFavouriteSymbolUseCase(symbolId, ticker).onFailure { exception ->
-                    _uiState.update { it.copy(error = exception.message ?: "Favourite toggle error") }
+                    _uiState.update { it.copy(error = exception.asAppError()) }
                 }
             }
         }
@@ -227,7 +228,7 @@ class MainViewModel
                         } else if (visibleTickers.isNotEmpty()) {
                             _uiState.update { it.copy(refreshFailed = true) }
                         }
-                    }.onFailure { exception -> _uiState.update { it.copy(error = exception.toUserMessage()) } }
+                    }.onFailure { exception -> _uiState.update { it.copy(error = exception.asAppError()) } }
             }
         }
 
@@ -253,7 +254,9 @@ class MainViewModel
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    _uiState.update { it.copy(error = e.toUserMessage()) }
+                    // поток котировок — не запрос: что бы ни сломалось внутри,
+                    // для пользователя это «поток цен прервался»
+                    _uiState.update { it.copy(error = AppError.Stream) }
                 }
             }
         }
@@ -351,7 +354,7 @@ class MainViewModel
                     applyBestPriceChangesUseCase(batch)
                         .onSuccess { markUpdated() }
                         .onFailure { exception ->
-                            _uiState.update { it.copy(error = exception.toUserMessage()) }
+                            _uiState.update { it.copy(error = exception.asAppError()) }
                         }
                 }
             }
@@ -360,7 +363,7 @@ class MainViewModel
         fun syncFavouriteSymbols() {
             viewModelScope.launch {
                 syncFavouriteSymbolsUseCase().onFailure { exception ->
-                    _uiState.update { it.copy(error = exception.message ?: "Couldn't sync favourites") }
+                    _uiState.update { it.copy(error = exception.asAppError()) }
                 }
             }
         }

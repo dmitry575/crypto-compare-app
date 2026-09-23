@@ -5,6 +5,10 @@ import com.cryptocompare.domain.repository.AuthRepository
 import com.cryptocompare.domain.usecase.auth.IsValidEmailUseCase
 import com.cryptocompare.domain.usecase.auth.SignInWithGoogleUseCase
 import com.cryptocompare.domain.usecase.auth.SignUpWithEmailUseCase
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AppException
+import com.cryptocompare.model.error.AuthErrorReason
+import com.cryptocompare.model.error.ValidationErrorReason
 import com.cryptocompare.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -39,7 +43,7 @@ class RegisterViewModelTest {
 
             viewModel.signUpWithEmail()
 
-            assertEquals("Incorrect email was entered", viewModel.uiState.value.errorMessage)
+            assertEquals(AppError.Validation(ValidationErrorReason.INVALID_EMAIL), viewModel.uiState.value.error)
             coVerify(exactly = 0) { signUpWithEmailUseCase(any(), any()) }
         }
 
@@ -54,7 +58,7 @@ class RegisterViewModelTest {
 
             viewModel.signUpWithEmail()
 
-            assertEquals("Password must be stronger", viewModel.uiState.value.errorMessage)
+            assertEquals(AppError.Validation(ValidationErrorReason.PASSWORD_TOO_WEAK), viewModel.uiState.value.error)
             coVerify(exactly = 0) { signUpWithEmailUseCase(any(), any()) }
         }
 
@@ -69,7 +73,10 @@ class RegisterViewModelTest {
 
             viewModel.signUpWithEmail()
 
-            assertEquals("Passwords don't match", viewModel.uiState.value.errorMessage)
+            assertEquals(
+                AppError.Validation(ValidationErrorReason.PASSWORDS_DO_NOT_MATCH),
+                viewModel.uiState.value.error,
+            )
             coVerify(exactly = 0) { signUpWithEmailUseCase(any(), any()) }
         }
 
@@ -89,14 +96,14 @@ class RegisterViewModelTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.isLoading)
-            assertNull(viewModel.uiState.value.errorMessage)
+            assertNull(viewModel.uiState.value.error)
         }
 
     @Test
     fun `signUp failure sets error`() =
         runTest {
             coEvery { signUpWithEmailUseCase(any(), any()) } returns
-                Result.failure(IllegalStateException("fail"))
+                Result.failure(AppException(AppError.Auth(AuthErrorReason.EMAIL_ALREADY_IN_USE)))
             val viewModel = createViewModel()
 
             viewModel.onEmailChange("user@example.com")
@@ -106,7 +113,7 @@ class RegisterViewModelTest {
             viewModel.signUpWithEmail()
             advanceUntilIdle()
 
-            assertEquals("fail", viewModel.uiState.value.errorMessage)
+            assertEquals(AppError.Auth(AuthErrorReason.EMAIL_ALREADY_IN_USE), viewModel.uiState.value.error)
             assertFalse(viewModel.uiState.value.isLoading)
         }
 
@@ -117,7 +124,7 @@ class RegisterViewModelTest {
 
             viewModel.signUpWithGoogle("")
 
-            assertEquals("Google token not found", viewModel.uiState.value.errorMessage)
+            assertEquals(AppError.Auth(AuthErrorReason.GOOGLE_TOKEN_MISSING), viewModel.uiState.value.error)
             coVerify(exactly = 0) { signInWithGoogleUseCase(any()) }
         }
 
@@ -133,7 +140,7 @@ class RegisterViewModelTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.isLoading)
-            assertNull(viewModel.uiState.value.errorMessage)
+            assertNull(viewModel.uiState.value.error)
         }
 
     private fun createViewModel(): RegistrationViewModel =

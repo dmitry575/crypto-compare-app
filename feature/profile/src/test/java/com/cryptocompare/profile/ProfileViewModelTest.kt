@@ -19,6 +19,9 @@ import com.cryptocompare.domain.usecase.settings.SetLanguageUseCase
 import com.cryptocompare.domain.usecase.settings.SetThemePreferenceUseCase
 import com.cryptocompare.model.auth.AuthUser
 import com.cryptocompare.model.chart.ChartTimeframe
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AppException
+import com.cryptocompare.model.error.AuthErrorReason
 import com.cryptocompare.model.provider.Provider
 import com.cryptocompare.model.provider.ProviderStatus
 import com.cryptocompare.model.settings.AppLanguage
@@ -127,7 +130,7 @@ class ProfileViewModelTest {
             val uiState = viewModel.uiState.value
             assertFalse(uiState.isLoading)
             assertFalse(uiState.showSignOutConfirmation)
-            assertNull(uiState.errorMessage)
+            assertNull(uiState.error)
         }
 
     @Test
@@ -146,7 +149,7 @@ class ProfileViewModelTest {
             val uiState = viewModel.uiState.value
             assertFalse(uiState.isLoading)
             assertFalse(uiState.showDeleteConfirmation)
-            assertNull(uiState.errorMessage)
+            assertNull(uiState.error)
         }
 
     @Test
@@ -154,7 +157,7 @@ class ProfileViewModelTest {
         runTest {
             coEvery { favouriteSymbolRepository.deleteAllFavourites() } returns Result.success(Unit)
             coEvery { authRepository.deleteAccount() } returns
-                Result.failure(IllegalStateException(RECENT_LOGIN_ERROR))
+                Result.failure(AppException(AppError.Auth(AuthErrorReason.RECENT_LOGIN_REQUIRED)))
             val viewModel = createViewModel()
 
             viewModel.onDeleteAccountClick()
@@ -164,7 +167,7 @@ class ProfileViewModelTest {
             val uiState = viewModel.uiState.value
             assertEquals(TEST_USER, uiState.user)
             assertFalse(uiState.isLoading)
-            assertEquals(RECENT_LOGIN_ERROR, uiState.errorMessage)
+            assertEquals(AppError.Auth(AuthErrorReason.RECENT_LOGIN_REQUIRED), uiState.error)
         }
 
     @Test
@@ -284,8 +287,6 @@ class ProfileViewModelTest {
                 Provider(id = 1, name = "mexc", referralUrl = null, status = ProviderStatus.Enabled),
                 Provider(id = 19, name = "binance", referralUrl = null, status = ProviderStatus.Enabled),
             )
-
-        const val RECENT_LOGIN_ERROR = "This operation requires recent authentication"
 
         val TEST_USER =
             AuthUser(

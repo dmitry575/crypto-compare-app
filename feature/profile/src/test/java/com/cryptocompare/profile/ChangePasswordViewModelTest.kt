@@ -2,6 +2,9 @@ package com.cryptocompare.profile
 
 import com.cryptocompare.domain.repository.AuthRepository
 import com.cryptocompare.domain.usecase.profile.ChangePasswordUseCase
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AppException
+import com.cryptocompare.model.error.AuthErrorReason
 import com.cryptocompare.profile.util.ChangePasswordError
 import com.cryptocompare.profile.viewmodel.changepasswordviewmodel.ChangePasswordViewModel
 import com.cryptocompare.testing.MainDispatcherRule
@@ -112,7 +115,7 @@ class ChangePasswordViewModelTest {
             val uiState = viewModel.uiState.value
             assertTrue(uiState.isPasswordChanged)
             assertFalse(uiState.isLoading)
-            assertNull(uiState.errorMessage)
+            assertNull(uiState.error)
             assertNull(uiState.validationError)
         }
 
@@ -120,7 +123,7 @@ class ChangePasswordViewModelTest {
     fun `failed reauthentication surfaces the firebase message`() =
         runTest {
             coEvery { authRepository.changePassword(any(), any()) } returns
-                Result.failure(IllegalStateException(WRONG_PASSWORD_ERROR))
+                Result.failure(AppException(AppError.Auth(AuthErrorReason.INVALID_CREDENTIALS)))
             val viewModel = createViewModel()
             viewModel.onCurrentPasswordChange(CURRENT_PASSWORD)
             viewModel.onNewPasswordChange(NEW_PASSWORD)
@@ -130,7 +133,7 @@ class ChangePasswordViewModelTest {
             advanceUntilIdle()
 
             val uiState = viewModel.uiState.value
-            assertEquals(WRONG_PASSWORD_ERROR, uiState.errorMessage)
+            assertEquals(AppError.Auth(AuthErrorReason.INVALID_CREDENTIALS), uiState.error)
             assertFalse(uiState.isPasswordChanged)
             assertFalse(uiState.isLoading)
         }
@@ -160,6 +163,5 @@ class ChangePasswordViewModelTest {
     private companion object {
         const val CURRENT_PASSWORD = "current1a"
         const val NEW_PASSWORD = "secret1b"
-        const val WRONG_PASSWORD_ERROR = "The password is invalid or the user does not have a password"
     }
 }

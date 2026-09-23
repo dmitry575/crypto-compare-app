@@ -3,8 +3,8 @@ package com.cryptocompare.profile.viewmodel.changepasswordviewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cryptocompare.domain.usecase.profile.ChangePasswordUseCase
-import com.cryptocompare.helpers.toUserMessage
 import com.cryptocompare.helpers.util.PasswordConstants
+import com.cryptocompare.model.error.asAppError
 import com.cryptocompare.profile.util.ChangePasswordError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,7 +50,7 @@ class ChangePasswordViewModel
             }
 
             _uiState.update { uiState ->
-                uiState.copy(isLoading = true, validationError = null, errorMessage = null)
+                uiState.copy(isLoading = true, validationError = null, error = null)
             }
 
             viewModelScope.launch {
@@ -61,14 +61,14 @@ class ChangePasswordViewModel
                         }
                     }.onFailure { error ->
                         _uiState.update { uiState ->
-                            uiState.copy(isLoading = false, errorMessage = error.toUserMessage())
+                            uiState.copy(isLoading = false, error = error.asAppError())
                         }
                     }
             }
         }
 
         fun onErrorShown() {
-            _uiState.update { uiState -> uiState.copy(validationError = null, errorMessage = null) }
+            _uiState.update { uiState -> uiState.copy(validationError = null, error = null) }
         }
 
         private fun ChangePasswordUiState.validate(): ChangePasswordError? =

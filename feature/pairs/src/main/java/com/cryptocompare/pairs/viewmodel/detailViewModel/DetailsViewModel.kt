@@ -13,10 +13,10 @@ import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
 import com.cryptocompare.domain.usecase.pairs.TakeOverTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.settings.GetMarketPreferencesUseCase
 import com.cryptocompare.domain.usecase.settings.SetChartIndicatorsUseCase
-import com.cryptocompare.helpers.toUserMessage
 import com.cryptocompare.helpers.withUpdates
 import com.cryptocompare.model.chart.ChartIndicator
 import com.cryptocompare.model.chart.ChartTimeframe
+import com.cryptocompare.model.error.asAppError
 import com.cryptocompare.model.provider.ProviderDetail
 import com.cryptocompare.model.settings.MarketPreferences
 import com.cryptocompare.model.ticker.TickerBestPrice
@@ -103,6 +103,13 @@ class DetailsViewModel
             loadBestPrices(ticker)
             observeLivePrice(ticker)
             observeReconnects(ticker)
+        }
+
+        /** «Повторить» после неудачной загрузки: биржи и лучшая пара берутся заново. */
+        fun retry() {
+            val ticker = _uiState.value.ticker
+            loadPairDetails(ticker)
+            loadBestPrices(ticker)
         }
 
         /**
@@ -283,13 +290,13 @@ class DetailsViewModel
                             }
                         },
                         onFailure = { error ->
-                            _uiState.update { it.copy(loading = false, error = error.toUserMessage()) }
+                            _uiState.update { it.copy(loading = false, error = error.asAppError()) }
                         },
                     )
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    _uiState.update { it.copy(loading = false, error = e.toUserMessage()) }
+                    _uiState.update { it.copy(loading = false, error = e.asAppError()) }
                 }
             }
         }

@@ -1,6 +1,7 @@
 package com.cryptocompare.domain.usecase.portfolio
 
 import com.cryptocompare.domain.repository.CryptoCompareRepository
+import com.cryptocompare.model.symbol.SymbolSellQuote
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
@@ -16,6 +17,6 @@ class ObservePortfolioPricesUseCase
     constructor(
         private val cryptoCompareRepository: CryptoCompareRepository,
     ) {
-        operator fun invoke(symbolIds: Set<Long>): Flow<Map<Long, Double>> =
-            cryptoCompareRepository.observeSellPrices(symbolIds)
+        operator fun invoke(symbolIds: Set<Long>): Flow<Map<Long, SymbolSellQuote>> =
+            cryptoCompareRepository.observeSellQuotes(symbolIds)
     }

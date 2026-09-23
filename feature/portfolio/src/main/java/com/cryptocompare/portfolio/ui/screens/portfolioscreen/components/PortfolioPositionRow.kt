@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.cryptocompare.helpers.priceChangeSign
 import com.cryptocompare.helpers.toCompactPriceString
+import com.cryptocompare.helpers.toPairName
 import com.cryptocompare.helpers.toPriceString
 import com.cryptocompare.helpers.toSignedPercentString
 import com.cryptocompare.helpers.util.PriceFormatConstants
@@ -27,10 +28,14 @@ import com.cryptocompare.ui.theme.NumericType
 import com.cryptocompare.ui.theme.priceChangeColor
 import com.cryptocompare.ui.theme.textPrimary
 import com.cryptocompare.ui.theme.textSecondary
+import com.cryptocompare.ui.theme.textTertiary
 
 /**
  * Позиция в списке: слева — что и почём куплено, справа — сколько стоит сейчас
  * и что на этом вышло.
+ *
+ * Под количеством — биржа, чей bid взят ценой: он переезжает между
+ * площадками, и стоимость без этой подписи прыгала бы необъяснимо.
  *
  * Цены может не быть: символ выпал из каталога или каталог ещё не подъехал.
  * Тогда справа прочерк, а не ноль — «стоит ноль» это другое утверждение.
@@ -61,7 +66,7 @@ internal fun PortfolioPositionRow(
             verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.xs),
         ) {
             Text(
-                text = holding.position.ticker.uppercase(),
+                text = holding.position.ticker.toPairName(),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -79,6 +84,17 @@ internal fun PortfolioPositionRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            // лучший bid переезжает между биржами, и без этой строки было
+            // непонятно, почему позиция вдруг подешевела
+            holding.priceExchange?.let { exchange ->
+                Text(
+                    text = stringResource(R.string.portfolio_price_source, exchange),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.textTertiary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
 
         Column(

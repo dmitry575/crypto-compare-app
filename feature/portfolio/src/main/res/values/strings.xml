@@ -7,6 +7,7 @@
     <string name="portfolio_open_pairs">Go to pairs</string>
     <string name="portfolio_total_value">Current value</string>
     <string name="portfolio_invested">Invested</string>
+    <string name="portfolio_price_source">priced at %1$s</string>
     <string name="portfolio_missing_prices">Some positions have no price yet — they are left out of the total</string>
     <!-- количество × средняя цена покупки: знаки одинаковы во всех языках -->
     <string name="portfolio_position_cost" translatable="false">%1$s × %2$s</string>

@@ -2,10 +2,11 @@ package com.cryptocompare.auth.viewmodel.forgotpasswordviewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.cryptocompare.auth.util.AuthConstants
 import com.cryptocompare.domain.usecase.auth.IsValidEmailUseCase
 import com.cryptocompare.domain.usecase.auth.SendPasswordResetEmailUseCase
-import com.cryptocompare.helpers.toUserMessage
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.ValidationErrorReason
+import com.cryptocompare.model.error.asAppError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,11 +32,13 @@ class ForgotPasswordViewModel
             val email = _uiState.value.email.trim()
 
             if (!isValidEmailUseCase(email)) {
-                _uiState.update { uiState -> uiState.copy(errorMessage = AuthConstants.Errors.INVALID_EMAIL) }
+                _uiState.update { uiState ->
+                    uiState.copy(error = AppError.Validation(ValidationErrorReason.INVALID_EMAIL))
+                }
                 return
             }
 
-            _uiState.update { uiState -> uiState.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { uiState -> uiState.copy(isLoading = true, error = null) }
 
             viewModelScope.launch {
                 sendPasswordResetEmailUseCase(email)
@@ -47,7 +50,7 @@ class ForgotPasswordViewModel
                         _uiState.update { uiState ->
                             uiState.copy(
                                 isLoading = false,
-                                errorMessage = error.toUserMessage(),
+                                error = error.asAppError(),
                             )
                         }
                     }

@@ -7,6 +7,7 @@
     <string name="portfolio_open_pairs">К парам</string>
     <string name="portfolio_total_value">Стоимость сейчас</string>
     <string name="portfolio_invested">Вложено</string>
+    <string name="portfolio_price_source">по цене %1$s</string>
     <string name="portfolio_missing_prices">Цены есть не по всем позициям — их нет в итоге</string>
     <string name="portfolio_amount">Количество</string>
     <string name="portfolio_amount_hint">0,42</string>

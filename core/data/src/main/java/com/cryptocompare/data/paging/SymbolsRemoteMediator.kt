@@ -8,7 +8,9 @@ import androidx.room.withTransaction
 import com.cryptocompare.data.local.CryptoCompareDatabase
 import com.cryptocompare.data.local.entity.CatalogRemoteKeyEntity
 import com.cryptocompare.data.mapper.normalizeSymbols
+import com.cryptocompare.data.mapper.toAppException
 import com.cryptocompare.data.mapper.toEntityFromDto
+import com.cryptocompare.data.util.checkApiResponse
 import com.cryptocompare.helpers.util.CryptoCompareRepositoryConstants
 import com.cryptocompare.model.symbol.PairAggregateRow
 import com.cryptocompare.network.api.CryptoCompareApi
@@ -65,15 +67,18 @@ class SymbolsRemoteMediator(
                 api.getSymbols(
                     skip = skip,
                     rows = CryptoCompareRepositoryConstants.SYMBOLS_IN_ROW,
+                    sortBy = CryptoCompareRepositoryConstants.CATALOG_SORT_BY,
+                    sortDir = CryptoCompareRepositoryConstants.CATALOG_SORT_DIR,
                 )
 
-            if (response.errorCode != 0) {
-                val message = response.errorMsgs?.joinToString("\n") ?: "Unknown error"
-                return MediatorResult.Error(IllegalStateException(message))
-            }
+            checkApiResponse(response.errorCode, response.errorMsgs)
 
-            val symbols = response.symbols.normalizeSymbols()
-            val endReached = symbols.isEmpty()
+            // Листаем по тому, что прислал бэкенд, а не по тому, что осталось после
+            // отсева строк без цены: иначе следующая страница начиналась бы раньше,
+            // а страница, где отсеялось всё, выглядела бы концом каталога.
+            val page = response.symbols.orEmpty()
+            val symbols = page.normalizeSymbols()
+            val endReached = page.isEmpty()
 
             database.withTransaction {
                 // Пустой, но успешный ответ на REFRESH не должен обнулять каталог:
@@ -82,7 +87,7 @@ class SymbolsRemoteMediator(
                 // следующий refresh перестроит каталог, когда данные вернутся.
                 // (Для APPEND пустой ответ — легитимный конец страниц, его пропускаем
                 // ниже, чтобы записать endReached в ключ.)
-                if (loadType == LoadType.REFRESH && symbols.isEmpty()) {
+                if (loadType == LoadType.REFRESH && page.isEmpty()) {
                     return@withTransaction
                 }
                 if (loadType == LoadType.REFRESH) {
@@ -91,7 +96,7 @@ class SymbolsRemoteMediator(
                 symbolDao.upsertAll(symbols.toEntityFromDto(syncedAtMillis))
                 remoteKeyDao.upsert(
                     CatalogRemoteKeyEntity(
-                        nextSkip = skip + symbols.size,
+                        nextSkip = skip + page.size,
                         endReached = endReached,
                     ),
                 )
@@ -101,7 +106,8 @@ class SymbolsRemoteMediator(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            MediatorResult.Error(e)
+            // экран каталога показывает эту ошибку сам — пусть она будет уже разобранной
+            MediatorResult.Error(e.toAppException())
         }
     }
 }
