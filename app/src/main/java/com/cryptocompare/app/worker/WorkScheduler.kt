@@ -16,10 +16,11 @@ object WorkScheduler {
      * Фоновая перекачка каталога. Раньше называлась `scheduleDailyRefreshCatalog`,
      * хотя интервал давно 20 минут — см. [WorkerConstants.CATALOG_REFRESH_INTERVAL_MINUTES].
      *
-     * `KEEP`: если работа уже стоит, новый интервал к ней не применяется, и у тех,
-     * кто поставил приложение до смены интервала, крутится расписание раз в
-     * сутки. Так и оставлено (2026-09-23); что изменил бы `UPDATE` — в
-     * `core/data/CACHE_POLICY.md`.
+     * `UPDATE`, а не `KEEP`: при `KEEP` новый интервал к уже стоящей работе не
+     * применялся, и у тех, кто поставил приложение до смены интервала, каталог
+     * так и перекачивался раз в сутки — даже после обновления. `UPDATE` правит
+     * стоящую работу на месте: расписание не сбрасывается, идущий запуск не
+     * прерывается, а следующая смена интервала дойдёт до всех сама.
      */
     fun scheduleCatalogRefresh(context: Context) {
         val constraints =
@@ -34,7 +35,7 @@ object WorkScheduler {
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             WorkerConstants.UNIQUE_WORK_NAME,
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             refreshRequest,
         )
     }
