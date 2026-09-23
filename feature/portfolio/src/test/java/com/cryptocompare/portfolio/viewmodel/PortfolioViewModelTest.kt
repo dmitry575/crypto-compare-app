@@ -11,12 +11,15 @@ import com.cryptocompare.domain.usecase.pairs.RestoreTickerSubscriptionsUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamConnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.TakeOverTickerSubscriptionsUseCase
+import com.cryptocompare.domain.usecase.portfolio.ApplyPinnedPriceTicksUseCase
 import com.cryptocompare.domain.usecase.portfolio.CalculatePortfolioUseCase
 import com.cryptocompare.domain.usecase.portfolio.ObservePortfolioPricesUseCase
 import com.cryptocompare.domain.usecase.portfolio.ObservePortfolioUseCase
+import com.cryptocompare.domain.usecase.portfolio.RefreshPinnedQuotesUseCase
 import com.cryptocompare.model.portfolio.PortfolioPosition
 import com.cryptocompare.model.symbol.SymbolSellQuote
 import com.cryptocompare.model.ticker.TickerBestPrice
+import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
 import com.cryptocompare.portfolio.util.PortfolioConstants
 import com.cryptocompare.portfolio.viewmodel.portfolioviewmodel.PortfolioViewModel
@@ -54,6 +57,8 @@ class PortfolioViewModelTest {
     private val restoreSubscriptions: RestoreTickerSubscriptionsUseCase = mockk(relaxed = true)
     private val refreshBestPrices: RefreshBestPricesUseCase = mockk(relaxed = true)
     private val applyBestPriceChanges: ApplyBestPriceChangesUseCase = mockk(relaxed = true)
+    private val refreshPinnedQuotes: RefreshPinnedQuotesUseCase = mockk(relaxed = true)
+    private val applyPinnedPriceTicks: ApplyPinnedPriceTicksUseCase = mockk(relaxed = true)
 
     private val events = MutableSharedFlow<TickerStreamEvent>()
     private val reconnects = MutableSharedFlow<Unit>()
@@ -61,6 +66,7 @@ class PortfolioViewModelTest {
     @Before
     fun setUp() {
         coEvery { refreshBestPrices.invoke(any()) } returns Result.success(1)
+        coEvery { refreshPinnedQuotes.invoke(any()) } returns Result.success(1)
     }
 
     @Test
@@ -254,6 +260,101 @@ class PortfolioViewModelTest {
             coVerify(exactly = 2) { refreshBestPrices.invoke(setOf("btcusdt")) }
         }
 
+    @Test
+    fun `a position bought on an exchange is priced by that exchange, not the best bid`() =
+        runTest {
+            // лучший bid сейчас на bitget, но монета лежит на bybit, и продать её
+            // можно только там
+            every { portfolioRepository.observePositions() } returns MutableStateFlow(listOf(PINNED))
+            every { cryptoCompareRepository.observeSellQuotes(emptySet()) } returns MutableStateFlow(emptyMap())
+            every { cryptoCompareRepository.observeSellQuotes(setOf(SYMBOL_ID)) } returns
+                MutableStateFlow(mapOf(SYMBOL_ID to quote(81_200.0)))
+            every { portfolioRepository.observePinnedQuotes() } returns
+                MutableStateFlow(mapOf(SYMBOL_ID to SymbolSellQuote(81_050.0, BYBIT, "bybit")))
+
+            val viewModel = createViewModel()
+            viewModel.onScreenShown()
+            advanceUntilIdle()
+
+            val holding =
+                viewModel.uiState.value.holdings
+                    .single()
+            assertEquals(81_050.0, holding.currentPrice!!, DELTA)
+            assertEquals("bybit", holding.priceExchange)
+        }
+
+    @Test
+    fun `opening the screen pulls the price of the position's own exchange`() =
+        runTest {
+            givenPinnedPortfolio()
+            val viewModel = createViewModel()
+
+            viewModel.onScreenShown()
+            advanceUntilIdle()
+
+            // лучшие пары ей не нужны: цена у неё только с bybit
+            coVerify(exactly = 1) { refreshPinnedQuotes.invoke(listOf(PINNED)) }
+            coVerify(exactly = 0) { refreshBestPrices.invoke(any()) }
+        }
+
+    @Test
+    fun `a new exchange on a position is a new price to pull`() =
+        runTest {
+            val positions = MutableStateFlow(listOf(PINNED))
+            every { portfolioRepository.observePositions() } returns positions
+            every { cryptoCompareRepository.observeSellQuotes(any()) } returns MutableStateFlow(emptyMap())
+            every { portfolioRepository.observePinnedQuotes() } returns MutableStateFlow(emptyMap())
+
+            val viewModel = createViewModel()
+            viewModel.onScreenShown()
+            advanceUntilIdle()
+
+            val moved = PINNED.copy(providerId = OKX)
+            positions.value = listOf(moved)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { refreshPinnedQuotes.invoke(listOf(moved)) }
+        }
+
+    @Test
+    fun `only ticks of the position's exchange are kept as its price`() =
+        runTest {
+            givenPinnedPortfolio()
+            val viewModel = createViewModel()
+            viewModel.onScreenShown()
+            advanceUntilIdle()
+
+            events.emit(TickerStreamEvent.TickerPriceChange(id = "1", data = exchangeTick(OKX, 81_300.0)))
+            events.emit(TickerStreamEvent.TickerPriceChange(id = "2", data = exchangeTick(BYBIT, 81_000.0)))
+            events.emit(TickerStreamEvent.TickerPriceChange(id = "3", data = exchangeTick(BYBIT, 81_050.0)))
+            advanceTimeBy(PortfolioConstants.Prices.FLUSH_INTERVAL_MS + 1)
+
+            // чужая биржа отброшена, из своих в базу уходит последний тик за интервал
+            coVerify(exactly = 1) { applyPinnedPriceTicks.invoke(listOf(exchangeTick(BYBIT, 81_050.0))) }
+            coVerify(exactly = 0) { applyBestPriceChanges.invoke(any()) }
+        }
+
+    @Test
+    fun `exchange ticks are ignored for a position without an exchange`() =
+        runTest {
+            givenPortfolio()
+            val viewModel = createViewModel()
+            viewModel.onScreenShown()
+            advanceUntilIdle()
+
+            events.emit(TickerStreamEvent.TickerPriceChange(id = "1", data = exchangeTick(BYBIT, 81_000.0)))
+            advanceTimeBy(PortfolioConstants.Prices.FLUSH_INTERVAL_MS + 1)
+
+            coVerify(exactly = 0) { applyPinnedPriceTicks.invoke(any()) }
+        }
+
+    private fun givenPinnedPortfolio() {
+        every { portfolioRepository.observePositions() } returns MutableStateFlow(listOf(PINNED))
+        every { cryptoCompareRepository.observeSellQuotes(any()) } returns MutableStateFlow(emptyMap())
+        every { portfolioRepository.observePinnedQuotes() } returns
+            MutableStateFlow(mapOf(SYMBOL_ID to SymbolSellQuote(81_050.0, BYBIT, "bybit")))
+    }
+
     private fun givenPortfolio() {
         every { portfolioRepository.observePositions() } returns MutableStateFlow(listOf(POSITION))
         every { cryptoCompareRepository.observeSellQuotes(setOf(SYMBOL_ID)) } returns
@@ -263,7 +364,7 @@ class PortfolioViewModelTest {
     private fun createViewModel() =
         PortfolioViewModel(
             observePortfolioUseCase = ObservePortfolioUseCase(portfolioRepository),
-            observePortfolioPricesUseCase = ObservePortfolioPricesUseCase(cryptoCompareRepository),
+            observePortfolioPricesUseCase = ObservePortfolioPricesUseCase(cryptoCompareRepository, portfolioRepository),
             calculatePortfolioUseCase = CalculatePortfolioUseCase(),
             streamConnectUseCase = streamConnect,
             takeOverTickerSubscriptionsUseCase = takeOverSubscriptions,
@@ -273,6 +374,8 @@ class PortfolioViewModelTest {
             observeStreamReconnectsUseCase = observeStreamReconnectsUseCase(),
             applyBestPriceChangesUseCase = applyBestPriceChanges,
             refreshBestPricesUseCase = refreshBestPrices,
+            refreshPinnedQuotesUseCase = refreshPinnedQuotes,
+            applyPinnedPriceTicksUseCase = applyPinnedPriceTicks,
         )
 
     private fun observeTickerEventUseCase(): ObserveTickerEventUseCase {
@@ -289,6 +392,17 @@ class PortfolioViewModelTest {
 
     private fun quote(price: Double) = SymbolSellQuote(price = price, providerId = 2, exchangeName = "bitget")
 
+    private fun exchangeTick(
+        providerId: Int,
+        bid: Double,
+    ) = TickerPrice(
+        ticker = "BTCUSDT",
+        symbolId = SYMBOL_ID.toInt(),
+        providerId = providerId,
+        priceSell = bid + 1,
+        priceBuy = bid,
+    )
+
     private fun bestPrice(price: Double) =
         TickerBestPrice(
             ticker = "BTCUSDT",
@@ -302,6 +416,8 @@ class PortfolioViewModelTest {
 
     private companion object {
         const val SYMBOL_ID = 1L
+        const val BYBIT = 5
+        const val OKX = 7
         const val DELTA = 1e-9
 
         val POSITION =
@@ -312,5 +428,7 @@ class PortfolioViewModelTest {
                 buyPrice = 72_000.0,
                 updatedAtMillis = 1_700_000_000_000L,
             )
+
+        val PINNED = POSITION.copy(providerId = BYBIT, exchangeName = "bybit")
     }
 }

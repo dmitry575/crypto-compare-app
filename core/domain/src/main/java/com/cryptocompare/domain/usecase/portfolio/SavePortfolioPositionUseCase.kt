@@ -31,6 +31,7 @@ class SavePortfolioPositionUseCase
                     amount = draft.amount,
                     buyPrice = draft.buyPrice,
                     updatedAtMillis = System.currentTimeMillis(),
+                    providerId = draft.providerId,
                 ),
             )
         }

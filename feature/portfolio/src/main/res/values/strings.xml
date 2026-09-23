@@ -8,10 +8,15 @@
     <string name="portfolio_total_value">Current value</string>
     <string name="portfolio_invested">Invested</string>
     <string name="portfolio_price_source">priced at %1$s</string>
+    <string name="portfolio_price_pinned">on %1$s</string>
     <string name="portfolio_missing_prices">Some positions have no price yet — they are left out of the total</string>
     <!-- количество × средняя цена покупки: знаки одинаковы во всех языках -->
     <string name="portfolio_position_cost" translatable="false">%1$s × %2$s</string>
     <string name="portfolio_profit_percent" translatable="false">(%1$s)</string>
+    <string name="portfolio_exchange">Bought on</string>
+    <string name="portfolio_exchange_best">Best price across exchanges</string>
+    <string name="portfolio_exchange_pinned_hint">The position is valued at this exchange\'s sell price</string>
+    <string name="portfolio_exchange_best_hint">The position is valued at the best sell price across exchanges, so the exchange may change</string>
     <string name="portfolio_amount">Amount</string>
     <string name="portfolio_amount_hint">0.42</string>
     <string name="portfolio_buy_price">Average buy price</string>

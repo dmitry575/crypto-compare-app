@@ -100,8 +100,10 @@ fun AppNavigation() {
                 navController = navController,
                 onProfileClick = { navController.navigate(ProfileDestination.ROUTE) },
                 onSignInClick = openSignIn,
-                onAddToPortfolio = { symbolId, ticker, price ->
-                    navController.navigate(PortfolioScreens.PositionEditScreen.createRoute(symbolId, ticker, price))
+                onAddToPortfolio = { symbolId, ticker, price, providerId ->
+                    navController.navigate(
+                        PortfolioScreens.PositionEditScreen.createRoute(symbolId, ticker, price, providerId),
+                    )
                 },
             )
 

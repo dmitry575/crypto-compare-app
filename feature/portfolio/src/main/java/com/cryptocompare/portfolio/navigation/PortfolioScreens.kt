@@ -12,20 +12,24 @@ sealed class PortfolioScreens(
         "portfolio/position?" +
             "${PortfolioConstants.Navigation.SYMBOL_ID_ARG}={${PortfolioConstants.Navigation.SYMBOL_ID_ARG}}&" +
             "${PortfolioConstants.Navigation.TICKER_ARG}={${PortfolioConstants.Navigation.TICKER_ARG}}&" +
-            "${PortfolioConstants.Navigation.PRICE_ARG}={${PortfolioConstants.Navigation.PRICE_ARG}}",
+            "${PortfolioConstants.Navigation.PRICE_ARG}={${PortfolioConstants.Navigation.PRICE_ARG}}&" +
+            "${PortfolioConstants.Navigation.PROVIDER_ID_ARG}={${PortfolioConstants.Navigation.PROVIDER_ID_ARG}}",
     ) {
         /**
-         * [price] — подсказка для новой позиции; у существующей форма берёт её
-         * собственную среднюю цену и подсказку игнорирует.
+         * [price] и [providerId] — подсказка для новой позиции: ask и биржа,
+         * открытые на экране пары. У существующей форма берёт её собственные
+         * среднюю цену и биржу, а подсказку игнорирует.
          */
         fun createRoute(
             symbolId: Long,
             ticker: String,
             price: Double? = null,
+            providerId: Int? = null,
         ): String =
             "portfolio/position?" +
                 "${PortfolioConstants.Navigation.SYMBOL_ID_ARG}=$symbolId&" +
                 "${PortfolioConstants.Navigation.TICKER_ARG}=${Uri.encode(ticker)}" +
-                price?.let { "&${PortfolioConstants.Navigation.PRICE_ARG}=$it" }.orEmpty()
+                price?.let { "&${PortfolioConstants.Navigation.PRICE_ARG}=$it" }.orEmpty() +
+                providerId?.let { "&${PortfolioConstants.Navigation.PROVIDER_ID_ARG}=$it" }.orEmpty()
     }
 }

@@ -201,6 +201,28 @@ class CryptoCompareDatabaseMigrationTest {
     }
 
     @Test
+    fun migrate11To12KeepsPositionsOnTheBestPrice() {
+        helper.createDatabase(TEST_DB, 11).apply {
+            execSQL(
+                "INSERT INTO portfolio_positions (symbolId, ticker, amount, buyPrice, updatedAtMillis) " +
+                    "VALUES (1, 'BTCUSDT', 0.5, 80000.0, 1)",
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 12, true, *AssetMigrations.loadAll(context))
+
+        // позиция на месте и без биржи — то есть оценивается лучшим bid, как и до
+        // обновления; последних цен бирж ещё нет
+        db.query("SELECT amount, providerId FROM portfolio_positions").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0.5, cursor.getDouble(0), 0.0)
+            assertTrue(cursor.isNull(1))
+        }
+        assertEquals(0, db.count("portfolio_quotes"))
+    }
+
+    @Test
     fun migrate5ToCurrentKeepsFavouritesAlongTheWholeChain() {
         // устройство, пропустившее несколько обновлений, проходит всю цепочку разом
         helper.createDatabase(TEST_DB, 5).apply {
@@ -273,6 +295,6 @@ class CryptoCompareDatabaseMigrationTest {
         const val TEST_DB = "migration-test.db"
 
         /** Держать равной `version` в `@Database`: иначе тест открывает не ту схему, что у пользователя. */
-        const val CURRENT_VERSION = 11
+        const val CURRENT_VERSION = 12
     }
 }

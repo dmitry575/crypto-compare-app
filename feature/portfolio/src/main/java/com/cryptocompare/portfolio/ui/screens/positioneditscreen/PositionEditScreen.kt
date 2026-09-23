@@ -31,19 +31,25 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cryptocompare.portfolio.R
+import com.cryptocompare.portfolio.ui.screens.positioneditscreen.components.ExchangeField
 import com.cryptocompare.portfolio.viewmodel.positioneditviewmodel.PositionEditViewModel
 import com.cryptocompare.ui.components.AppPrimaryButton
 import com.cryptocompare.ui.components.AppTextField
+import com.cryptocompare.ui.components.ExchangeSheet
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.bgPrimary
 import com.cryptocompare.ui.theme.cryptoError
 import com.cryptocompare.ui.theme.textSecondary
+import com.cryptocompare.ui.theme.textTertiary
 
 /**
- * Позиция: сколько куплено и по какой средней цене.
+ * Позиция: где куплено, сколько и по какой средней цене.
  *
  * Средняя, а не цена каждой покупки: ручной портфель ведут как «0.42 BTC по
  * 72 000», и заставлять вводить лоты значило бы превратить его в бухгалтерию.
+ *
+ * Биржа идёт первой: от неё зависит, по какой цене позиция оценивается, и
+ * без неё портфель брал бы лучший bid с площадки, где монеты у пользователя нет.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,6 +67,17 @@ fun PositionEditScreen(
 
     LaunchedEffect(uiState.saveFailed) {
         if (uiState.saveFailed) snackbarHostState.showSnackbar(saveFailedMessage)
+    }
+
+    if (uiState.showExchangePicker) {
+        ExchangeSheet(
+            title = stringResource(R.string.portfolio_exchange),
+            anyExchangeLabel = stringResource(R.string.portfolio_exchange_best),
+            providers = uiState.exchanges,
+            selectedProviderId = uiState.providerId,
+            onSelect = viewModel::onExchangeSelected,
+            onDismiss = viewModel::onExchangeDismissed,
+        )
     }
 
     Scaffold(
@@ -96,6 +113,29 @@ fun PositionEditScreen(
                     .padding(Dimensions.Padding.screen),
             verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.md),
         ) {
+            Text(
+                text = stringResource(R.string.portfolio_exchange),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.textSecondary,
+            )
+            ExchangeField(
+                value = uiState.exchangeName ?: stringResource(R.string.portfolio_exchange_best),
+                onClick = viewModel::onExchangeClick,
+                enabled = !uiState.isSaving,
+            )
+            Text(
+                text =
+                    stringResource(
+                        if (uiState.providerId != null) {
+                            R.string.portfolio_exchange_pinned_hint
+                        } else {
+                            R.string.portfolio_exchange_best_hint
+                        },
+                    ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.textTertiary,
+            )
+
             Text(
                 text = stringResource(R.string.portfolio_amount),
                 style = MaterialTheme.typography.bodyMedium,
