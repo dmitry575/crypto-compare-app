@@ -23,10 +23,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cryptocompare.auth.R
 import com.cryptocompare.auth.ui.components.AuthBackground
-import com.cryptocompare.auth.ui.components.AuthDivider
 import com.cryptocompare.auth.ui.components.AuthErrorMessage
 import com.cryptocompare.auth.ui.components.AuthFooterLink
-import com.cryptocompare.auth.ui.components.AuthGoogleButton
+import com.cryptocompare.auth.ui.components.AuthGoogleSection
 import com.cryptocompare.auth.ui.components.AuthLogo
 import com.cryptocompare.auth.ui.components.rememberGoogleSignInHandler
 import com.cryptocompare.auth.viewmodel.registrationviewmodel.RegistrationViewModel
@@ -138,16 +137,7 @@ fun RegisterScreen(
                 enabled = !uiState.isLoading,
             )
 
-            Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
-
-            AuthDivider(text = stringResource(R.string.auth_divider_or))
-
-            Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
-
-            AuthGoogleButton(
-                text = stringResource(R.string.auth_continue_google),
-                onClick = googleSignInHandler,
-            )
+            AuthGoogleSection(onClick = googleSignInHandler)
 
             uiState.errorMessage?.let { message ->
                 Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
