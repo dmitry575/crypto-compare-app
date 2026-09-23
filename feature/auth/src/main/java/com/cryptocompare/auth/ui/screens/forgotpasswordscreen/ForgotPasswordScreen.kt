@@ -25,9 +25,12 @@ import com.cryptocompare.auth.ui.components.AuthErrorMessage
 import com.cryptocompare.auth.ui.components.AuthFooterLink
 import com.cryptocompare.auth.ui.components.AuthLogo
 import com.cryptocompare.auth.util.AuthConstants
+import com.cryptocompare.auth.util.isValidation
 import com.cryptocompare.auth.viewmodel.forgotpasswordviewmodel.ForgotPasswordViewModel
+import com.cryptocompare.model.error.ValidationErrorReason
 import com.cryptocompare.ui.components.AppPrimaryButton
 import com.cryptocompare.ui.components.AppTextField
+import com.cryptocompare.ui.error.message
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.cryptoSuccess
 
@@ -98,7 +101,8 @@ fun ForgotPasswordScreen(
                     placeholder = stringResource(R.string.forgot_password_email),
                     leadingIcon = Icons.Outlined.MailOutline,
                     keyboardType = KeyboardType.Email,
-                    isError = uiState.errorMessage != null,
+                    // сеть упала — почта тут ни при чём, и красить поле незачем
+                    isError = uiState.error.isValidation(ValidationErrorReason.INVALID_EMAIL),
                 )
 
                 Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
@@ -114,7 +118,7 @@ fun ForgotPasswordScreen(
                     enabled = !uiState.isLoading,
                 )
 
-                uiState.errorMessage?.let { message ->
+                uiState.error?.message()?.let { message ->
                     Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
                     AuthErrorMessage(text = message)
                 }

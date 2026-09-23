@@ -11,8 +11,6 @@
     -->
     <string name="default_web_client_id" translatable="false"></string>
 
-    <string name="google_sign_in_failed">Google Sign-In failed</string>
-    <string name="google_sign_in_token_missing">Google token not found</string>
 
     <!-- Shared auth fields -->
     <string name="auth_email">Email</string>

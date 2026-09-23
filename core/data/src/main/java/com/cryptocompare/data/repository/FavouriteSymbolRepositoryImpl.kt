@@ -12,6 +12,9 @@ import com.cryptocompare.data.util.DataConstants.Favourites.MAX_SYNC_PASSES
 import com.cryptocompare.data.util.appRunCatching
 import com.cryptocompare.domain.repository.FavouriteSymbolRepository
 import com.cryptocompare.helpers.util.FirestoreConstants
+import com.cryptocompare.model.error.AppError
+import com.cryptocompare.model.error.AppException
+import com.cryptocompare.model.error.AuthErrorReason
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
@@ -64,7 +67,8 @@ class FavouriteSymbolRepositoryImpl
             withContext(ioDispatcher) {
                 appRunCatching {
                     val normalizedTicker = ticker.trim().uppercase()
-                    val userId = auth.currentUser?.uid ?: error(DataConstants.Auth.NO_CURRENT_USER)
+                    val userId =
+                        auth.currentUser?.uid ?: throw AppException(AppError.Auth(AuthErrorReason.NOT_SIGNED_IN))
                     val updatedAt = System.currentTimeMillis()
 
                     transactionRunner.run {

@@ -1,6 +1,4 @@
 <resources>
-    <string name="google_sign_in_failed">Не удалось войти через Google</string>
-    <string name="google_sign_in_token_missing">Токен Google не найден</string>
 
     <!-- Общие поля входа -->
     <string name="auth_email">Почта</string>

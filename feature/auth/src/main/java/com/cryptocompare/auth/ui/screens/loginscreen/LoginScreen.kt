@@ -30,9 +30,12 @@ import com.cryptocompare.auth.ui.components.AuthFooterLink
 import com.cryptocompare.auth.ui.components.AuthGoogleButton
 import com.cryptocompare.auth.ui.components.AuthLogo
 import com.cryptocompare.auth.ui.components.rememberGoogleSignInHandler
+import com.cryptocompare.auth.util.isValidation
 import com.cryptocompare.auth.viewmodel.loginviewmodel.LoginViewModel
+import com.cryptocompare.model.error.ValidationErrorReason
 import com.cryptocompare.ui.components.AppPrimaryButton
 import com.cryptocompare.ui.components.AppTextField
+import com.cryptocompare.ui.error.message
 import com.cryptocompare.ui.theme.Dimensions
 
 @Composable
@@ -95,7 +98,7 @@ fun LoginScreen(
                 placeholder = stringResource(R.string.auth_email),
                 leadingIcon = Icons.Outlined.MailOutline,
                 keyboardType = KeyboardType.Email,
-                isError = uiState.errorMessage != null && uiState.email.isBlank(),
+                isError = uiState.error.isValidation(ValidationErrorReason.INVALID_EMAIL),
             )
 
             Spacer(modifier = Modifier.height(Dimensions.Spacing.sm))
@@ -107,7 +110,7 @@ fun LoginScreen(
                 leadingIcon = Icons.Outlined.Lock,
                 keyboardType = KeyboardType.Password,
                 isPassword = true,
-                isError = uiState.errorMessage != null && uiState.password.isBlank(),
+                isError = uiState.error.isValidation(ValidationErrorReason.PASSWORD_TOO_SHORT),
             )
 
             Spacer(modifier = Modifier.height(Dimensions.Spacing.xs))
@@ -144,7 +147,7 @@ fun LoginScreen(
                 onClick = googleSignInHandler,
             )
 
-            uiState.errorMessage?.let { message ->
+            uiState.error?.message()?.let { message ->
                 Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
                 AuthErrorMessage(text = message)
             }
