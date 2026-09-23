@@ -15,6 +15,7 @@ import com.cryptocompare.domain.usecase.pairs.StreamDisconnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncFavouriteSymbolsUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.ToggleFavouriteSymbolUseCase
+import com.cryptocompare.helpers.util.WebSocketConstants
 import com.cryptocompare.model.auth.AuthUser
 import com.cryptocompare.model.error.AppError
 import com.cryptocompare.model.error.AppException
@@ -26,7 +27,6 @@ import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerConnectionState
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
-import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.util.StreamStatus
 import com.cryptocompare.pairs.viewmodel.mainViewModel.MainViewModel
 import com.cryptocompare.testing.MainDispatcherRule
@@ -425,13 +425,13 @@ class MainViewModelTest {
 
             yield()
             connectionState.value = TickerConnectionState.Reconnecting(attempts = 1, timeDelay = 1_000L)
-            advanceTimeBy(PairsConstants.MainScreen.STALE_NOTICE_DELAY_MS / 2)
+            advanceTimeBy(WebSocketConstants.STALE_NOTICE_DELAY_MS / 2)
             runCurrent()
 
             assertFalse(vm.uiState.value.isStale)
 
             connectionState.value = TickerConnectionState.Connected
-            advanceTimeBy(PairsConstants.MainScreen.STALE_NOTICE_DELAY_MS)
+            advanceTimeBy(WebSocketConstants.STALE_NOTICE_DELAY_MS)
             runCurrent()
 
             assertFalse(vm.uiState.value.isStale)
@@ -445,7 +445,7 @@ class MainViewModelTest {
 
             yield()
             connectionState.value = TickerConnectionState.Error("host unreachable")
-            advanceTimeBy(PairsConstants.MainScreen.STALE_NOTICE_DELAY_MS + 1)
+            advanceTimeBy(WebSocketConstants.STALE_NOTICE_DELAY_MS + 1)
             runCurrent()
 
             assertTrue(vm.uiState.value.isStale)

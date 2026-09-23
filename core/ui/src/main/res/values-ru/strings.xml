@@ -23,4 +23,7 @@
     <string name="error_validation_password_weak">Пароль не подходит под требования</string>
     <string name="error_validation_passwords_differ">Пароли не совпадают</string>
     <string name="error_validation_negative">Количество и цена не могут быть отрицательными</string>
+    <string name="stale_prices">Цены не обновляются</string>
+    <string name="stale_prices_at">Цены не обновляются · %1$s</string>
+    <string name="stale_refresh">Обновить</string>
 </resources>

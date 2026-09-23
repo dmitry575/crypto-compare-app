@@ -15,10 +15,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +35,7 @@ import com.cryptocompare.portfolio.ui.screens.portfolioscreen.components.Portfol
 import com.cryptocompare.portfolio.ui.screens.portfolioscreen.components.PortfolioSummaryCard
 import com.cryptocompare.portfolio.util.PortfolioConstants
 import com.cryptocompare.portfolio.viewmodel.portfolioviewmodel.PortfolioViewModel
+import com.cryptocompare.ui.components.StaleDataNotice
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.bgCard
 import com.cryptocompare.ui.theme.bgPrimary
@@ -43,6 +48,8 @@ fun PortfolioScreen(
     viewModel: PortfolioViewModel = hiltViewModel(),
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
+    val snackbarHostState = remember { SnackbarHostState() }
+    val refreshFailedMessage = stringResource(R.string.portfolio_refresh_failed)
 
     // Подписки сокета живут ровно столько, сколько экран на виду: вкладка
     // сохраняет свою ViewModel, и по её жизни каталог ждал бы свои подписки
@@ -50,6 +57,13 @@ fun PortfolioScreen(
     DisposableEffect(viewModel) {
         viewModel.onScreenShown()
         onDispose { viewModel.onScreenHidden() }
+    }
+
+    LaunchedEffect(uiState.refreshFailed) {
+        if (uiState.refreshFailed) {
+            snackbarHostState.showSnackbar(refreshFailedMessage)
+            viewModel.onRefreshFailureShown()
+        }
     }
 
     Scaffold(
@@ -67,6 +81,7 @@ fun PortfolioScreen(
                     ),
             )
         },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) { paddingValues ->
         Box(
             modifier =
@@ -89,6 +104,17 @@ fun PortfolioScreen(
                             ),
                         verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
                     ) {
+                        // та же полоска, что в каталоге: числа ниже остаются, но без неё
+                        // выглядели бы живыми
+                        if (uiState.isStale) {
+                            item(key = PortfolioConstants.Screen.STALE_NOTICE_KEY) {
+                                StaleDataNotice(
+                                    lastUpdateMillis = uiState.lastUpdateMillis,
+                                    onRefresh = viewModel::onRefreshClick,
+                                )
+                            }
+                        }
+
                         // итог едет вместе со списком: у портфеля из десятка позиций
                         // закреплённая карточка отъедала бы у него пол-экрана
                         item(key = PortfolioConstants.Screen.SUMMARY_KEY) {

@@ -9,6 +9,7 @@
     <string name="portfolio_invested">Вложено</string>
     <string name="portfolio_price_source">по цене %1$s</string>
     <string name="portfolio_price_pinned">на %1$s</string>
+    <string name="portfolio_refresh_failed">Не удалось получить цены</string>
     <string name="portfolio_missing_prices">Цены есть не по всем позициям — их нет в итоге</string>
     <string name="portfolio_exchange">Биржа покупки</string>
     <string name="portfolio_exchange_best">Лучшая цена среди бирж</string>

@@ -46,7 +46,6 @@ import androidx.paging.compose.itemKey
 import com.cryptocompare.model.error.asAppError
 import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.pairs.R
-import com.cryptocompare.pairs.ui.components.StaleDataNotice
 import com.cryptocompare.pairs.ui.components.StreamStatusBadge
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.EmptyState
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.ErrorState
@@ -58,6 +57,7 @@ import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairsSearchField
 import com.cryptocompare.pairs.ui.screens.mainScreen.components.PairsSortSheet
 import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.viewmodel.mainViewModel.MainViewModel
+import com.cryptocompare.ui.components.StaleDataNotice
 import com.cryptocompare.ui.error.message
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.bgCard

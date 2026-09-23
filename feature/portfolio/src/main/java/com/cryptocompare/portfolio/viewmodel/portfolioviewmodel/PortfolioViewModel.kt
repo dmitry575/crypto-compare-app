@@ -3,6 +3,8 @@ package com.cryptocompare.portfolio.viewmodel.portfolioviewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
+import com.cryptocompare.domain.usecase.pairs.GetCatalogLastUpdateUseCase
+import com.cryptocompare.domain.usecase.pairs.ObserveConnectionStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RefreshBestPricesUseCase
@@ -15,19 +17,26 @@ import com.cryptocompare.domain.usecase.portfolio.CalculatePortfolioUseCase
 import com.cryptocompare.domain.usecase.portfolio.ObservePortfolioPricesUseCase
 import com.cryptocompare.domain.usecase.portfolio.ObservePortfolioUseCase
 import com.cryptocompare.domain.usecase.portfolio.RefreshPinnedQuotesUseCase
+import com.cryptocompare.helpers.util.WebSocketConstants
 import com.cryptocompare.model.portfolio.PortfolioPosition
 import com.cryptocompare.model.ticker.TickerBestPrice
+import com.cryptocompare.model.ticker.TickerConnectionState
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
 import com.cryptocompare.portfolio.util.PortfolioConstants
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -60,6 +69,8 @@ class PortfolioViewModel
         private val refreshBestPricesUseCase: RefreshBestPricesUseCase,
         private val refreshPinnedQuotesUseCase: RefreshPinnedQuotesUseCase,
         private val applyPinnedPriceTicksUseCase: ApplyPinnedPriceTicksUseCase,
+        private val observeConnectionStateUseCase: ObserveConnectionStateUseCase,
+        private val getCatalogLastUpdateUseCase: GetCatalogLastUpdateUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(PortfolioUiState())
         val uiState = _uiState.asStateFlow()
@@ -73,6 +84,9 @@ class PortfolioViewModel
 
         /** Кто в пути прямо сейчас: без этого повторная правка позиций слала бы те же запросы заново. */
         private val refreshingSources = mutableSetOf<PriceSource>()
+
+        /** Поток был живым в этот показ экрана: его обрыв — и есть время, на котором цены замерли. */
+        private var wasLive = false
 
         private var portfolioJob: Job? = null
         private var liveJob: Job? = null
@@ -123,6 +137,25 @@ class PortfolioViewModel
             syncSubscriptions()
             refreshPrices(force = true)
             observeLivePrices()
+            loadLastUpdate()
+        }
+
+        /**
+         * «Обновить» на полоске замерших цен: сокет ещё переподключается с
+         * бэкоффом, а цены позиций можно взять по REST прямо сейчас.
+         */
+        fun onRefreshClick() {
+            refreshPrices(force = true) { updated ->
+                // ноль — это «ни один запрос не прошёл»: молча оставить время
+                // нетронутым значило бы сделать вид, что кнопка сработала
+                if (updated == 0 && positions.isNotEmpty()) {
+                    _uiState.update { it.copy(refreshFailed = true) }
+                }
+            }
+        }
+
+        fun onRefreshFailureShown() {
+            _uiState.update { it.copy(refreshFailed = false) }
         }
 
         /**
@@ -142,6 +175,7 @@ class PortfolioViewModel
             subscribedTickers.clear()
             refreshedSources.clear()
             refreshingSources.clear()
+            wasLive = false
             subscriptionsTakenOver = false
             restoreTickerSubscriptionsUseCase()
         }
@@ -195,8 +229,14 @@ class PortfolioViewModel
          * экрана и после реконнекта, когда пропущенное сервер не досылает.
          * Иначе догоняются только те, за кем ещё не ходили — в том числе позиция,
          * у которой только что сменили биржу: источник цены у неё теперь другой.
+         *
+         * [onDone] получает число обновлённых цен — по нему «Обновить» решает,
+         * сработала ли кнопка.
          */
-        private fun refreshPrices(force: Boolean) {
+        private fun refreshPrices(
+            force: Boolean,
+            onDone: ((updated: Int) -> Unit)? = null,
+        ) {
             if (force) {
                 refreshedSources.clear()
                 refreshingSources.clear()
@@ -207,7 +247,10 @@ class PortfolioViewModel
                     val source = position.priceSource()
                     source !in refreshedSources && source !in refreshingSources
                 }
-            if (pending.isEmpty()) return
+            if (pending.isEmpty()) {
+                onDone?.invoke(0)
+                return
+            }
 
             val (pinned, best) = pending.partition { it.providerId != null }
             val bestSources = best.map { it.priceSource() }.toSet()
@@ -219,12 +262,15 @@ class PortfolioViewModel
                 // «цены свежие»: use case'ы глотают ошибки по отдельным тикерам.
                 // Пометить такие источники догнанными значило бы не вернуться к ним
                 // никогда — в офлайне так и было бы: экран открыт, цены старые, повторов нет.
+                var total = 0
+
                 if (bestSources.isNotEmpty()) {
                     val tickers = bestSources.filterIsInstance<PriceSource.Best>().map { it.ticker }.toSet()
                     val updated = refreshBestPricesUseCase(tickers).getOrDefault(0)
 
                     refreshingSources -= bestSources
                     if (updated > 0) refreshedSources += bestSources
+                    total += updated
                 }
 
                 if (pinnedSources.isNotEmpty()) {
@@ -232,7 +278,11 @@ class PortfolioViewModel
 
                     refreshingSources -= pinnedSources
                     if (updated > 0) refreshedSources += pinnedSources
+                    total += updated
                 }
+
+                if (total > 0) markUpdated()
+                onDone?.invoke(total)
             }
         }
 
@@ -258,7 +308,61 @@ class PortfolioViewModel
                     launch {
                         observeStreamReconnectsUseCase().collect { refreshPrices(force = true) }
                     }
+
+                    launch { observeStaleStream() }
                 }
+        }
+
+        /**
+         * Полоска «цены не обновляются» — как в каталоге: не на первой же секунде
+         * без связи, а когда поток пролежал [WebSocketConstants.STALE_NOTICE_DELAY_MS].
+         *
+         * Время, на котором цены замерли, — момент обрыва: пока поток жив, цены
+         * на экране текущие, и вести время по каждому тику незачем (это
+         * обновляло бы экран на каждый тик).
+         */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        private suspend fun observeStaleStream() {
+            observeConnectionStateUseCase()
+                .map { state -> state is TickerConnectionState.Connected }
+                .distinctUntilChanged()
+                .onEach { live ->
+                    if (wasLive && !live) markUpdated()
+                    wasLive = live
+                }.flatMapLatest { live ->
+                    if (live) {
+                        flowOf(false)
+                    } else {
+                        flow {
+                            delay(WebSocketConstants.STALE_NOTICE_DELAY_MS.milliseconds)
+                            emit(true)
+                        }
+                    }
+                }.distinctUntilChanged()
+                .collect { stale -> _uiState.update { it.copy(isStale = stale) } }
+        }
+
+        private fun markUpdated() {
+            _uiState.update { it.copy(lastUpdateMillis = System.currentTimeMillis()) }
+        }
+
+        /** Отправная точка для «цены не обновляются · 13:48», когда портфель открыли без сети. */
+        private fun loadLastUpdate() {
+            viewModelScope.launch {
+                val lastUpdate =
+                    try {
+                        getCatalogLastUpdateUseCase()
+                    } catch (cancellation: CancellationException) {
+                        throw cancellation
+                    } catch (error: Exception) {
+                        // без отправной точки полоска просто скажет «цены не обновляются»
+                        null
+                    } ?: return@launch
+
+                _uiState.update { state ->
+                    if (state.lastUpdateMillis == null) state.copy(lastUpdateMillis = lastUpdate) else state
+                }
+            }
         }
 
         /** Котировка биржи, за которой закреплена позиция этого символа. */
