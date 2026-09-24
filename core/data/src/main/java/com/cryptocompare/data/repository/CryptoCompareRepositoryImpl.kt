@@ -24,6 +24,7 @@ import com.cryptocompare.data.mapper.toTickerBestPrice
 import com.cryptocompare.data.paging.SymbolsRemoteMediator
 import com.cryptocompare.data.util.appRunCatching
 import com.cryptocompare.data.util.checkApiResponse
+import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.helpers.util.CryptoCompareRepositoryConstants
 import com.cryptocompare.model.chart.Candle
@@ -54,6 +55,7 @@ class CryptoCompareRepositoryImpl
         private val database: CryptoCompareDatabase,
         private val symbolDao: SymbolDao,
         private val providerDao: ProviderDao,
+        private val crashReporter: CrashReporter,
         @Named("ioDispatcher") private val ioDispatcher: CoroutineDispatcher,
     ) : CryptoCompareRepository {
         // ─── Providers ────────────────────────────────────────────────────────────
@@ -61,7 +63,7 @@ class CryptoCompareRepositoryImpl
         // get providers
         override suspend fun getProviders(): Result<List<Provider>> =
             withContext(ioDispatcher) {
-                appRunCatching {
+                appRunCatching(crashReporter) {
                     val providers = providerDao.getAll().toDomainFromEntity()
 
                     if (providers.isNotEmpty() && !isCacheStale(providerDao.getLastUpdate())) {
@@ -132,6 +134,7 @@ class CryptoCompareRepositoryImpl
                     SymbolsRemoteMediator(
                         api = cryptoCompareApi,
                         database = database,
+                        crashReporter = crashReporter,
                         refreshProviders = { refreshProviders() },
                     ),
                 pagingSourceFactory = {
@@ -161,7 +164,7 @@ class CryptoCompareRepositoryImpl
          */
         override suspend fun getSymbolsByTicker(ticker: String): Result<List<Symbol>> =
             withContext(ioDispatcher) {
-                appRunCatching {
+                appRunCatching(crashReporter) {
                     val response = cryptoCompareApi.getSymbolsByTicker(ticker)
 
                     checkApiResponse(response.errorCode, response.errorMsgs)
@@ -180,7 +183,7 @@ class CryptoCompareRepositoryImpl
             offset: Int,
         ): Result<List<Candle>> =
             withContext(ioDispatcher) {
-                appRunCatching {
+                appRunCatching(crashReporter) {
                     val response =
                         cryptoCompareApi.getKlines(
                             providerId = providerId,
@@ -198,7 +201,7 @@ class CryptoCompareRepositoryImpl
 
         override suspend fun getBestPricesByTicker(ticker: String): Result<List<TickerBestPrice>> =
             withContext(ioDispatcher) {
-                appRunCatching {
+                appRunCatching(crashReporter) {
                     val response = cryptoCompareApi.getBestPricesByTicker(ticker)
 
                     checkApiResponse(response.errorCode, response.errorMsgs)
@@ -223,7 +226,7 @@ class CryptoCompareRepositoryImpl
 
         override suspend fun applyBestPriceUpdates(updates: List<TickerBestPrice>): Result<Unit> =
             withContext(ioDispatcher) {
-                appRunCatching {
+                appRunCatching(crashReporter) {
                     symbolDao.updateBestPrices(
                         updates.map { update ->
                             SymbolBestPriceUpdate(
@@ -241,7 +244,7 @@ class CryptoCompareRepositoryImpl
 
         override suspend fun refreshCatalog(): Result<Unit> =
             withContext(ioDispatcher) {
-                appRunCatching {
+                appRunCatching(crashReporter) {
                     refreshSymbols()
                 }
             }

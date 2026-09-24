@@ -43,7 +43,7 @@ class AuthRepositoryImpl
             email: String,
             password: String,
         ): Result<AuthUser> =
-            appRunCatching {
+            appRunCatching(crashReporter) {
                 val result = auth.createUserWithEmailAndPassword(email, password).await()
                 val user = result.user ?: error(DataConstants.Auth.NULL_USER)
                 user.toAuthUser()
@@ -53,14 +53,14 @@ class AuthRepositoryImpl
             email: String,
             password: String,
         ): Result<AuthUser> =
-            appRunCatching {
+            appRunCatching(crashReporter) {
                 val result = auth.signInWithEmailAndPassword(email, password).await()
                 val user = result.user ?: error(DataConstants.Auth.NULL_USER)
                 user.toAuthUser()
             }.onSuccess { user -> crashReporter.setUser(user.uid) }
 
         override suspend fun signInWithGoogle(idToken: String): Result<AuthUser> =
-            appRunCatching {
+            appRunCatching(crashReporter) {
                 val credential = GoogleAuthProvider.getCredential(idToken, null)
                 val result = auth.signInWithCredential(credential).await()
                 val user = result.user ?: error(DataConstants.Auth.NULL_USER)
@@ -68,7 +68,7 @@ class AuthRepositoryImpl
             }.onSuccess { user -> crashReporter.setUser(user.uid) }
 
         override suspend fun sendPasswordResetEmail(email: String): Result<Unit> =
-            appRunCatching {
+            appRunCatching(crashReporter) {
                 auth.sendPasswordResetEmail(email).await()
                 Unit
             }
@@ -80,7 +80,7 @@ class AuthRepositoryImpl
         }
 
         override suspend fun deleteAccount(): Result<Unit> =
-            appRunCatching {
+            appRunCatching(crashReporter) {
                 val user = auth.currentUser ?: throw AppException(AppError.Auth(AuthErrorReason.NOT_SIGNED_IN))
                 // FirebaseAuthRecentLoginRequiredException превращается в Auth(RECENT_LOGIN_REQUIRED),
                 // и экран просит войти заново, а не показывает фразу Firebase
@@ -92,7 +92,7 @@ class AuthRepositoryImpl
             currentPassword: String,
             newPassword: String,
         ): Result<Unit> =
-            appRunCatching {
+            appRunCatching(crashReporter) {
                 val user = auth.currentUser ?: throw AppException(AppError.Auth(AuthErrorReason.NOT_SIGNED_IN))
                 val email = user.email ?: throw AppException(AppError.Auth(AuthErrorReason.NO_PASSWORD_PROVIDER))
                 // Firebase не меняет пароль по старой сессии, поэтому сначала

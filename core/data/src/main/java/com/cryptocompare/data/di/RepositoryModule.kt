@@ -58,8 +58,10 @@ object RepositoryModule {
         database: CryptoCompareDatabase,
         providerDao: ProviderDao,
         symbolDao: SymbolDao,
+        crashReporter: CrashReporter,
         @Named("ioDispatcher") ioDispatcher: CoroutineDispatcher,
-    ): CryptoCompareRepository = CryptoCompareRepositoryImpl(api, database, symbolDao, providerDao, ioDispatcher)
+    ): CryptoCompareRepository =
+        CryptoCompareRepositoryImpl(api, database, symbolDao, providerDao, crashReporter, ioDispatcher)
 
     @Provides
     @Singleton
@@ -103,8 +105,9 @@ object RepositoryModule {
     @Singleton
     fun providePortfolioRepository(
         portfolioPositionDao: PortfolioPositionDao,
+        crashReporter: CrashReporter,
         @Named("ioDispatcher") ioDispatcher: CoroutineDispatcher,
-    ): PortfolioRepository = PortfolioRepositoryImpl(portfolioPositionDao, ioDispatcher)
+    ): PortfolioRepository = PortfolioRepositoryImpl(portfolioPositionDao, crashReporter, ioDispatcher)
 
     @Provides
     @Singleton
@@ -120,6 +123,7 @@ object RepositoryModule {
         transactionRunner: DatabaseTransactionRunner,
         auth: FirebaseAuth,
         firestore: FirebaseFirestore,
+        crashReporter: CrashReporter,
         @Named("ioDispatcher") ioDispatcher: CoroutineDispatcher,
     ): FavouriteSymbolRepository =
         FavouriteSymbolRepositoryImpl(
@@ -129,6 +133,7 @@ object RepositoryModule {
             symbolDao = symbolDao,
             transactionRunner = transactionRunner,
             auth = auth,
+            crashReporter = crashReporter,
             ioDispatcher = ioDispatcher,
         )
 }

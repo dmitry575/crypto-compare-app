@@ -36,8 +36,10 @@ UI → ViewModel → UseCase → Repository → (REST API | WebSocket | Room | F
 - **Use cases** are one class per operation (`operator fun invoke(...)`).
 - **Repositories** return `Result<T>` for one-shot operations and `Flow<T>`
   for streams, and expose domain models only. Errors never reach the UI as
-  exceptions — repositories wrap them with `runCatching` and rethrow
-  `CancellationException`.
+  exceptions — repositories wrap calls with `appRunCatching`, which turns any
+  failure into a typed `AppError` (network, API, auth, database, stream,
+  validation), reports the unexpected ones to Crashlytics and rethrows
+  `CancellationException`. Only the UI turns an `AppError` into text.
 - Features talk to `core:domain` only; they never touch repositories or each
   other.
 

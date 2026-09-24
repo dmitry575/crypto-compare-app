@@ -61,6 +61,7 @@ class FavouriteSymbolRepositoryImplTest {
             symbolDao = symbolDao,
             transactionRunner = transactionRunner,
             auth = auth,
+            crashReporter = mockk(relaxed = true),
             ioDispatcher = dispatcher,
         )
 
