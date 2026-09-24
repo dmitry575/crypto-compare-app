@@ -2,6 +2,7 @@ package com.cryptocompare.auth.viewmodel.forgotpasswordviewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cryptocompare.auth.util.withoutValidation
 import com.cryptocompare.domain.usecase.auth.IsValidEmailUseCase
 import com.cryptocompare.domain.usecase.auth.SendPasswordResetEmailUseCase
 import com.cryptocompare.model.error.AppError
@@ -25,7 +26,12 @@ class ForgotPasswordViewModel
         val uiState = _uiState.asStateFlow()
 
         fun onEmailChange(email: String) {
-            _uiState.update { uiState -> uiState.copy(email = email) }
+            _uiState.update { uiState ->
+                uiState.copy(
+                    email = email,
+                    error = uiState.error.withoutValidation(ValidationErrorReason.INVALID_EMAIL),
+                )
+            }
         }
 
         fun sendResetEmail() {

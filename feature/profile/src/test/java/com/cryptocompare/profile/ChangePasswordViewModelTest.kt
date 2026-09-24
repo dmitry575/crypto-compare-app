@@ -82,6 +82,23 @@ class ChangePasswordViewModelTest {
         }
 
     @Test
+    fun `editing the confirmation clears the mismatch`() =
+        runTest {
+            val viewModel = createViewModel()
+            viewModel.onCurrentPasswordChange(CURRENT_PASSWORD)
+            viewModel.onNewPasswordChange(NEW_PASSWORD)
+            viewModel.onConfirmPasswordChange("secret2b")
+            viewModel.changePassword()
+            advanceUntilIdle()
+
+            viewModel.onCurrentPasswordChange(CURRENT_PASSWORD + "x")
+            assertEquals(ChangePasswordError.PASSWORDS_DO_NOT_MATCH, viewModel.uiState.value.validationError)
+
+            viewModel.onConfirmPasswordChange(NEW_PASSWORD)
+            assertNull(viewModel.uiState.value.validationError)
+        }
+
+    @Test
     fun `new password equal to current is rejected`() =
         runTest {
             val viewModel = createViewModel()

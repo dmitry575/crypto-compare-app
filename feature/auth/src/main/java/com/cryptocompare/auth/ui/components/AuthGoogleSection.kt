@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.cryptocompare.auth.R
+import com.cryptocompare.auth.util.AuthConstants
 import com.cryptocompare.ui.theme.Dimensions
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
@@ -21,8 +22,12 @@ import com.google.android.gms.common.GoogleApiAvailability
  * Без них `GoogleSignIn` не открывает выбор аккаунта, а падает при запуске
  * интента: так ведут себя телефоны Huawei с HMS и образы AOSP. Кнопка, которая
  * заведомо не сработает, хуже отсутствующей — вход по почте остаётся в любом
- * случае. Показываем только при `SUCCESS`: устаревшие сервисы — редкость, и
- * почта там тоже работает.
+ * случае.
+ *
+ * Сервисы есть, но устарели или выключены — кнопка остаётся: по нажатию
+ * система сама предложит их обновить или включить, и следующее нажатие уже
+ * войдёт. Статус проверяется в момент нажатия, а не при показе: после
+ * обновления экран не пересоздаётся.
  */
 @Composable
 internal fun AuthGoogleSection(
@@ -30,11 +35,13 @@ internal fun AuthGoogleSection(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val playServicesAvailable =
+    val availability = GoogleApiAvailability.getInstance()
+    val playServicesUsable =
         remember(context) {
-            GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
+            val status = availability.isGooglePlayServicesAvailable(context)
+            status == ConnectionResult.SUCCESS || status in AuthConstants.PLAY_SERVICES_FIXABLE_STATUSES
         }
-    if (!playServicesAvailable) return
+    if (!playServicesUsable) return
 
     Column(modifier = modifier.fillMaxWidth()) {
         Spacer(modifier = Modifier.height(Dimensions.Spacing.md))
@@ -45,7 +52,13 @@ internal fun AuthGoogleSection(
 
         AuthGoogleButton(
             text = stringResource(R.string.auth_continue_google),
-            onClick = onClick,
+            onClick = {
+                if (availability.isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS) {
+                    onClick()
+                } else {
+                    context.findActivity()?.let(availability::makeGooglePlayServicesAvailable)
+                }
+            },
         )
     }
 }
