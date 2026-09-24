@@ -73,9 +73,11 @@ app
 1. **The catalog is Paging 3 backed by Room.** Pairs are aggregated in SQL;
    pages are fetched from the backend by a `RemoteMediator`. Nothing loads the
    whole catalog into memory.
-2. **WebSocket ticks are batched.** Ticks arrive dozens of times per second;
-   both the list and the detail screen accumulate the latest value and flush
-   into UI state on a fixed interval instead of recomposing on every tick.
+2. **WebSocket ticks are batched, by a single writer.** Ticks arrive dozens of
+   times per second. One app-wide writer (`SyncLiveBestPricesUseCase`, started by
+   the Application) keeps the latest best price per symbol and writes them to
+   Room on a fixed interval; screens only read. The detail and comparison screens
+   batch their own in-memory quotes the same way instead of recomposing on every tick.
 3. **The backend accepts at most 8 subscriptions per connection** (the 9th
    fails silently). The main screen syncs its visible rows against this limit;
    the detail screen takes over all subscription slots while open and restores
