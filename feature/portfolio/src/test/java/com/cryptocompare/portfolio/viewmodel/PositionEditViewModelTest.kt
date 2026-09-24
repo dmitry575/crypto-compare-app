@@ -149,7 +149,7 @@ class PositionEditViewModelTest {
             // цена подсказана с этой биржи — скорее всего, там и купили
             coEvery { repository.getPosition(SYMBOL_ID) } returns null
 
-            val viewModel = createViewModel(price = "76852.0", providerId = "5")
+            val viewModel = createViewModel(price = "76852.0", providerId = 5)
             advanceUntilIdle()
 
             val state = viewModel.uiState.value
@@ -174,7 +174,7 @@ class PositionEditViewModelTest {
         runTest {
             coEvery { repository.getPosition(SYMBOL_ID) } returns EXISTING.copy(providerId = 7, exchangeName = "okx")
 
-            val viewModel = createViewModel(price = "76852.0", providerId = "5")
+            val viewModel = createViewModel(price = "76852.0", providerId = 5)
             advanceUntilIdle()
 
             assertEquals(7, viewModel.uiState.value.providerId)
@@ -186,7 +186,7 @@ class PositionEditViewModelTest {
         runTest {
             coEvery { repository.getPosition(SYMBOL_ID) } returns EXISTING
 
-            val viewModel = createViewModel(providerId = "5")
+            val viewModel = createViewModel(providerId = 5)
             advanceUntilIdle()
 
             assertNull(viewModel.uiState.value.providerId)
@@ -199,7 +199,7 @@ class PositionEditViewModelTest {
             coEvery { repository.getPosition(SYMBOL_ID) } returns null
             coEvery { getTickerDetail(any(), any()) } returns Result.failure(IllegalStateException("offline"))
 
-            val viewModel = createViewModel(providerId = "5")
+            val viewModel = createViewModel(providerId = 5)
             advanceUntilIdle()
 
             // в шторке — только она: выбрать биржу, про которую не знаешь, торгуется
@@ -213,7 +213,7 @@ class PositionEditViewModelTest {
         runTest {
             coEvery { repository.getPosition(SYMBOL_ID) } returns null
             coEvery { repository.savePosition(any()) } returns Result.success(Unit)
-            val viewModel = createViewModel(providerId = "5")
+            val viewModel = createViewModel(providerId = 5)
             advanceUntilIdle()
 
             viewModel.onExchangeClick()
@@ -232,7 +232,7 @@ class PositionEditViewModelTest {
         runTest {
             coEvery { repository.getPosition(SYMBOL_ID) } returns null
             coEvery { repository.savePosition(any()) } returns Result.success(Unit)
-            val viewModel = createViewModel(providerId = "5")
+            val viewModel = createViewModel(providerId = 5)
             advanceUntilIdle()
 
             viewModel.onExchangeSelected(null)
@@ -246,7 +246,7 @@ class PositionEditViewModelTest {
 
     private fun createViewModel(
         price: String? = null,
-        providerId: String? = null,
+        providerId: Int? = null,
     ): PositionEditViewModel =
         PositionEditViewModel(
             savedStateHandle =

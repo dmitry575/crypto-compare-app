@@ -59,7 +59,7 @@ class ComparisonViewModelTest {
 
     private fun makeVm(
         ticker: String = "ETHUSDC",
-        symbolId: Long = PairsConstants.Navigation.NO_SYMBOL_ID,
+        symbolId: Long? = null,
     ): ComparisonViewModel =
         ComparisonViewModel(
             savedStateHandle =

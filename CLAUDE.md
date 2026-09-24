@@ -260,8 +260,14 @@ app
    ```kotlin
    fun NavGraphBuilder.pairsNavigation(navController: NavHostController, onProfileClick: () -> Unit)
    ```
-   внутри которого `navigation(route = PairsDestination.ROUTE, startDestination = ...)`.
-   `*Destination.ROUTE` — это маршрут графа фичи, `*Screens` — маршруты экранов внутри него.
+   внутри которого `navigation<PairsRoute.Graph>(startDestination = PairsRoute.Main)`.
+   Маршруты типизированные: у каждой фичи `sealed interface *Route` с `@Serializable`
+   вариантами, `*Route.Graph` — граф фичи, остальные — экраны, аргументы — их поля
+   (`PairsRoute.Details(ticker, symbolId)`). Строковых шаблонов маршрутов нет: опечатка
+   в имени аргумента раньше молча открывала пустой экран. ViewModel читают аргументы из
+   `SavedStateHandle` по имени поля (`*Constants.Navigation`), а не через `toRoute()` —
+   тот тянет `Bundle` и ломает unit-тесты; совпадение имён закреплено `PairsRouteTest`
+   и `PortfolioRouteTest`.
    Переходы между фичами задаются лямбдами в `AppNavigation`: фичи друг о друге не знают.
    Вложенные `NavHost` дают каждой фиче отдельный back stack, из-за чего `popUpTo` по чужому
    маршруту молча не срабатывает.

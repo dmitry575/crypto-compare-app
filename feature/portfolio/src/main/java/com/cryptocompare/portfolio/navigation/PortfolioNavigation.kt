@@ -2,13 +2,10 @@ package com.cryptocompare.portfolio.navigation
 
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
-import androidx.navigation.navArgument
 import com.cryptocompare.portfolio.ui.screens.portfolioscreen.PortfolioScreen
 import com.cryptocompare.portfolio.ui.screens.positioneditscreen.PositionEditScreen
-import com.cryptocompare.portfolio.util.PortfolioConstants
 
 /**
  * Вложенный граф портфеля. Контроллер приходит снаружи: на всё приложение один
@@ -21,38 +18,17 @@ fun NavGraphBuilder.portfolioNavigation(
     navController: NavHostController,
     onOpenPairs: () -> Unit,
 ) {
-    navigation(
-        route = PortfolioDestination.ROUTE,
-        startDestination = PortfolioScreens.PortfolioScreen.route,
-    ) {
-        composable(PortfolioScreens.PortfolioScreen.route) {
+    navigation<PortfolioRoute.Graph>(startDestination = PortfolioRoute.Main) {
+        composable<PortfolioRoute.Main> {
             PortfolioScreen(
                 onPositionClick = { symbolId, ticker ->
-                    navController.navigate(PortfolioScreens.PositionEditScreen.createRoute(symbolId, ticker))
+                    navController.navigate(PortfolioRoute.PositionEdit(symbolId, ticker))
                 },
                 onOpenPairs = onOpenPairs,
             )
         }
 
-        composable(
-            route = PortfolioScreens.PositionEditScreen.route,
-            arguments =
-                listOf(
-                    navArgument(PortfolioConstants.Navigation.SYMBOL_ID_ARG) { type = NavType.LongType },
-                    navArgument(PortfolioConstants.Navigation.TICKER_ARG) { type = NavType.StringType },
-                    navArgument(PortfolioConstants.Navigation.PRICE_ARG) {
-                        type = NavType.StringType
-                        nullable = true
-                        defaultValue = null
-                    },
-                    // строкой: у IntType не бывает null, а «биржа не выбрана» — законный ответ
-                    navArgument(PortfolioConstants.Navigation.PROVIDER_ID_ARG) {
-                        type = NavType.StringType
-                        nullable = true
-                        defaultValue = null
-                    },
-                ),
-        ) {
+        composable<PortfolioRoute.PositionEdit> {
             PositionEditScreen(onDone = { navController.popBackStack() })
         }
     }

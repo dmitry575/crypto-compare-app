@@ -15,21 +15,16 @@ fun NavGraphBuilder.profileNavigation(
     navController: NavHostController,
     onSignInClick: () -> Unit,
 ) {
-    navigation(
-        route = ProfileDestination.ROUTE,
-        startDestination = ProfileScreens.ProfileScreen.route,
-    ) {
-        composable(ProfileScreens.ProfileScreen.route) {
+    navigation<ProfileRoute.Graph>(startDestination = ProfileRoute.Main) {
+        composable<ProfileRoute.Main> {
             ProfileScreen(
                 onBack = { navController.popBackStack() },
                 onSignInClick = onSignInClick,
-                onChangePasswordClick = {
-                    navController.navigate(ProfileScreens.ChangePasswordScreen.route)
-                },
+                onChangePasswordClick = { navController.navigate(ProfileRoute.ChangePassword) },
             )
         }
 
-        composable(ProfileScreens.ChangePasswordScreen.route) {
+        composable<ProfileRoute.ChangePassword> {
             ChangePasswordScreen(onBack = { navController.popBackStack() })
         }
     }

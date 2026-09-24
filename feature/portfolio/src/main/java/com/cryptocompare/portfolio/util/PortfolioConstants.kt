@@ -10,6 +10,7 @@ object PortfolioConstants {
         const val STALE_NOTICE_KEY = "stale"
     }
 
+    /** Имена аргументов — это имена полей `PortfolioRoute.PositionEdit`: ViewModel читают по ним `SavedStateHandle`. */
     object Navigation {
         const val SYMBOL_ID_ARG = "symbolId"
         const val TICKER_ARG = "ticker"
