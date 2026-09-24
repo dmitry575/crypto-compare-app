@@ -5,11 +5,9 @@ object PortfolioConstants {
     object Screen {
         /** Ключ карточки итога в списке: позицией она не является, и symbolId у неё нет. */
         const val SUMMARY_KEY = "summary"
-    }
 
-    object Prices {
-        /** Тики идут десятками в секунду; в базу уходит последний за интервал. */
-        const val FLUSH_INTERVAL_MS = 500L
+        /** Ключ полоски «цены не обновляются»: она тоже не позиция. */
+        const val STALE_NOTICE_KEY = "stale"
     }
 
     object Navigation {

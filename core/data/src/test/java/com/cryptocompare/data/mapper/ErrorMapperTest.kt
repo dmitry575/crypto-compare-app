@@ -1,6 +1,7 @@
 package com.cryptocompare.data.mapper
 
 import android.database.SQLException
+import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.model.error.AppError
 import com.cryptocompare.model.error.AppException
 import com.cryptocompare.model.error.AuthErrorReason
@@ -13,6 +14,7 @@ import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.firestore.FirebaseFirestoreException
 import io.mockk.mockk
+import io.mockk.verify
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -26,6 +28,33 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 
 class ErrorMapperTest {
+    private val crashReporter: CrashReporter = mockk(relaxed = true)
+
+    @Test
+    fun `what we did not expect goes to the crash report as it was thrown`() {
+        // в отчёт — само исключение, а не обёртка: Crashlytics группирует по его типу
+        val parsing = IllegalStateException("Expected BEGIN_OBJECT")
+        val backend = AppException(AppError.Api(3), IllegalStateException("Invalid request"))
+        val database = SQLException("disk I/O error")
+
+        listOf(parsing, backend, database).forEach { it.toReportedAppException(crashReporter) }
+
+        verify(exactly = 1) { crashReporter.recordException(parsing) }
+        verify(exactly = 1) { crashReporter.recordException(backend) }
+        verify(exactly = 1) { crashReporter.recordException(database) }
+    }
+
+    @Test
+    fun `network, sign-in and input errors are not crash reports`() {
+        listOf(
+            UnknownHostException("api"),
+            mockk<FirebaseAuthInvalidCredentialsException>(),
+            AppException(AppError.Validation(ValidationErrorReason.NEGATIVE_VALUES)),
+        ).forEach { it.toReportedAppException(crashReporter) }
+
+        verify(exactly = 0) { crashReporter.recordException(any()) }
+    }
+
     @Test
     fun `no route to the server is a network error, and worth retrying`() {
         listOf(UnknownHostException("api"), SocketTimeoutException(), IOException("reset")).forEach { exception ->

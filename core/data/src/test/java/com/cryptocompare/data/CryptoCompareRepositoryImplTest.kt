@@ -6,6 +6,7 @@ import com.cryptocompare.data.local.dao.SymbolBestPriceUpdate
 import com.cryptocompare.data.local.dao.SymbolDao
 import com.cryptocompare.data.local.entity.ProviderEntity
 import com.cryptocompare.data.repository.CryptoCompareRepositoryImpl
+import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.model.chart.ChartTimeframe
 import com.cryptocompare.model.error.AppError
 import com.cryptocompare.model.error.AppException
@@ -25,6 +26,7 @@ import com.cryptocompare.network.dto.apiDTO.klinesDTO.KlineEntryDto
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -99,6 +101,8 @@ class CryptoCompareRepositoryImplTest {
         spreadPercent = -4.76,
     )
 
+    private val crashReporter: CrashReporter = mockk(relaxed = true)
+
     private fun createRepo(
         api: CryptoCompareApi = mockk(),
         symbolDao: SymbolDao = mockk(),
@@ -110,6 +114,7 @@ class CryptoCompareRepositoryImplTest {
             database = database,
             symbolDao = symbolDao,
             providerDao = providerDao,
+            crashReporter = crashReporter,
             ioDispatcher = dispatcher,
         )
 
@@ -595,6 +600,21 @@ class CryptoCompareRepositoryImplTest {
             val ex = result.exceptionOrNull() as AppException
             assertEquals(AppError.Api(-2), ex.error)
             assertEquals("Invalid request", ex.cause?.message)
+            verify(exactly = 1) { crashReporter.recordException(ex) }
+        }
+
+    @Test
+    fun `a network failure is not a crash report`() =
+        runTest(dispatcher) {
+            // без сети — не наш сбой: такие отчёты заглушили бы настоящие
+            val api = mockk<CryptoCompareApi>()
+            val repo = createRepo(api = api)
+            coEvery { api.getKlines(any(), any(), any(), any(), any()) } throws java.io.IOException("offline")
+
+            val result = repo.getCandles(1, "btcusdt", ChartTimeframe.D1, 300, 0)
+
+            assertEquals(AppError.Network, result.exceptionOrNull()?.asAppError())
+            verify(exactly = 0) { crashReporter.recordException(any()) }
         }
 
     @Test

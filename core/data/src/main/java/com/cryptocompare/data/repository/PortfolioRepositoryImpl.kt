@@ -5,6 +5,7 @@ import com.cryptocompare.data.mapper.toDomain
 import com.cryptocompare.data.mapper.toEntity
 import com.cryptocompare.data.mapper.toSellQuotes
 import com.cryptocompare.data.util.appRunCatching
+import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.domain.repository.PortfolioRepository
 import com.cryptocompare.model.portfolio.PortfolioPosition
 import com.cryptocompare.model.portfolio.PortfolioQuote
@@ -23,6 +24,7 @@ class PortfolioRepositoryImpl
     @Inject
     constructor(
         private val portfolioPositionDao: PortfolioPositionDao,
+        private val crashReporter: CrashReporter,
         @Named("ioDispatcher") private val ioDispatcher: CoroutineDispatcher,
     ) : PortfolioRepository {
         override fun observePositions(): Flow<List<PortfolioPosition>> =
@@ -33,12 +35,12 @@ class PortfolioRepositoryImpl
 
         override suspend fun savePosition(position: PortfolioPosition): Result<Unit> =
             withContext(ioDispatcher) {
-                appRunCatching { portfolioPositionDao.upsert(position.toEntity()) }
+                appRunCatching(crashReporter) { portfolioPositionDao.upsert(position.toEntity()) }
             }
 
         override suspend fun deletePosition(symbolId: Long): Result<Unit> =
             withContext(ioDispatcher) {
-                appRunCatching { portfolioPositionDao.delete(symbolId) }
+                appRunCatching(crashReporter) { portfolioPositionDao.delete(symbolId) }
             }
 
         override fun observePinnedQuotes(): Flow<Map<Long, SymbolSellQuote>> =
@@ -49,7 +51,7 @@ class PortfolioRepositoryImpl
 
         override suspend fun savePinnedQuotes(quotes: List<PortfolioQuote>): Result<Unit> =
             withContext(ioDispatcher) {
-                appRunCatching {
+                appRunCatching(crashReporter) {
                     if (quotes.isNotEmpty()) portfolioPositionDao.upsertQuotes(quotes.map { it.toEntity() })
                 }
             }

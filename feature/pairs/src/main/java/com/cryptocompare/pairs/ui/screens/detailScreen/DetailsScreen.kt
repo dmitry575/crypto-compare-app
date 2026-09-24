@@ -75,9 +75,11 @@ fun DetailsScreen(
 
     val errorMessage = state.error?.message()
     LaunchedEffect(errorMessage) {
-        // пока бирж нет, ошибка занимает весь экран, и снекбар только дублировал бы её
+        // пока бирж нет, ошибка занимает весь экран, и снекбар только дублировал бы её;
+        // там она и остаётся до «Повторить», а показанная снекбаром — сбрасывается
         if (errorMessage != null && state.exchanges.isNotEmpty()) {
             snackbarHostState.showSnackbar(errorMessage)
+            viewModel.onErrorShown()
         }
     }
 

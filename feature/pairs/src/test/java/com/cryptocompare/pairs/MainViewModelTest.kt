@@ -3,18 +3,17 @@ package com.cryptocompare.pairs
 import androidx.paging.PagingData
 import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
 import com.cryptocompare.domain.usecase.auth.ObserveAuthStateUseCase
-import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
 import com.cryptocompare.domain.usecase.pairs.GetCatalogLastUpdateUseCase
 import com.cryptocompare.domain.usecase.pairs.LoadPairsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveConnectionStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteSymbolsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
-import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RefreshBestPricesUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamDisconnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncFavouriteSymbolsUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.ToggleFavouriteSymbolUseCase
+import com.cryptocompare.helpers.util.WebSocketConstants
 import com.cryptocompare.model.auth.AuthUser
 import com.cryptocompare.model.error.AppError
 import com.cryptocompare.model.error.AppException
@@ -22,11 +21,7 @@ import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSort
 import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.model.symbol.PairUiItem
-import com.cryptocompare.model.ticker.TickerBestPrice
 import com.cryptocompare.model.ticker.TickerConnectionState
-import com.cryptocompare.model.ticker.TickerPrice
-import com.cryptocompare.model.ticker.TickerStreamEvent
-import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.util.StreamStatus
 import com.cryptocompare.pairs.viewmodel.mainViewModel.MainViewModel
 import com.cryptocompare.testing.MainDispatcherRule
@@ -36,7 +31,6 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
-import io.mockk.slot
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -68,9 +62,6 @@ class MainViewModelTest {
             every { this@mockk.invoke(any(), any(), any(), any(), any()) } returns pagingFlow
         }
 
-    private fun observeTickerEventUseCaseMock(flow: Flow<TickerStreamEvent>): ObserveTickerEventUseCase =
-        mockk { every { this@mockk.invoke() } returns flow }
-
     private fun syncVisibleTickersUseCaseMock(
         block: (List<String>, Set<String>) -> Set<String>,
     ): SyncVisibleTickersUseCase =
@@ -80,10 +71,6 @@ class MainViewModelTest {
 
     private fun streamDisconnectUseCaseMock(): StreamDisconnectUseCase =
         mockk { every { this@mockk.invoke() } just runs }
-
-    private fun applyBestPriceChangesUseCaseMock(
-        result: Result<Unit> = Result.success(Unit),
-    ): ApplyBestPriceChangesUseCase = mockk { coEvery { this@mockk.invoke(any()) } returns result }
 
     private fun observeFavouriteSymbolsUseCaseMock(flow: Flow<Set<Long>>): ObserveFavouriteSymbolsUseCase =
         mockk { every { this@mockk.invoke() } returns flow }
@@ -110,13 +97,11 @@ class MainViewModelTest {
 
     private fun makeVm(
         loadPairsUseCase: LoadPairsUseCase = loadPairsUseCaseMock(),
-        observeTickerEventUseCase: ObserveTickerEventUseCase = observeTickerEventUseCaseMock(emptyFlow()),
         syncVisibleTickersUseCase: SyncVisibleTickersUseCase =
             syncVisibleTickersUseCaseMock { v, _ ->
                 v.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
             },
         streamDisconnectUseCase: StreamDisconnectUseCase = streamDisconnectUseCaseMock(),
-        applyBestPriceChangesUseCase: ApplyBestPriceChangesUseCase = applyBestPriceChangesUseCaseMock(),
         observeFavouriteSymbolsUseCase: ObserveFavouriteSymbolsUseCase =
             observeFavouriteSymbolsUseCaseMock(flowOf(emptySet())),
         toggleFavouriteSymbolUseCase: ToggleFavouriteSymbolUseCase = toggleFavouriteSymbolUseCaseMock(),
@@ -135,8 +120,6 @@ class MainViewModelTest {
             loadPairsUseCase = loadPairsUseCase,
             syncVisibleTickersUseCase = syncVisibleTickersUseCase,
             streamDisconnectUseCase = streamDisconnectUseCase,
-            observeTickerEventUseCase = observeTickerEventUseCase,
-            applyBestPriceChangesUseCase = applyBestPriceChangesUseCase,
             observeFavouriteSymbolsUseCase = observeFavouriteSymbolsUseCase,
             toggleFavouriteSymbolUseCase = toggleFavouriteSymbolUseCase,
             syncFavouriteSymbolsUseCase = syncFavouriteSymbolsUseCase,
@@ -147,42 +130,6 @@ class MainViewModelTest {
             observeConnectionStateUseCase = observeConnectionStateUseCase,
             getCatalogLastUpdateUseCase = getCatalogLastUpdateUseCase,
         )
-
-    /** Событие типа 5: лучшая пара по тикеру. Каталог слушает только его. */
-    private fun bestPriceChange(
-        symbolId: Long,
-        bestAskPrice: Double,
-        bestBidPrice: Double,
-        ticker: String = "btcusdt",
-    ) = TickerStreamEvent.TickerBestPriceChange(
-        id = "evt",
-        data =
-            TickerBestPrice(
-                ticker = ticker,
-                symbolId = symbolId,
-                bestAskProviderId = 18,
-                bestAskPrice = bestAskPrice,
-                bestBidProviderId = 3,
-                bestBidPrice = bestBidPrice,
-                spreadPercent = -1.0,
-            ),
-    )
-
-    /** Событие типа 4: котировка одной биржи. В каталог попадать не должно. */
-    private fun priceChange(
-        symbolId: Int,
-        ticker: String = "btcusdt",
-    ) = TickerStreamEvent.TickerPriceChange(
-        id = "evt",
-        data =
-            TickerPrice(
-                ticker = ticker,
-                symbolId = symbolId,
-                providerId = 1,
-                priceSell = 101.0,
-                priceBuy = 100.0,
-            ),
-    )
 
     @Test
     fun `collecting pairs invokes load use case with current filters`() =
@@ -214,40 +161,6 @@ class MainViewModelTest {
 
             coVerify { loadPairsUseCase.invoke("btc", false, emptySet(), CatalogDirection.ANY, CatalogSorting()) }
             collectJob.cancel()
-        }
-
-    @Test
-    fun `price events are batched and applied once per flush interval`() =
-        runTest {
-            val events = MutableSharedFlow<TickerStreamEvent>(extraBufferCapacity = 8)
-            val applyUseCase = applyBestPriceChangesUseCaseMock()
-            val vm =
-                makeVm(
-                    observeTickerEventUseCase = observeTickerEventUseCaseMock(events),
-                    applyBestPriceChangesUseCase = applyUseCase,
-                )
-
-            runCurrent()
-
-            events.tryEmit(bestPriceChange(symbolId = 1, bestAskPrice = 101.0, bestBidPrice = 100.0))
-            events.tryEmit(bestPriceChange(symbolId = 1, bestAskPrice = 111.0, bestBidPrice = 110.0))
-            events.tryEmit(
-                bestPriceChange(symbolId = 2, bestAskPrice = 11.0, bestBidPrice = 10.0, ticker = "ethusdt"),
-            )
-            runCurrent()
-
-            val batchSlot = slot<List<TickerBestPrice>>()
-            advanceTimeBy(600)
-            runCurrent()
-
-            coVerify(exactly = 1) { applyUseCase.invoke(capture(batchSlot)) }
-            val batch = batchSlot.captured
-            assertEquals(2, batch.size)
-            // for the same symbol only the latest tick survives
-            assertEquals(110.0, batch.first { it.symbolId == 1L }.bestBidPrice, 0.0)
-            assertEquals(10.0, batch.first { it.symbolId == 2L }.bestBidPrice, 0.0)
-
-            assertNull(vm.uiState.value.error)
         }
 
     @Test
@@ -292,54 +205,6 @@ class MainViewModelTest {
             runCurrent()
 
             assertNull(vm.uiState.value.error)
-        }
-
-    @Test
-    fun `flush loop does nothing when no price events arrived`() =
-        runTest {
-            val applyUseCase = applyBestPriceChangesUseCaseMock()
-            makeVm(applyBestPriceChangesUseCase = applyUseCase)
-
-            advanceTimeBy(2000)
-            runCurrent()
-
-            coVerify(exactly = 0) { applyUseCase.invoke(any()) }
-        }
-
-    @Test
-    fun `apply batch failure sets error`() =
-        runTest {
-            val events = MutableSharedFlow<TickerStreamEvent>(extraBufferCapacity = 8)
-            val vm =
-                makeVm(
-                    observeTickerEventUseCase = observeTickerEventUseCaseMock(events),
-                    applyBestPriceChangesUseCase =
-                        applyBestPriceChangesUseCaseMock(
-                            Result.failure(AppException(AppError.Database)),
-                        ),
-                )
-
-            runCurrent()
-            events.tryEmit(bestPriceChange(symbolId = 1, bestAskPrice = 101.0, bestBidPrice = 100.0))
-            advanceTimeBy(600)
-            runCurrent()
-
-            assertEquals(AppError.Database, vm.uiState.value.error)
-        }
-
-    @Test
-    fun `socket flow failure sets error and does not crash`() =
-        runTest {
-            val vm =
-                makeVm(
-                    observeTickerEventUseCase =
-                        observeTickerEventUseCaseMock(flow { throw IllegalStateException("socket disconnected") }),
-                )
-
-            yield()
-
-            // что бы ни сломалось внутри потока, для пользователя это «поток цен прервался»
-            assertEquals(AppError.Stream, vm.uiState.value.error)
         }
 
     @Test
@@ -425,13 +290,13 @@ class MainViewModelTest {
 
             yield()
             connectionState.value = TickerConnectionState.Reconnecting(attempts = 1, timeDelay = 1_000L)
-            advanceTimeBy(PairsConstants.MainScreen.STALE_NOTICE_DELAY_MS / 2)
+            advanceTimeBy(WebSocketConstants.STALE_NOTICE_DELAY_MS / 2)
             runCurrent()
 
             assertFalse(vm.uiState.value.isStale)
 
             connectionState.value = TickerConnectionState.Connected
-            advanceTimeBy(PairsConstants.MainScreen.STALE_NOTICE_DELAY_MS)
+            advanceTimeBy(WebSocketConstants.STALE_NOTICE_DELAY_MS)
             runCurrent()
 
             assertFalse(vm.uiState.value.isStale)
@@ -445,7 +310,7 @@ class MainViewModelTest {
 
             yield()
             connectionState.value = TickerConnectionState.Error("host unreachable")
-            advanceTimeBy(PairsConstants.MainScreen.STALE_NOTICE_DELAY_MS + 1)
+            advanceTimeBy(WebSocketConstants.STALE_NOTICE_DELAY_MS + 1)
             runCurrent()
 
             assertTrue(vm.uiState.value.isStale)
@@ -454,6 +319,26 @@ class MainViewModelTest {
             runCurrent()
 
             assertFalse(vm.uiState.value.isStale)
+        }
+
+    @Test
+    fun `the stale notice names the moment the stream dropped`() =
+        runTest {
+            // пока поток жив, цены текущие; замерли они ровно тогда, когда он упал
+            val connectionState = MutableStateFlow<TickerConnectionState>(TickerConnectionState.Connected)
+            val vm =
+                makeVm(
+                    observeConnectionStateUseCase = observeConnectionStateUseCaseMock(connectionState),
+                    getCatalogLastUpdateUseCase = getCatalogLastUpdateUseCaseMock(1_700_000_000_000L),
+                )
+            yield()
+            runCurrent()
+            val beforeDrop = System.currentTimeMillis()
+
+            connectionState.value = TickerConnectionState.Error("host unreachable")
+            runCurrent()
+
+            assertTrue(vm.uiState.value.lastUpdateMillis!! >= beforeDrop)
         }
 
     @Test

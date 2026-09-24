@@ -434,6 +434,23 @@ class DetailsViewModelTest {
         }
 
     @Test
+    fun `an error shown in a snackbar is cleared, so the next one shows too`() =
+        runTest {
+            // без сброса та же ошибка второй раз не показалась бы: состояние не
+            // поменялось бы, и снекбару было бы не на что реагировать
+            val details: GetTickerDetailUseCase = mockk()
+            coEvery { details.invoke(any()) } returns Result.failure(AppException(AppError.Network))
+
+            val vm = makeVm(details = details)
+            runCurrent()
+            assertEquals(AppError.Network, vm.uiState.value.error)
+
+            vm.onErrorShown()
+
+            assertEquals(null, vm.uiState.value.error)
+        }
+
+    @Test
     fun `a failed best price request leaves the screen usable`() =
         runTest {
             coEvery { bestPrices.invoke("btcusdt") } returns Result.failure(IllegalStateException("500"))

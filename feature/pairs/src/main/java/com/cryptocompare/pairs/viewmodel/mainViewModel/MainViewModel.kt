@@ -6,26 +6,22 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.cryptocompare.domain.usecase.auth.GetCurrentUserUseCase
 import com.cryptocompare.domain.usecase.auth.ObserveAuthStateUseCase
-import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
 import com.cryptocompare.domain.usecase.pairs.GetCatalogLastUpdateUseCase
 import com.cryptocompare.domain.usecase.pairs.LoadPairsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveConnectionStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveFavouriteSymbolsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
-import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RefreshBestPricesUseCase
 import com.cryptocompare.domain.usecase.pairs.StreamDisconnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncFavouriteSymbolsUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.ToggleFavouriteSymbolUseCase
-import com.cryptocompare.model.error.AppError
+import com.cryptocompare.helpers.util.WebSocketConstants
 import com.cryptocompare.model.error.asAppError
 import com.cryptocompare.model.symbol.CatalogDirection
 import com.cryptocompare.model.symbol.CatalogSort
 import com.cryptocompare.model.symbol.CatalogSorting
 import com.cryptocompare.model.symbol.PairUiItem
-import com.cryptocompare.model.ticker.TickerBestPrice
-import com.cryptocompare.model.ticker.TickerStreamEvent
 import com.cryptocompare.pairs.util.PairsConstants
 import com.cryptocompare.pairs.util.StreamStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -42,10 +38,10 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
@@ -55,8 +51,6 @@ class MainViewModel
         private val loadPairsUseCase: LoadPairsUseCase,
         private val syncVisibleTickersUseCase: SyncVisibleTickersUseCase,
         private val streamDisconnectUseCase: StreamDisconnectUseCase,
-        private val observeTickerEventUseCase: ObserveTickerEventUseCase,
-        private val applyBestPriceChangesUseCase: ApplyBestPriceChangesUseCase,
         private val observeFavouriteSymbolsUseCase: ObserveFavouriteSymbolsUseCase,
         private val syncFavouriteSymbolsUseCase: SyncFavouriteSymbolsUseCase,
         private val toggleFavouriteSymbolUseCase: ToggleFavouriteSymbolUseCase,
@@ -72,18 +66,9 @@ class MainViewModel
 
         private val subscribedTickers = mutableSetOf<String>()
 
-        // Лучшие пары цен из сокета копятся здесь и уходят в базу пачками, чтобы
-        // UI не перерисовывался на каждый тик. Ключ — symbolId, он у тикера один,
-        // и это ровно та причина, по которой сюда нельзя пускать событие типа 4:
-        // котировки всех бирж легли бы под один ключ, и в каталог попадала бы
-        // последняя тикнувшая биржа вместо разницы между биржами.
-        private val pendingPriceUpdates = mutableMapOf<Long, TickerBestPrice>()
-        private val pendingPricesLock = Any()
-
-        // guarded by pendingPricesLock; cleared in the SAME critical section that
-        // observes an empty queue, so a tick can't slip in between "queue is empty"
-        // and the job ending and get stranded with no flush scheduled for it
-        private var isFlushScheduled = false
+        // Цены из сокета в базу пишет не экран, а `SyncLiveBestPricesUseCase` —
+        // один на приложение (решение 2 в CLAUDE.md). Каталог только читает Room,
+        // и Room сам перерисовывает видимые страницы.
 
         @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
         val pairs: Flow<PagingData<PairUiItem>> =
@@ -118,7 +103,6 @@ class MainViewModel
                 }.cachedIn(viewModelScope)
 
         init {
-            observeSocket()
             observeConnectionState()
             observeStaleStream()
             loadLastUpdate()
@@ -240,27 +224,6 @@ class MainViewModel
             _uiState.update { it.copy(error = null) }
         }
 
-        private fun observeSocket() {
-            viewModelScope.launch {
-                try {
-                    observeTickerEventUseCase().collect { event ->
-                        if (event is TickerStreamEvent.TickerBestPriceChange) {
-                            synchronized(pendingPricesLock) {
-                                pendingPriceUpdates[event.data.symbolId] = event.data
-                            }
-                            schedulePriceFlush()
-                        }
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    // поток котировок — не запрос: что бы ни сломалось внутри,
-                    // для пользователя это «поток цен прервался»
-                    _uiState.update { it.copy(error = AppError.Stream) }
-                }
-            }
-        }
-
         private fun markUpdated() {
             _uiState.update { it.copy(lastUpdateMillis = System.currentTimeMillis()) }
         }
@@ -292,7 +255,7 @@ class MainViewModel
                             flowOf(false)
                         } else {
                             flow {
-                                delay(PairsConstants.MainScreen.STALE_NOTICE_DELAY_MS.milliseconds)
+                                delay(WebSocketConstants.STALE_NOTICE_DELAY_MS.milliseconds)
                                 emit(true)
                             }
                         }
@@ -301,13 +264,24 @@ class MainViewModel
             }
         }
 
-        /** Живой ли поток — то, по чему пользователь понимает, верить ли числам. */
+        /**
+         * Живой ли поток — то, по чему пользователь понимает, верить ли числам.
+         *
+         * Момент, когда поток перестал быть живым, — и есть время, на котором
+         * цены замерли: пока он жив, цены на экране текущие, и вести время по
+         * каждой записи тиков незачем (раньше его двигал сброс пачки в этой же
+         * ViewModel, а пишет теперь не она).
+         */
         private fun observeConnectionState() {
             viewModelScope.launch {
                 observeConnectionStateUseCase()
                     .map(StreamStatus::of)
                     .distinctUntilChanged()
-                    .collect { status -> _uiState.update { it.copy(streamStatus = status) } }
+                    .onEach { status ->
+                        if (_uiState.value.streamStatus == StreamStatus.LIVE && status != StreamStatus.LIVE) {
+                            markUpdated()
+                        }
+                    }.collect { status -> _uiState.update { it.copy(streamStatus = status) } }
             }
         }
 
@@ -323,39 +297,6 @@ class MainViewModel
                     refreshBestPricesUseCase(subscribedTickers.toSet()).onSuccess { updated ->
                         if (updated > 0) markUpdated()
                     }
-                }
-            }
-        }
-
-        // the flush job lives only while ticks keep coming: one interval with no
-        // new updates and it exits, the next tick schedules it again
-        private fun schedulePriceFlush() {
-            synchronized(pendingPricesLock) {
-                if (isFlushScheduled) return
-                isFlushScheduled = true
-            }
-
-            viewModelScope.launch {
-                while (true) {
-                    delay(PairsConstants.MainScreen.PRICE_FLUSH_INTERVAL_MS.milliseconds)
-
-                    val batch =
-                        synchronized(pendingPricesLock) {
-                            // клеим флаг к наблюдению пустоты: тик, добавленный
-                            // до этого блока, попадёт в batch; добавленный после —
-                            // увидит isFlushScheduled == false и запустит новый джоб
-                            if (pendingPriceUpdates.isEmpty()) {
-                                isFlushScheduled = false
-                                return@launch
-                            }
-                            pendingPriceUpdates.values.toList().also { pendingPriceUpdates.clear() }
-                        }
-
-                    applyBestPriceChangesUseCase(batch)
-                        .onSuccess { markUpdated() }
-                        .onFailure { exception ->
-                            _uiState.update { it.copy(error = exception.asAppError()) }
-                        }
                 }
             }
         }

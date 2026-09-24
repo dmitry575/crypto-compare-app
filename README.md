@@ -36,8 +36,10 @@ UI → ViewModel → UseCase → Repository → (REST API | WebSocket | Room | F
 - **Use cases** are one class per operation (`operator fun invoke(...)`).
 - **Repositories** return `Result<T>` for one-shot operations and `Flow<T>`
   for streams, and expose domain models only. Errors never reach the UI as
-  exceptions — repositories wrap them with `runCatching` and rethrow
-  `CancellationException`.
+  exceptions — repositories wrap calls with `appRunCatching`, which turns any
+  failure into a typed `AppError` (network, API, auth, database, stream,
+  validation), reports the unexpected ones to Crashlytics and rethrows
+  `CancellationException`. Only the UI turns an `AppError` into text.
 - Features talk to `core:domain` only; they never touch repositories or each
   other.
 
@@ -71,9 +73,11 @@ app
 1. **The catalog is Paging 3 backed by Room.** Pairs are aggregated in SQL;
    pages are fetched from the backend by a `RemoteMediator`. Nothing loads the
    whole catalog into memory.
-2. **WebSocket ticks are batched.** Ticks arrive dozens of times per second;
-   both the list and the detail screen accumulate the latest value and flush
-   into UI state on a fixed interval instead of recomposing on every tick.
+2. **WebSocket ticks are batched, by a single writer.** Ticks arrive dozens of
+   times per second. One app-wide writer (`SyncLiveBestPricesUseCase`, started by
+   the Application) keeps the latest best price per symbol and writes them to
+   Room on a fixed interval; screens only read. The detail and comparison screens
+   batch their own in-memory quotes the same way instead of recomposing on every tick.
 3. **The backend accepts at most 8 subscriptions per connection** (the 9th
    fails silently). The main screen syncs its visible rows against this limit;
    the detail screen takes over all subscription slots while open and restores
