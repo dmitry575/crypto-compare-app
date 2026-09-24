@@ -18,6 +18,7 @@ import com.cryptocompare.domain.usecase.pairs.StreamDisconnectUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncFavouriteSymbolsUseCase
 import com.cryptocompare.domain.usecase.pairs.SyncVisibleTickersUseCase
 import com.cryptocompare.domain.usecase.pairs.ToggleFavouriteSymbolUseCase
+import com.cryptocompare.helpers.util.WebSocketConstants
 import com.cryptocompare.model.error.AppError
 import com.cryptocompare.model.error.asAppError
 import com.cryptocompare.model.symbol.CatalogDirection
@@ -292,7 +293,7 @@ class MainViewModel
                             flowOf(false)
                         } else {
                             flow {
-                                delay(PairsConstants.MainScreen.STALE_NOTICE_DELAY_MS.milliseconds)
+                                delay(WebSocketConstants.STALE_NOTICE_DELAY_MS.milliseconds)
                                 emit(true)
                             }
                         }

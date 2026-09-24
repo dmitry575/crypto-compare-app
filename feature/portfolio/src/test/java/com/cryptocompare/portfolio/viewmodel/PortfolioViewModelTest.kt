@@ -4,6 +4,8 @@ import com.cryptocompare.domain.repository.CryptoCompareRepository
 import com.cryptocompare.domain.repository.PortfolioRepository
 import com.cryptocompare.domain.repository.TickerStreamRepository
 import com.cryptocompare.domain.usecase.pairs.ApplyBestPriceChangesUseCase
+import com.cryptocompare.domain.usecase.pairs.GetCatalogLastUpdateUseCase
+import com.cryptocompare.domain.usecase.pairs.ObserveConnectionStateUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveStreamReconnectsUseCase
 import com.cryptocompare.domain.usecase.pairs.ObserveTickerEventUseCase
 import com.cryptocompare.domain.usecase.pairs.RefreshBestPricesUseCase
@@ -16,9 +18,11 @@ import com.cryptocompare.domain.usecase.portfolio.CalculatePortfolioUseCase
 import com.cryptocompare.domain.usecase.portfolio.ObservePortfolioPricesUseCase
 import com.cryptocompare.domain.usecase.portfolio.ObservePortfolioUseCase
 import com.cryptocompare.domain.usecase.portfolio.RefreshPinnedQuotesUseCase
+import com.cryptocompare.helpers.util.WebSocketConstants
 import com.cryptocompare.model.portfolio.PortfolioPosition
 import com.cryptocompare.model.symbol.SymbolSellQuote
 import com.cryptocompare.model.ticker.TickerBestPrice
+import com.cryptocompare.model.ticker.TickerConnectionState
 import com.cryptocompare.model.ticker.TickerPrice
 import com.cryptocompare.model.ticker.TickerStreamEvent
 import com.cryptocompare.portfolio.util.PortfolioConstants
@@ -34,6 +38,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -61,11 +66,14 @@ class PortfolioViewModelTest {
     private val applyPinnedPriceTicks: ApplyPinnedPriceTicksUseCase = mockk(relaxed = true)
 
     private val events = MutableSharedFlow<TickerStreamEvent>()
+    private val connection = MutableStateFlow<TickerConnectionState>(TickerConnectionState.Connected)
+    private val catalogLastUpdate: GetCatalogLastUpdateUseCase = mockk()
     private val reconnects = MutableSharedFlow<Unit>()
 
     @Before
     fun setUp() {
         coEvery { refreshBestPrices.invoke(any()) } returns Result.success(1)
+        coEvery { catalogLastUpdate.invoke() } returns CATALOG_SYNCED_AT
         coEvery { refreshPinnedQuotes.invoke(any()) } returns Result.success(1)
     }
 
@@ -348,6 +356,82 @@ class PortfolioViewModelTest {
             coVerify(exactly = 0) { applyPinnedPriceTicks.invoke(any()) }
         }
 
+    @Test
+    fun `a dropped stream says the prices froze, but not at once`() =
+        runTest {
+            givenPortfolio()
+            val viewModel = createViewModel()
+            viewModel.onScreenShown()
+            advanceUntilIdle()
+            val beforeDrop = System.currentTimeMillis()
+
+            connection.value = TickerConnectionState.Reconnecting(attempts = 1, timeDelay = 1_000L)
+            advanceTimeBy(WebSocketConstants.STALE_NOTICE_DELAY_MS / 2)
+            // короткий разрыв чинится сам, полоска на нём только мигала бы
+            assertFalse(viewModel.uiState.value.isStale)
+
+            advanceTimeBy(WebSocketConstants.STALE_NOTICE_DELAY_MS)
+            assertTrue(viewModel.uiState.value.isStale)
+            // цены замерли в момент обрыва, а не на времени каталога
+            assertTrue(viewModel.uiState.value.lastUpdateMillis!! >= beforeDrop)
+        }
+
+    @Test
+    fun `the notice goes away when the stream is back`() =
+        runTest {
+            givenPortfolio()
+            connection.value = TickerConnectionState.Disconnected
+            val viewModel = createViewModel()
+            viewModel.onScreenShown()
+            advanceTimeBy(WebSocketConstants.STALE_NOTICE_DELAY_MS + 1)
+            assertTrue(viewModel.uiState.value.isStale)
+
+            connection.value = TickerConnectionState.Connected
+            runCurrent()
+
+            assertFalse(viewModel.uiState.value.isStale)
+        }
+
+    @Test
+    fun `opened offline, the prices are as old as the catalog`() =
+        runTest {
+            givenPortfolio()
+            connection.value = TickerConnectionState.Disconnected
+            coEvery { refreshBestPrices.invoke(any()) } returns Result.success(0)
+            val viewModel = createViewModel()
+
+            viewModel.onScreenShown()
+            advanceTimeBy(WebSocketConstants.STALE_NOTICE_DELAY_MS + 1)
+
+            assertTrue(viewModel.uiState.value.isStale)
+            assertEquals(CATALOG_SYNCED_AT, viewModel.uiState.value.lastUpdateMillis)
+        }
+
+    @Test
+    fun `refresh that got no prices says so, one that did moves the time`() =
+        runTest {
+            givenPortfolio()
+            connection.value = TickerConnectionState.Disconnected
+            coEvery { refreshBestPrices.invoke(any()) } returns Result.success(0)
+            val viewModel = createViewModel()
+            viewModel.onScreenShown()
+            advanceTimeBy(WebSocketConstants.STALE_NOTICE_DELAY_MS + 1)
+
+            viewModel.onRefreshClick()
+            runCurrent()
+            // ни один запрос не прошёл — промолчать значило бы сделать вид, что кнопка сработала
+            assertTrue(viewModel.uiState.value.refreshFailed)
+            assertEquals(CATALOG_SYNCED_AT, viewModel.uiState.value.lastUpdateMillis)
+
+            viewModel.onRefreshFailureShown()
+            coEvery { refreshBestPrices.invoke(any()) } returns Result.success(1)
+            viewModel.onRefreshClick()
+            runCurrent()
+
+            assertFalse(viewModel.uiState.value.refreshFailed)
+            assertTrue(viewModel.uiState.value.lastUpdateMillis!! > CATALOG_SYNCED_AT)
+        }
+
     private fun givenPinnedPortfolio() {
         every { portfolioRepository.observePositions() } returns MutableStateFlow(listOf(PINNED))
         every { cryptoCompareRepository.observeSellQuotes(any()) } returns MutableStateFlow(emptyMap())
@@ -376,7 +460,15 @@ class PortfolioViewModelTest {
             refreshBestPricesUseCase = refreshBestPrices,
             refreshPinnedQuotesUseCase = refreshPinnedQuotes,
             applyPinnedPriceTicksUseCase = applyPinnedPriceTicks,
+            observeConnectionStateUseCase = observeConnectionStateUseCase(),
+            getCatalogLastUpdateUseCase = catalogLastUpdate,
         )
+
+    private fun observeConnectionStateUseCase(): ObserveConnectionStateUseCase {
+        val useCase: ObserveConnectionStateUseCase = mockk()
+        every { useCase.invoke() } returns connection
+        return useCase
+    }
 
     private fun observeTickerEventUseCase(): ObserveTickerEventUseCase {
         val useCase: ObserveTickerEventUseCase = mockk()
@@ -416,6 +508,7 @@ class PortfolioViewModelTest {
 
     private companion object {
         const val SYMBOL_ID = 1L
+        const val CATALOG_SYNCED_AT = 1_000L
         const val BYBIT = 5
         const val OKX = 7
         const val DELTA = 1e-9

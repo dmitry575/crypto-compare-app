@@ -29,6 +29,14 @@ object WebSocketConstants {
      */
     const val EVENT_BUFFER_CAPACITY = 256
 
+    /**
+     * Сколько поток должен пролежать, чтобы экран сказал «цены не обновляются».
+     * Короткий разрыв чинится сам за секунду-другую, и полоска на нём только
+     * мигала бы. Одна на каталог и портфель: иначе один экран уже говорил бы о
+     * замерших ценах, а другой ещё нет.
+     */
+    const val STALE_NOTICE_DELAY_MS = 4_000L
+
     const val NORMAL_CLOSURE_STATUS = 1000
     const val BASE_RECONNECT_DELAY_MS = 1_000L
     const val MAX_RECONNECT_DELAY_MS = 30_000L

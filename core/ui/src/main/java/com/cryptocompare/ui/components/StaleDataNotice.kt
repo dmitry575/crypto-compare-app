@@ -1,4 +1,4 @@
-package com.cryptocompare.pairs.ui.components
+package com.cryptocompare.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -14,8 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import com.cryptocompare.pairs.R
-import com.cryptocompare.pairs.util.formatLastUpdate
+import com.cryptocompare.helpers.formatLastUpdate
+import com.cryptocompare.ui.R
 import com.cryptocompare.ui.theme.Dimensions
 import com.cryptocompare.ui.theme.bgSunk
 import com.cryptocompare.ui.theme.textSecondary
@@ -28,10 +28,11 @@ import com.cryptocompare.ui.theme.textSecondary
  * замерли, и называет время, на котором они замерли.
  *
  * Появляется не сразу: короткий разрыв чинится сам, и мигающая полоска
- * раздражала бы сильнее, чем помогала.
+ * раздражала бы сильнее, чем помогала. Задержка — `WebSocketConstants.STALE_NOTICE_DELAY_MS`,
+ * одна на каталог и портфель.
  */
 @Composable
-internal fun StaleDataNotice(
+fun StaleDataNotice(
     lastUpdateMillis: Long?,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
@@ -49,9 +50,9 @@ internal fun StaleDataNotice(
         Text(
             text =
                 if (lastUpdateMillis == null) {
-                    stringResource(R.string.pairs_stale_prices)
+                    stringResource(R.string.stale_prices)
                 } else {
-                    stringResource(R.string.pairs_stale_prices_at, formatLastUpdate(lastUpdateMillis))
+                    stringResource(R.string.stale_prices_at, formatLastUpdate(lastUpdateMillis))
                 },
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.textSecondary,
@@ -59,7 +60,7 @@ internal fun StaleDataNotice(
 
         TextButton(onClick = onRefresh) {
             Text(
-                text = stringResource(R.string.pairs_stale_refresh),
+                text = stringResource(R.string.stale_refresh),
                 style = MaterialTheme.typography.labelSmall,
             )
         }

@@ -25,4 +25,7 @@
     <string name="error_validation_password_weak">The password does not meet the requirements</string>
     <string name="error_validation_passwords_differ">Passwords do not match</string>
     <string name="error_validation_negative">Amount and price cannot be negative</string>
+    <string name="stale_prices">Prices are not updating</string>
+    <string name="stale_prices_at">Prices are not updating · %1$s</string>
+    <string name="stale_refresh">Refresh</string>
 </resources>

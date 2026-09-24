@@ -1,5 +1,6 @@
-package com.cryptocompare.pairs.util
+package com.cryptocompare.helpers
 
+import com.cryptocompare.helpers.util.TimeFormatConstants
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -22,9 +23,9 @@ fun formatLastUpdate(
 
     val pattern =
         if (updated.toLocalDate() == today) {
-            PairsConstants.MainScreen.LAST_UPDATE_TIME_PATTERN
+            TimeFormatConstants.LAST_UPDATE_TIME_PATTERN
         } else {
-            PairsConstants.MainScreen.LAST_UPDATE_DATE_PATTERN
+            TimeFormatConstants.LAST_UPDATE_DATE_PATTERN
         }
 
     return DateTimeFormatter.ofPattern(pattern, Locale.ROOT).format(updated)

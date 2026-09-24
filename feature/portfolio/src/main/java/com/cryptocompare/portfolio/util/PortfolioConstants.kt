@@ -5,6 +5,9 @@ object PortfolioConstants {
     object Screen {
         /** Ключ карточки итога в списке: позицией она не является, и symbolId у неё нет. */
         const val SUMMARY_KEY = "summary"
+
+        /** Ключ полоски «цены не обновляются»: она тоже не позиция. */
+        const val STALE_NOTICE_KEY = "stale"
     }
 
     object Prices {

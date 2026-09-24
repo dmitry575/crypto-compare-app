@@ -11,9 +11,6 @@
 
     <!-- Сортировка -->
     <string name="pairs_stream_live">Онлайн</string>
-    <string name="pairs_stale_prices">Цены не обновляются</string>
-    <string name="pairs_stale_prices_at">Цены не обновляются · %1$s</string>
-    <string name="pairs_stale_refresh">Обновить</string>
     <string name="pairs_refresh_failed">Не удалось получить цены</string>
     <string name="pairs_stream_reconnecting">Подключение…</string>
     <string name="pairs_stream_offline">Офлайн</string>

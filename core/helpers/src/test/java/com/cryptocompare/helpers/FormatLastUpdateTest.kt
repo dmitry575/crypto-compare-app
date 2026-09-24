@@ -1,4 +1,4 @@
-package com.cryptocompare.pairs.util
+package com.cryptocompare.helpers
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
