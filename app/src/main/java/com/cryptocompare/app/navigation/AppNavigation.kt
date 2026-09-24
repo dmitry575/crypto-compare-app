@@ -9,19 +9,18 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.cryptocompare.auth.navigation.AuthDestination
-import com.cryptocompare.auth.navigation.AuthScreens
+import com.cryptocompare.auth.navigation.AuthRoute
 import com.cryptocompare.auth.navigation.authNavigation
 import com.cryptocompare.helpers.navigateAndClearStack
-import com.cryptocompare.pairs.navigation.PairsDestination
-import com.cryptocompare.pairs.navigation.PairsScreens
+import com.cryptocompare.pairs.navigation.PairsRoute
 import com.cryptocompare.pairs.navigation.pairsNavigation
-import com.cryptocompare.portfolio.navigation.PortfolioScreens
+import com.cryptocompare.portfolio.navigation.PortfolioRoute
 import com.cryptocompare.portfolio.navigation.portfolioNavigation
-import com.cryptocompare.profile.navigation.ProfileDestination
+import com.cryptocompare.profile.navigation.ProfileRoute
 import com.cryptocompare.profile.navigation.profileNavigation
 
 /**
@@ -40,14 +39,15 @@ fun AppNavigation() {
     val navController = rememberNavController()
 
     val backStackEntry by navController.currentBackStackEntryAsState()
+    val destination = backStackEntry?.destination
     val selectedTab =
-        when (backStackEntry?.destination?.route) {
-            PairsScreens.MainScreen.route -> AppTab.PAIRS
-            PortfolioScreens.PortfolioScreen.route -> AppTab.PORTFOLIO
+        when {
+            destination?.hasRoute<PairsRoute.Main>() == true -> AppTab.PAIRS
+            destination?.hasRoute<PortfolioRoute.Main>() == true -> AppTab.PORTFOLIO
             else -> null
         }
 
-    val openSignIn = { navController.navigate(AuthScreens.LoginScreen.route) }
+    val openSignIn = { navController.navigate(AuthRoute.Login) }
 
     // Якорь — корневой граф, а не граф каталога. Каталог после заставки сам лежит
     // в корне стека, и если прыгать к нему, его же состояние и сохранялось бы, и
@@ -72,7 +72,7 @@ fun AppNavigation() {
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = AuthDestination.ROUTE,
+            startDestination = AuthRoute.Graph,
             modifier =
                 Modifier
                     .padding(padding)
@@ -89,20 +89,20 @@ fun AppNavigation() {
             authNavigation(
                 navController = navController,
                 onReady = {
-                    navController.navigateAndClearStack(PairsDestination.ROUTE, AuthDestination.ROUTE)
+                    navController.navigateAndClearStack(PairsRoute.Graph, AuthRoute.Graph)
                 },
                 // вход открыт поверх каталога или профиля: закрываем его целиком и
                 // возвращаемся туда, откуда пришли
-                onAuthenticated = { navController.popBackStack(AuthDestination.ROUTE, inclusive = true) },
+                onAuthenticated = { navController.popBackStack<AuthRoute.Graph>(inclusive = true) },
             )
 
             pairsNavigation(
                 navController = navController,
-                onProfileClick = { navController.navigate(ProfileDestination.ROUTE) },
+                onProfileClick = { navController.navigate(ProfileRoute.Graph) },
                 onSignInClick = openSignIn,
                 onAddToPortfolio = { symbolId, ticker, price, providerId ->
                     navController.navigate(
-                        PortfolioScreens.PositionEditScreen.createRoute(symbolId, ticker, price, providerId),
+                        PortfolioRoute.PositionEdit(symbolId, ticker, price?.toString(), providerId),
                     )
                 },
             )

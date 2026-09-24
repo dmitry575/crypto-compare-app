@@ -20,53 +20,40 @@ fun NavGraphBuilder.authNavigation(
     onReady: () -> Unit,
     onAuthenticated: () -> Unit,
 ) {
-    navigation(
-        route = AuthDestination.ROUTE,
-        startDestination = AuthScreens.SplashScreen.route,
-    ) {
-        composable(AuthScreens.LoginScreen.route) {
+    navigation<AuthRoute.Graph>(startDestination = AuthRoute.Splash) {
+        composable<AuthRoute.Login> {
             LoginScreen(
-                onRegisterClick = { navController.navigate(AuthScreens.RegisterScreen.route) },
-                onForgotPasswordClick = {
-                    navController.navigate(AuthScreens.ForgotPasswordScreen.route)
-                },
+                onRegisterClick = { navController.navigate(AuthRoute.Register) },
+                onForgotPasswordClick = { navController.navigate(AuthRoute.ForgotPassword) },
                 onAuthenticated = onAuthenticated,
             )
         }
 
-        composable(AuthScreens.ForgotPasswordScreen.route) {
+        composable<AuthRoute.ForgotPassword> {
             ForgotPasswordScreen(onBackToLogin = { navController.popBackStack() })
         }
 
-        composable(AuthScreens.RegisterScreen.route) {
+        composable<AuthRoute.Register> {
             RegisterScreen(
-                onLoginClick = { navController.navigate(AuthScreens.LoginScreen.route) },
+                onLoginClick = { navController.navigate(AuthRoute.Login) },
                 onAuthenticated = onAuthenticated,
             )
         }
 
-        composable(AuthScreens.SplashScreen.route) {
+        composable<AuthRoute.Splash> {
             SplashScreen(
                 onReady = onReady,
                 onNavigateOnboarding = {
-                    navController.navigateAndClearStack(
-                        AuthScreens.OnboardingScreen.route,
-                        AuthScreens.SplashScreen.route,
-                    )
+                    navController.navigateAndClearStack(AuthRoute.Onboarding, AuthRoute.Splash)
                 },
             )
         }
 
-        composable(AuthScreens.OnboardingScreen.route) {
+        composable<AuthRoute.Onboarding> {
             // после онбординга возвращаемся на сплеш: он уже знает про вход
             // и разведёт на каталог или логин, а флаг к этому моменту записан
             OnboardingScreen(
-                onDone = {
-                    navController.navigateAndClearStack(
-                        AuthScreens.SplashScreen.route,
-                        AuthScreens.OnboardingScreen.route,
-                    )
-                },
+                onDone = { navController.navigateAndClearStack(AuthRoute.Splash, AuthRoute.Onboarding) },
             )
         }
     }

@@ -57,9 +57,7 @@ class DetailsViewModel
     ) : ViewModel() {
         /** Символ пары: биржи, лучшая пара и живые события берутся только его. */
         private val symbolId: Long? =
-            savedStateHandle
-                .get<Long>(PairsConstants.Navigation.SYMBOL_ID_ARG)
-                ?.takeIf { it != PairsConstants.Navigation.NO_SYMBOL_ID }
+            savedStateHandle.get<Long>(PairsConstants.Navigation.SYMBOL_ID_ARG)
 
         private val _uiState = MutableStateFlow(DetailUiState(symbolId = symbolId))
         val uiState = _uiState.asStateFlow()

@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.sp
  * [com.cryptocompare.ui.theme.Dimensions], сюда не дублируются.
  */
 object PairsConstants {
+    /** Имена аргументов — это имена полей `PairsRoute`: ViewModel читают по ним `SavedStateHandle`. */
     object Navigation {
         const val TICKER_ARG = "ticker"
 
@@ -17,9 +18,6 @@ object PairsConstants {
          * разом, смешав USDC из Ethereum с USDC из Solana.
          */
         const val SYMBOL_ID_ARG = "symbolId"
-
-        /** Навигация не умеет nullable Long: «символ не выбран» передаётся так. */
-        const val NO_SYMBOL_ID = -1L
     }
 
     object MainScreen {

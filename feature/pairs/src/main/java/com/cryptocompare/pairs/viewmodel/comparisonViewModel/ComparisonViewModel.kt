@@ -51,9 +51,7 @@ class ComparisonViewModel
     ) : ViewModel() {
         /** Символ пары: сравниваются только его биржи. */
         private val symbolId: Long? =
-            savedStateHandle
-                .get<Long>(PairsConstants.Navigation.SYMBOL_ID_ARG)
-                ?.takeIf { it != PairsConstants.Navigation.NO_SYMBOL_ID }
+            savedStateHandle.get<Long>(PairsConstants.Navigation.SYMBOL_ID_ARG)
 
         private val _uiState = MutableStateFlow(ComparisonUiState())
         val uiState = _uiState.asStateFlow()

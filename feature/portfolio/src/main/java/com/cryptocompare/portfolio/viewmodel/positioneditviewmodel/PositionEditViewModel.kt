@@ -39,7 +39,7 @@ class PositionEditViewModel
 
         /** Биржа, открытая на экране пары: с неё и подсказанная цена, скорее всего там и купили. */
         private val suggestedProviderId: Int? =
-            savedStateHandle.get<String>(PortfolioConstants.Navigation.PROVIDER_ID_ARG)?.toIntOrNull()
+            savedStateHandle.get<Int>(PortfolioConstants.Navigation.PROVIDER_ID_ARG)
 
         private val _uiState =
             MutableStateFlow(
