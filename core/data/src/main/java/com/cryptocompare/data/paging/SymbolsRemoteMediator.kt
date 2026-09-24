@@ -8,9 +8,10 @@ import androidx.room.withTransaction
 import com.cryptocompare.data.local.CryptoCompareDatabase
 import com.cryptocompare.data.local.entity.CatalogRemoteKeyEntity
 import com.cryptocompare.data.mapper.normalizeSymbols
-import com.cryptocompare.data.mapper.toAppException
 import com.cryptocompare.data.mapper.toEntityFromDto
+import com.cryptocompare.data.mapper.toReportedAppException
 import com.cryptocompare.data.util.checkApiResponse
+import com.cryptocompare.domain.repository.CrashReporter
 import com.cryptocompare.helpers.util.CryptoCompareRepositoryConstants
 import com.cryptocompare.model.symbol.PairAggregateRow
 import com.cryptocompare.network.api.CryptoCompareApi
@@ -20,6 +21,7 @@ import kotlinx.coroutines.CancellationException
 class SymbolsRemoteMediator(
     private val api: CryptoCompareApi,
     private val database: CryptoCompareDatabase,
+    private val crashReporter: CrashReporter,
     private val refreshProviders: suspend () -> Unit,
 ) : RemoteMediator<Int, PairAggregateRow>() {
     private val symbolDao = database.symbolDao()
@@ -107,7 +109,7 @@ class SymbolsRemoteMediator(
             throw e
         } catch (e: Exception) {
             // экран каталога показывает эту ошибку сам — пусть она будет уже разобранной
-            MediatorResult.Error(e.toAppException())
+            MediatorResult.Error(e.toReportedAppException(crashReporter))
         }
     }
 }

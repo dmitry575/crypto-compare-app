@@ -288,6 +288,7 @@ class FavouriteSymbolRepositoryRaceTest {
             symbolDao = database.symbolDao(),
             transactionRunner = transactionRunner,
             auth = auth,
+            crashReporter = mockk(relaxed = true),
             ioDispatcher = Dispatchers.IO,
         )
 
