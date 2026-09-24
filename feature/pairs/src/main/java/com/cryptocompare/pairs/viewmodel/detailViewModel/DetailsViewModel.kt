@@ -105,6 +105,15 @@ class DetailsViewModel
             observeReconnects(ticker)
         }
 
+        /**
+         * Снекбар показал ошибку — она своё отработала. Без сброса та же ошибка
+         * второй раз не показалась бы (состояние не поменялось бы), а после
+         * поворота экрана старый снекбар всплыл бы снова.
+         */
+        fun onErrorShown() {
+            _uiState.update { it.copy(error = null) }
+        }
+
         /** «Повторить» после неудачной загрузки: биржи и лучшая пара берутся заново. */
         fun retry() {
             val ticker = _uiState.value.ticker
