@@ -47,6 +47,39 @@ class LoginViewModelTest {
         }
 
     @Test
+    fun `editing the email clears its error, the password does not`() =
+        runTest {
+            // поле оставалось красным, пока его уже чинят, — до следующего «Войти»
+            val viewModel = createViewModel()
+            viewModel.onEmailChange("bad")
+            viewModel.onPasswordChange("secret123")
+            viewModel.signInWithEmail()
+
+            viewModel.onPasswordChange("secret1234")
+            assertEquals(AppError.Validation(ValidationErrorReason.INVALID_EMAIL), viewModel.uiState.value.error)
+
+            viewModel.onEmailChange("bad@")
+            assertNull(viewModel.uiState.value.error)
+        }
+
+    @Test
+    fun `editing a field keeps a sign-in failure on screen`() =
+        runTest {
+            // неверный пароль — не ошибка проверки поля: правка почты его не исправила
+            coEvery { signInWithEmailUseCase(any(), any()) } returns
+                Result.failure(AppException(AppError.Auth(AuthErrorReason.INVALID_CREDENTIALS)))
+            val viewModel = createViewModel()
+            viewModel.onEmailChange("user@example.com")
+            viewModel.onPasswordChange("secret123")
+            viewModel.signInWithEmail()
+            advanceUntilIdle()
+
+            viewModel.onEmailChange("user2@example.com")
+
+            assertEquals(AppError.Auth(AuthErrorReason.INVALID_CREDENTIALS), viewModel.uiState.value.error)
+        }
+
+    @Test
     fun `signIn with short password sets error`() =
         runTest {
             val viewModel = createViewModel()

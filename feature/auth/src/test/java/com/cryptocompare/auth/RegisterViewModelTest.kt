@@ -81,6 +81,25 @@ class RegisterViewModelTest {
         }
 
     @Test
+    fun `a mismatch clears when either password field is edited`() =
+        runTest {
+            val viewModel = createViewModel()
+            viewModel.onEmailChange("user@example.com")
+            viewModel.onPasswordChange("Password1")
+            viewModel.onConfirmPasswordChange("Password2")
+            viewModel.signUpWithEmail()
+
+            viewModel.onEmailChange("user2@example.com")
+            assertEquals(
+                AppError.Validation(ValidationErrorReason.PASSWORDS_DO_NOT_MATCH),
+                viewModel.uiState.value.error,
+            )
+
+            viewModel.onPasswordChange("Password2")
+            assertNull(viewModel.uiState.value.error)
+        }
+
+    @Test
     fun `signUp success clears loading`() =
         runTest {
             coEvery { signUpWithEmailUseCase(any(), any()) } returns Result.success(mockk())

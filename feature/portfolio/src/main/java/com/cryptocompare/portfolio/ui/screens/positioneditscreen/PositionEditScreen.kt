@@ -120,6 +120,7 @@ fun PositionEditScreen(
                 color = MaterialTheme.colorScheme.textSecondary,
             )
             ExchangeField(
+                label = stringResource(R.string.portfolio_exchange),
                 value = uiState.exchangeName ?: stringResource(R.string.portfolio_exchange_best),
                 onClick = viewModel::onExchangeClick,
                 enabled = !uiState.isSaving,
