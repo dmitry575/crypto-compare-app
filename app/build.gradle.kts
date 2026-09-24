@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.androidx.baselineprofile)
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
 }
@@ -62,7 +63,21 @@ kotlin {
     }
 }
 
+// Варианты, на которых снимается и меряется baseline profile, подписываются
+// отладочным ключом: ключ релиза живёт только в CI, а в магазин они не идут.
+androidComponents {
+    onVariants { variant ->
+        if (variant.buildType in setOf("nonMinifiedRelease", "benchmarkRelease")) {
+            variant.signingConfig.setConfig(android.signingConfigs.getByName("debug"))
+        }
+    }
+}
+
 dependencies {
+    // ставит baseline profile на устройство, если магазин этого не сделал
+    implementation(libs.androidx.profileinstaller)
+    baselineProfile(project(":baselineprofile"))
+
     implementation(project(":core:ui"))
     implementation(project(":core:network"))
     implementation(project(":core:data"))

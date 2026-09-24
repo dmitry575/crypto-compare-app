@@ -24,6 +24,7 @@ Android-приложение: сравнение котировок одной �
 | Аутентификация | Firebase Auth (email + Google), Firestore для избранного |
 | Фоновые задачи | WorkManager |
 | Стиль | ktlint (gradle-плагин 14.2.0), `.editorconfig` |
+| Старт | baseline profile (`:baselineprofile`, плагин `androidx.baselineprofile` 1.5), `profileinstaller` |
 
 Kotlin 2.4.10, AGP 9.3.0, Gradle 9.6.1, KSP 2.3.10, JVM target 21,
 `minSdk 26`, `compileSdk 37.1`, `targetSdk 37`.
@@ -453,6 +454,12 @@ RELEASE_WS_BASE_URL=ws://<host>
 ./gradlew ktlintCheck       # стиль
 ./gradlew ktlintFormat      # автоформат
 ```
+
+Baseline profile снимается **только на отдельном чистом эмуляторе**: прогон ставит
+релизную сборку с тем же `applicationId` и потом удаляет её — на рабочем это
+снесло бы приложение вместе со входом. Сам профиль в репозиторий не коммитится:
+он лежит локально там, где собирается релиз для RuStore. Порядок —
+`baselineprofile/README.md`.
 
 ---
 
