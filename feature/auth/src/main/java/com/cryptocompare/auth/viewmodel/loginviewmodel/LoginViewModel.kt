@@ -2,6 +2,7 @@ package com.cryptocompare.auth.viewmodel.loginviewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cryptocompare.auth.util.withoutValidation
 import com.cryptocompare.domain.usecase.auth.IsValidEmailUseCase
 import com.cryptocompare.domain.usecase.auth.SignInWithEmailUseCase
 import com.cryptocompare.domain.usecase.auth.SignInWithGoogleUseCase
@@ -28,11 +29,21 @@ class LoginViewModel
         val uiState = _uiState.asStateFlow()
 
         fun onEmailChange(email: String) {
-            _uiState.update { uiState -> uiState.copy(email = email) }
+            _uiState.update { uiState ->
+                uiState.copy(
+                    email = email,
+                    error = uiState.error.withoutValidation(ValidationErrorReason.INVALID_EMAIL),
+                )
+            }
         }
 
         fun onPasswordChange(password: String) {
-            _uiState.update { uiState -> uiState.copy(password = password) }
+            _uiState.update { uiState ->
+                uiState.copy(
+                    password = password,
+                    error = uiState.error.withoutValidation(ValidationErrorReason.PASSWORD_TOO_SHORT),
+                )
+            }
         }
 
         fun signInWithEmail() {

@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.cryptocompare.helpers.priceChangeSign
 import com.cryptocompare.helpers.toPriceString
@@ -62,7 +63,10 @@ internal fun PortfolioSummaryCard(
                     width = Dimensions.Border.card,
                     color = MaterialTheme.colorScheme.borderPrimary,
                     shape = RoundedCornerShape(Dimensions.Radius.card),
-                ).padding(Dimensions.Padding.cardLarge),
+                ).padding(Dimensions.Padding.cardLarge)
+                // TalkBack читает итог одним куском, а не пятью отдельными
+                // остановками: «стоимость сейчас», число, прибыль, «вложено», число
+                .semantics(mergeDescendants = true) {},
         verticalArrangement = Arrangement.spacedBy(Dimensions.Gap.sm),
     ) {
         Text(

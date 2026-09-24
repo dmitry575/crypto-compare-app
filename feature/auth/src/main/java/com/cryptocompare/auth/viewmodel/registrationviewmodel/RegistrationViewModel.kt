@@ -2,6 +2,7 @@ package com.cryptocompare.auth.viewmodel.registrationviewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cryptocompare.auth.util.withoutValidation
 import com.cryptocompare.domain.usecase.auth.IsValidEmailUseCase
 import com.cryptocompare.domain.usecase.auth.SignInWithGoogleUseCase
 import com.cryptocompare.domain.usecase.auth.SignUpWithEmailUseCase
@@ -29,7 +30,12 @@ class RegistrationViewModel
         val uiState = _uiState.asStateFlow()
 
         fun onEmailChange(email: String) {
-            _uiState.update { uiState -> uiState.copy(email = email) }
+            _uiState.update { uiState ->
+                uiState.copy(
+                    email = email,
+                    error = uiState.error.withoutValidation(ValidationErrorReason.INVALID_EMAIL),
+                )
+            }
         }
 
         fun onPasswordChange(password: String) {
@@ -39,12 +45,23 @@ class RegistrationViewModel
                     passwordLengthMet = password.length >= PasswordConstants.MIN_LENGTH,
                     passwordLetterMet = password.any { it.isLetter() },
                     passwordNumberMet = password.any { it.isDigit() },
+                    // несовпадение чинится правкой любого из двух полей
+                    error =
+                        uiState.error.withoutValidation(
+                            ValidationErrorReason.PASSWORD_TOO_WEAK,
+                            ValidationErrorReason.PASSWORDS_DO_NOT_MATCH,
+                        ),
                 )
             }
         }
 
         fun onConfirmPasswordChange(confirmPassword: String) {
-            _uiState.update { uiState -> uiState.copy(confirmPassword = confirmPassword) }
+            _uiState.update { uiState ->
+                uiState.copy(
+                    confirmPassword = confirmPassword,
+                    error = uiState.error.withoutValidation(ValidationErrorReason.PASSWORDS_DO_NOT_MATCH),
+                )
+            }
         }
 
         fun signUpWithEmail() {

@@ -23,7 +23,16 @@ class ChangePasswordViewModel
         val uiState = _uiState.asStateFlow()
 
         fun onCurrentPasswordChange(currentPassword: String) {
-            _uiState.update { uiState -> uiState.copy(currentPassword = currentPassword) }
+            _uiState.update { uiState ->
+                uiState.copy(
+                    currentPassword = currentPassword,
+                    validationError =
+                        uiState.validationError.without(
+                            ChangePasswordError.CURRENT_PASSWORD_EMPTY,
+                            ChangePasswordError.NEW_PASSWORD_SAME_AS_CURRENT,
+                        ),
+                )
+            }
         }
 
         fun onNewPasswordChange(newPassword: String) {
@@ -33,13 +42,31 @@ class ChangePasswordViewModel
                     passwordLengthMet = newPassword.length >= PasswordConstants.MIN_LENGTH,
                     passwordLetterMet = newPassword.any { it.isLetter() },
                     passwordNumberMet = newPassword.any { it.isDigit() },
+                    validationError =
+                        uiState.validationError.without(
+                            ChangePasswordError.NEW_PASSWORD_TOO_WEAK,
+                            ChangePasswordError.PASSWORDS_DO_NOT_MATCH,
+                            ChangePasswordError.NEW_PASSWORD_SAME_AS_CURRENT,
+                        ),
                 )
             }
         }
 
         fun onConfirmPasswordChange(confirmPassword: String) {
-            _uiState.update { uiState -> uiState.copy(confirmPassword = confirmPassword) }
+            _uiState.update { uiState ->
+                uiState.copy(
+                    confirmPassword = confirmPassword,
+                    validationError = uiState.validationError.without(ChangePasswordError.PASSWORDS_DO_NOT_MATCH),
+                )
+            }
         }
+
+        /**
+         * Ошибка проверки, которую правка поля и исправляет, гаснет вместе с правкой:
+         * иначе поле оставалось бы красным, пока его уже чинят.
+         */
+        private fun ChangePasswordError?.without(vararg fixed: ChangePasswordError): ChangePasswordError? =
+            takeUnless { it in fixed }
 
         fun changePassword() {
             val state = _uiState.value

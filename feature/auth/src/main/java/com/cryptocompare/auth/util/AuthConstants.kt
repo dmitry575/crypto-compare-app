@@ -2,9 +2,23 @@ package com.cryptocompare.auth.util
 
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.google.android.gms.common.ConnectionResult
 
 /** Константы фичи auth. */
 object AuthConstants {
+    /**
+     * Сервисы Google Play стоят, но устарели, обновляются или выключены: это
+     * пользователь исправит сам, и кнопка Google остаётся. Нет сервисов вовсе
+     * (`SERVICE_MISSING`, `SERVICE_INVALID` — Huawei, AOSP) — кнопки нет: ставить
+     * их там неоткуда.
+     */
+    val PLAY_SERVICES_FIXABLE_STATUSES =
+        setOf(
+            ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED,
+            ConnectionResult.SERVICE_UPDATING,
+            ConnectionResult.SERVICE_DISABLED,
+        )
+
     object ForgotPassword {
         /** Подзаголовок приглушён относительно основного текста. */
         const val SUBTITLE_ALPHA = 0.7f
